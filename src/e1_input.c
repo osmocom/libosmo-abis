@@ -44,20 +44,10 @@
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/logging.h>
 #include <osmocom/core/signal.h>
-//#include <openbsc/debug.h>
-//#include <openbsc/gsm_data.h>
-#include <osmocom/gsm/abis/e1_input.h>
-//#include <openbsc/abis_nm.h>
-//#include <openbsc/abis_rsl.h>
+#include <osmocom/abis/e1_input.h>
 #include <osmocom/core/linuxlist.h>
-#include <osmocom/gsm/abis/subchan_demux.h>
-//#include <openbsc/trau_frame.h>
-//#include <openbsc/trau_mux.h>
+#include <osmocom/abis/subchan_demux.h>
 #include <talloc.h>
-//#include <openbsc/signal.h>
-//#include <openbsc/misdn.h>
-
-//#include "../../bscconfig.h"
 
 #define NUM_E1_TS	32
 

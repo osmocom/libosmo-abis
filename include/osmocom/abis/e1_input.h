@@ -5,11 +5,10 @@
 #include <netinet/in.h>
 
 #include <osmocom/core/linuxlist.h>
-//#include <openbsc/gsm_data.h>
 #include <osmocom/core/timer.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/select.h>
-#include <osmocom/gsm/abis/subchan_demux.h>
+#include <osmocom/abis/subchan_demux.h>
 
 #define NUM_E1_TS   32
 

@@ -25,10 +25,9 @@
 #include <string.h>
 #include <errno.h>
 
-#include <osmocom/gsm/abis/trau_frame.h>
-#include <osmocom/gsm/abis/subchan_demux.h>
+#include <osmocom/abis/trau_frame.h>
+#include <osmocom/abis/subchan_demux.h>
 #include <osmocom/core/logging.h>
-//#include <openbsc/debug.h>
 
 static uint32_t get_bits(const uint8_t *bitbuf, int offset, int num)
 {

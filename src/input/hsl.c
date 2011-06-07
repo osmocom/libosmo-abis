@@ -47,19 +47,10 @@
 #include <osmocom/core/select.h>
 #include <osmocom/gsm/tlv.h>
 #include <osmocom/core/msgb.h>
-#include <osmocom/gsm/abis/e1_input.h>
+#include <osmocom/abis/e1_input.h>
 #include <osmocom/core/logging.h>
 #include <osmocom/gsm/protocol/ipaccess.h>
 #include <osmocom/core/socket.h>
-/*#include <openbsc/debug.h>
-#include <openbsc/gsm_data.h>
-#include <openbsc/abis_nm.h>
-#include <openbsc/abis_rsl.h>
-#include <openbsc/subchan_demux.h>
-#include <openbsc/e1_input.h>
-#include <openbsc/ipaccess.h>
-#include <openbsc/socket.h>
-#include <openbsc/signal.h> */
 #include <talloc.h>
 
 #define HSL_TCP_PORT	2500

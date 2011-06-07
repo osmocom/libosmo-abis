@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <osmocom/gsm/abis/e1_input.h>
+#include <osmocom/abis/e1_input.h>
 
 static int rx_cb(struct msgb *msg, struct e1inp_ts *ts)
 {

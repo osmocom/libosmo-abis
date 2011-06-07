@@ -26,11 +26,9 @@
 #include <string.h>
 #include <errno.h>
 
-#include <osmocom/gsm/abis/subchan_demux.h>
-#include <osmocom/gsm/abis/trau_frame.h>
-//#include <openbsc/debug.h>
+#include <osmocom/abis/subchan_demux.h>
+#include <osmocom/abis/trau_frame.h>
 #include <talloc.h>
-//#include <openbsc/gsm_data.h>
 
 void *tall_tqe_ctx;
 

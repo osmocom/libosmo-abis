@@ -43,8 +43,7 @@ AC_OUTPUT(
 	libosmoabis.pc
 	include/Makefile
 	include/osmocom/Makefile
-	include/osmocom/gsm/Makefile
-	include/osmocom/gsm/abis/Makefile
+	include/osmocom/abis/Makefile
 	src/Makefile
 	src/input/Makefile
 	tests/Makefile

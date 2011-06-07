@@ -43,7 +43,6 @@
 #include <talloc.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/timer.h>
-//#include <openbsc/debug.h>
 
 #define SABM_INTERVAL		0, 300000
 

@@ -44,7 +44,7 @@
 #include <osmocom/core/select.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/logging.h>
-#include <osmocom/gsm/abis/e1_input.h>
+#include <osmocom/abis/e1_input.h>
 #include <talloc.h>
 /*#include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
