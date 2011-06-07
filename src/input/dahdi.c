@@ -121,8 +121,11 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 	DEBUGP(DMI, "<= len = %d, sapi(%d) tei(%d)", ret, sapi, tei);
 
 	idata = lapd_receive(e1i_ts->driver.dahdi.lapd, msg->data, msg->len, &ilen, &prim);
-	if (!idata && prim == 0)
+	if (!idata && prim == 0) {
+		if (line->ops.error)
+			line->ops.error(NULL, -EBADMSG);
 		return -EIO;
+	}
 
 	msgb_pull(msg, 2);
 
@@ -149,7 +152,8 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 		ret = e1inp_rx_ts(e1i_ts, msg, tei, sapi);
 		break;
 	default:
-		printf("ERROR: unknown prim\n");
+		if (line->ops.error)
+			line->ops.error(NULL, -EBADMSG);
 		break;
 	}
 

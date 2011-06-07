@@ -5,26 +5,19 @@
 
 static void *tall_test;
 
-static int rx_cb(struct msgb *msg, struct e1inp_ts *ts)
+static int sign_link_up(struct msgb *msg, struct e1inp_line *line)
 {
-	printf("received data\n");
-
-	/* For ISDN: from the timeslot type, we can get if it's:
-	 * - E1INP_TS_TYPE_SIGN: in this case, check if we have a signal
-	 *   link in this timeslot, then, check if it's OML or RSL and pass
-	 *   it to the upper layer.
-	 * - E1INP_TS_TYPE_TRAU.
-	 *
-	 * For INET: we have to check if this is a control message, if it's
-	 * a response to previous request id, we enable the signal links for
-	 * OML and RSL. Otherwise, look up for the existing signal link and
-	 * pass it to the upper layer. We don't receive TRAU frames, we use
-	 * RTP.
-	 */
+	printf("ID_RESP received, create sign link.\n");
 	return 0;
 }
 
-static int rx_err_cb(int error)
+static int sign_link(struct msgb *msg, struct e1inp_sign_link *link)
+{
+	printf("OML/RSL data received\n");
+	return 0;
+}
+
+static int error(struct msgb *msg, int error)
 {
 	printf("error, malformed message\n");
 	return 0;
@@ -33,28 +26,28 @@ static int rx_err_cb(int error)
 int main(void)
 {
 	struct e1inp_line *line;
-	struct e1inp_ts *sign_ts;
 
 	tall_test = talloc_named_const(NULL, 1, "e1inp_test");
 	libosmo_abis_init(tall_test);
 
+	struct e1inp_line_ops ops = {
+		.sign_link_up	= sign_link_up,
+		.sign_link	= sign_link,
+		.error		= error,
+	};
+
 #define LINENR 0
 
-	line = e1inp_line_create(LINENR, "ipa", rx_cb, rx_err_cb);
+	line = e1inp_line_create(LINENR, "ipa", &ops);
 	if (line == NULL) {
 		fprintf(stderr, "problem creating E1 line\n");
-		exit(EXIT_FAILURE);
-	}
-	sign_ts = &line->ts[0];
-	if (e1inp_ts_config_sign(sign_ts, line) < 0) {
-		fprintf(stderr, "problem setting timeslot in E1 line\n");
 		exit(EXIT_FAILURE);
 	}
 
 	/*
 	 * Depending if this is a real or virtual E1 lines:
 	 * - real (ISDN): create signal link for OML and RSL before line up.
-	 * - vitual (INET): we create it once we have seen response to REQ_ID.
+	 * - vitual (INET): we create it in signal_link_up(...) callback.
 	 *
 	 * The signal link is created via e1inp_sign_link_create(...)
 	 *

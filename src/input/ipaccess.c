@@ -170,18 +170,65 @@ struct msgb *ipaccess_read_msg(struct osmo_fd *bfd, int *error)
 	return msg;
 }
 
+/* base handling of the ip.access protocol */
+int ipaccess_rcvmsg_base(struct msgb *msg,
+			 struct osmo_fd *bfd)
+{
+	uint8_t msg_type = *(msg->l2h);
+	int ret = 0;
+
+	switch (msg_type) {
+	case IPAC_MSGT_PING:
+		ret = ipaccess_send_pong(bfd->fd);
+		break;
+	case IPAC_MSGT_PONG:
+		DEBUGP(DMI, "PONG!\n");
+		break;
+	case IPAC_MSGT_ID_ACK:
+		DEBUGP(DMI, "ID_ACK? -> ACK!\n");
+		ret = ipaccess_send_id_ack(bfd->fd);
+		break;
+	}
+	return 0;
+}
+
+static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
+			   struct osmo_fd *bfd)
+{
+	uint8_t msg_type = *(msg->l2h);
+
+	/* handle base messages */
+	ipaccess_rcvmsg_base(msg, bfd);
+
+	switch (msg_type) {
+	case IPAC_MSGT_ID_RESP:
+		DEBUGP(DMI, "ID_RESP\n");
+		if (!line->ops.sign_link_up) {
+			LOGP(DINP, LOGL_ERROR, "Fix your application, "
+				"no action set if the signalling link "
+				"becomes ready\n");
+			return -EINVAL;
+		}
+		line->ops.sign_link_up(msg, line);
+		break;
+	}
+	return 0;
+}
+
 static int handle_ts1_read(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
+	struct e1inp_sign_link *link;
+	struct ipaccess_head *hh;
 	struct msgb *msg;
 	int ret = 0, error;
 
 	msg = ipaccess_read_msg(bfd, &error);
 	if (!msg) {
-		if (e1i_ts->line->rx_err)
-			e1i_ts->line->rx_err(error);
+		if (e1i_ts->line->ops.error)
+			e1i_ts->line->ops.error(NULL, error);
 		if (error == 0) {
 		        osmo_fd_unregister(bfd);
 		        close(bfd->fd);
@@ -191,10 +238,32 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 	}
 	DEBUGP(DMI, "RX %u: %s\n", ts_nr, osmo_hexdump(msgb_l2(msg), msgb_l2len(msg)));
 
-	/* XXX better use e1inp_ts_rx. */
+	hh = (struct ipaccess_head *) msg->data;
+	if (hh->proto == IPAC_PROTO_IPACCESS) {
+		ipaccess_rcvmsg(line, msg, bfd);
+		msgb_free(msg);
+		return ret;
+	}
+	/* BIG FAT WARNING: bfd might no longer exist here, since ipaccess_rcvmsg()
+	 * might have free'd it !!! */
 
-	if (e1i_ts->line->rx)
-		e1i_ts->line->rx(msg, e1i_ts);
+	link = e1inp_lookup_sign_link(e1i_ts, hh->proto, 0);
+	if (!link) {
+		LOGP(DINP, LOGL_ERROR, "no matching signalling link for "
+			"hh->proto=0x%02x\n", hh->proto);
+		msgb_free(msg);
+		return -EIO;
+	}
+	msg->dst = link;
+
+	/* XXX better use e1inp_ts_rx? */
+	if (!e1i_ts->line->ops.sign_link) {
+		LOGP(DINP, LOGL_ERROR, "Fix your application, "
+			"no action set for signalling messages.\n");
+		return -ENOENT;
+	}
+	e1i_ts->line->ops.sign_link(msg, link);
+
 	return ret;
 }
 

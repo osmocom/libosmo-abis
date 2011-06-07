@@ -77,13 +77,15 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
+	struct e1inp_sign_link *link;
+	struct ipaccess_head *hh;
 	struct msgb *msg;
 	int ret = 0, error;
 
 	msg = ipaccess_read_msg(bfd, &error);
 	if (!msg) {
-		if (e1i_ts->line->rx_err)
-			e1i_ts->line->rx_err(error);
+		if (e1i_ts->line->ops.error)
+			e1i_ts->line->ops.error(NULL, error);
 		if (error == 0) {
 			osmo_fd_unregister(bfd);
 			close(bfd->fd);
@@ -93,9 +95,53 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 	}
 	DEBUGP(DMI, "RX %u: %s\n", ts_nr, osmo_hexdump(msgb_l2(msg), msgb_l2len(msg)));
 
-	/* XXX better use e1inp_rx_ts. */
-	if (e1i_ts->line->rx)
-		e1i_ts->line->rx(msg, e1i_ts);
+	hh = (struct ipaccess_head *) msg->data;
+	if (hh->proto == HSL_PROTO_DEBUG) {
+		LOGP(DINP, LOGL_NOTICE, "HSL debug: %s\n", msg->data + sizeof(*hh));
+		msgb_free(msg);
+		return ret;
+	}
+
+	/* HSL proprietary RSL extension */
+	if (hh->proto == 0 && (msg->l2h[0] == 0x81 || msg->l2h[0] == 0x80)) {
+		if (!line->ops.sign_link_up) {
+			LOGP(DINP, LOGL_ERROR, "Fix your application, no "
+				"action set if the signalling link "
+				"becomes ready.\n");
+			return -EINVAL;
+		}
+		ret = line->ops.sign_link_up(msg, line);
+		if (ret < 0) {
+			/* FIXME: close connection */
+			if (line->ops.error)
+				line->ops.error(msg, -EBADMSG);
+			return ret;
+		} else if (ret == 1)
+			return 0;
+		/* else: continue... */
+	}
+
+#ifdef HSL_SR_1_0
+	/* HSL for whatever reason chose to use 0x81 instead of 0x80 for FOM */
+	if (hh->proto == 255 && msg->l2h[0] == (ABIS_OM_MDISC_FOM | 0x01))
+		msg->l2h[0] = ABIS_OM_MDISC_FOM;
+#endif
+	link = e1inp_lookup_sign_link(e1i_ts, hh->proto, 0);
+	if (!link) {
+		LOGP(DINP, LOGL_ERROR, "no matching signalling link for "
+			"hh->proto=0x%02x\n", hh->proto);
+		msgb_free(msg);
+		return -EIO;
+	}
+	msg->dst = link;
+
+	/* XXX: better use e1inp_ts_rx? */
+	if (!e1i_ts->line->ops.sign_link) {
+		LOGP(DINP, LOGL_ERROR, "Fix your application, "
+			"no action set for signalling messages.\n");
+		return -ENOENT;
+	}
+	e1i_ts->line->ops.sign_link(msg, link);
 
 	return ret;
 }

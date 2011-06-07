@@ -305,8 +305,7 @@ struct e1inp_line *e1inp_line_get(uint8_t e1_nr)
 
 struct e1inp_line *
 e1inp_line_create(uint8_t e1_nr, const char *driver_name,
-		  int (*rx)(struct msgb *msgb, struct e1inp_ts *ts),
-		  int (*rx_err)(int error))
+		  const struct e1inp_line_ops *ops)
 {
 	struct e1inp_driver *driver;
 	struct e1inp_line *line;
@@ -331,8 +330,7 @@ e1inp_line_create(uint8_t e1_nr, const char *driver_name,
 		return NULL;
 
 	line->driver = driver;
-	line->rx = rx;
-	line->rx_err = rx_err;
+	memcpy(&line->ops, ops, sizeof(struct e1inp_line_ops));
 
 	line->num = e1_nr;
 	for (i = 0; i < NUM_E1_TS; i++) {
@@ -467,10 +465,12 @@ int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
 				"tei %d, sapi %d\n", tei, sapi);
 			return -EINVAL;
 		}
-		if (!ts->line->rx)
-			printf("XXX Error, horror\n");
-
-		ts->line->rx(msg, ts);
+		if (!ts->line->ops.sign_link) {
+	                LOGP(DINP, LOGL_ERROR, "Fix your application, "
+				"no action set for signalling messages.\n");
+			return -ENOENT;
+		}
+		ts->line->ops.sign_link(msg, link);
 		break;
 	case E1INP_TS_TYPE_TRAU:
 		ret = subch_demux_in(&ts->trau.demux, msg->l2h, msgb_l2len(msg));
