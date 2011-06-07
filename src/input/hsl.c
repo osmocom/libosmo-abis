@@ -50,6 +50,7 @@
 #include <osmocom/gsm/abis/e1_input.h>
 #include <osmocom/core/logging.h>
 #include <osmocom/gsm/protocol/ipaccess.h>
+#include <osmocom/core/socket.h>
 /*#include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/abis_nm.h>
@@ -268,8 +269,20 @@ hsl_line_update(struct e1inp_line *line, enum e1inp_line_role role)
 
 	switch(role) {
 	case E1INP_LINE_R_BSC:
-		ret = make_sock(&e1h->listen_fd, IPPROTO_TCP, INADDR_ANY,
-				HSL_TCP_PORT, 0, listen_fd_cb, line);
+		ret = osmo_sock_init(AF_INET, SOCK_STREAM, IPPROTO_TCP,
+					 "0.0.0.0", HSL_TCP_PORT, 1);
+		if (ret < 0)
+			return ret;
+
+		e1h->listen_fd.fd = ret;
+		e1h->listen_fd.when |= BSC_FD_READ;
+		e1h->listen_fd.cb = listen_fd_cb;
+		e1h->listen_fd.data = line;
+
+		if (osmo_fd_register(&e1h->listen_fd) < 0) {
+			close(ret);
+			return ret;
+		}
 		break;
 	case E1INP_LINE_R_BTS:
 		/* XXX: not implemented yet. */

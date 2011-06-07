@@ -13,5 +13,4 @@ lib_LTLIBRARIES = libosmoabis.la
 libosmoabis_la_LIBADD = input/libosmoabis-input.la
 libosmoabis_la_SOURCES = e1_input.c \
 			 subchan_demux.c \
-			 trau_frame.c \
-			 socket.c
+			 trau_frame.c

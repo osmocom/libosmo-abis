@@ -41,6 +41,7 @@
 #include <talloc.h>
 #include <osmocom/gsm/abis/e1_input.h>
 #include <osmocom/gsm/abis/ipaccess.h>
+#include <osmocom/core/socket.h>
 /*#include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/abis_nm.h>
@@ -424,16 +425,35 @@ ipaccess_line_update(struct e1inp_line *line, enum e1inp_line_role role)
 	switch(role) {
 	case E1INP_LINE_R_BSC:
 		/* Listen for OML connections */
-		ret = make_sock(&e1h->listen_fd, IPPROTO_TCP, INADDR_ANY,
-				IPA_TCP_PORT_OML, 0, listen_fd_cb, line);
+		ret = osmo_sock_init(AF_INET, SOCK_STREAM, IPPROTO_TCP,
+					"0.0.0.0", IPA_TCP_PORT_OML, 1);
 		if (ret < 0)
 			return ret;
 
+		e1h->listen_fd.fd = ret;
+		e1h->listen_fd.when |= BSC_FD_READ;
+		e1h->listen_fd.cb = listen_fd_cb;
+		e1h->listen_fd.data = line;
+
+		if (osmo_fd_register(&e1h->listen_fd) < 0) {
+			close(ret);
+			return ret;
+		}
 		/* Listen for RSL connections */
-		ret = make_sock(&e1h->rsl_listen_fd, IPPROTO_TCP, INADDR_ANY,
-				IPA_TCP_PORT_RSL, 0, rsl_listen_fd_cb, NULL);
+		ret = osmo_sock_init(AF_INET, SOCK_STREAM, IPPROTO_TCP,
+					"0.0.0.0", IPA_TCP_PORT_RSL, 1);
 		if (ret < 0)
 			return ret;
+
+		e1h->rsl_listen_fd.fd = ret;
+		e1h->rsl_listen_fd.when |= BSC_FD_READ;
+		e1h->rsl_listen_fd.cb = rsl_listen_fd_cb;
+		e1h->rsl_listen_fd.data = NULL;
+
+		if (osmo_fd_register(&e1h->rsl_listen_fd) < 0) {
+			close(ret);
+			return ret;
+		}
 		break;
 	case E1INP_LINE_R_BTS:
 		/* XXX: no implemented yet. */
