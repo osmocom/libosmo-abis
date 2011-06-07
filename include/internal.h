@@ -7,6 +7,11 @@ extern void *libosmo_abis_ctx;
 /* use libosmo_abis_init, this is only for internal use. */
 void e1inp_init(void);
 
+/* hsl requires these functions defined in ipaccess driver. */
+struct osmo_fd;
+struct msgb *ipaccess_read_msg(struct osmo_fd *bfd, int *error);
+void ipaccess_prepend_header(struct msgb *msg, int proto);
+
 /* things I don't know what to do with yet. */
 
 /* from include/openbsc/signal.h, we need SS_INPUT and S_GLOBAL_SHUTDOWN. */
@@ -63,9 +68,5 @@ enum {
         DNAT,
         Debug_LastEntry,
 };
-
-struct osmo_fd;
-struct msgb *ipaccess_read_msg(struct osmo_fd *bfd, int *error);
-void ipaccess_prepend_header(struct msgb *msg, int proto);
 
 #endif
