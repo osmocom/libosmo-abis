@@ -467,7 +467,6 @@ int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
 				"tei %d, sapi %d\n", tei, sapi);
 			return -EINVAL;
 		}
-//		log_set_context(BSC_CTX_BTS, link->trx->bts);
 		if (!ts->line->rx)
 			printf("XXX Error, horror\n");
 

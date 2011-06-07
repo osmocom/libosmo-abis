@@ -9,9 +9,6 @@ void e1inp_init(void);
 
 /* things I don't know what to do with yet. */
 
-/* extracted from include/openbsc/debug.h. */
-#define BSC_CTX_BTS     2
-
 /* from include/openbsc/signal.h, we need SS_INPUT and S_GLOBAL_SHUTDOWN. */
 enum signal_subsystems {
 	SS_PAGING,
