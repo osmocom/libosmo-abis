@@ -208,9 +208,6 @@ int hsl_setup(struct gsm_network *gsmnet);
 extern struct llist_head e1inp_driver_list;
 extern struct llist_head e1inp_line_list;
 
-int e1inp_vty_init(void);
-void e1inp_init(void);
-
 int _abis_nm_sendmsg(struct msgb *msg, int to_trx_oml);
 
 /* XXX */

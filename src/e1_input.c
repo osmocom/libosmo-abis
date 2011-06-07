@@ -605,6 +605,7 @@ void e1inp_hsl_init(void);
 
 void e1inp_init(void)
 {
+	tall_e1inp_ctx = talloc_named_const(libosmo_abis_ctx, 1, "e1inp");
 	tall_sigl_ctx = talloc_named_const(tall_e1inp_ctx, 1,
 					   "e1inp_sign_link");
 	osmo_signal_register_handler(SS_GLOBAL, e1i_sig_cb, NULL);

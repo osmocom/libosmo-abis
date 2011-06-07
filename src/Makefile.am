@@ -11,6 +11,7 @@ AM_LDFLAGS = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(COVERAGE_LDFLAGS)
 lib_LTLIBRARIES = libosmoabis.la
 
 libosmoabis_la_LIBADD = input/libosmoabis-input.la
-libosmoabis_la_SOURCES = e1_input.c \
+libosmoabis_la_SOURCES = init.c \
+			 e1_input.c \
 			 subchan_demux.c \
 			 trau_frame.c

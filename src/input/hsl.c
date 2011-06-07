@@ -59,7 +59,7 @@
 #define PRIV_OML 1
 #define PRIV_RSL 2
 
-static void *tall_bsc_ctx;
+static void *tall_hsl_ctx;
 
 /* data structure for one E1 interface with A-bis */
 struct hsl_e1_handle {
@@ -292,7 +292,9 @@ int hsl_setup(struct gsm_network *gsmnet)
 
 void e1inp_hsl_init(void)
 {
-	e1h = talloc_zero(tall_bsc_ctx, struct hsl_e1_handle);
+	tall_hsl_ctx = talloc_named_const(libosmo_abis_ctx, 1, "hsl");
+
+	e1h = talloc_zero(tall_hsl_ctx, struct hsl_e1_handle);
 	if (!e1h)
 		return;
 

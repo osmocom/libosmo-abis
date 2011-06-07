@@ -1,6 +1,12 @@
 #ifndef _INTERNAL_H_
 #define _INTERNAL_H_
 
+/* talloc context for libosmo-abis. */
+extern void *libosmo_abis_ctx;
+
+/* use libosmo_abis_init, this is only for internal use. */
+void e1inp_init(void);
+
 /* things I don't know what to do with yet. */
 
 /* extracted from include/openbsc/debug.h. */

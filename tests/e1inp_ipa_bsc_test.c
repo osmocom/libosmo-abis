@@ -1,5 +1,9 @@
 #include <stdio.h>
+#include <talloc.h>
+#include <osmocom/abis/abis.h>
 #include <osmocom/abis/e1_input.h>
+
+static void *tall_test;
 
 static int rx_cb(struct msgb *msg, struct e1inp_ts *ts)
 {
@@ -31,7 +35,8 @@ int main(void)
 	struct e1inp_line *line;
 	struct e1inp_ts *sign_ts;
 
-	e1inp_init();
+	tall_test = talloc_named_const(NULL, 1, "e1inp_test");
+	libosmo_abis_init(tall_test);
 
 #define LINENR 0
 

@@ -46,7 +46,7 @@
 #define PRIV_OML 1
 #define PRIV_RSL 2
 
-static void *tall_bsc_ctx;
+static void *tall_ipa_ctx;
 
 /* data structure for one E1 interface with A-bis */
 struct ia_e1_handle {
@@ -378,7 +378,7 @@ static int rsl_listen_fd_cb(struct osmo_fd *listen_bfd, unsigned int what)
 	if (!(what & BSC_FD_READ))
 		return 0;
 
-	bfd = talloc_zero(tall_bsc_ctx, struct osmo_fd);
+	bfd = talloc_zero(tall_ipa_ctx, struct osmo_fd);
 	if (!bfd)
 		return -ENOMEM;
 
@@ -502,7 +502,9 @@ int ipaccess_setup(struct gsm_network *gsmnet)
 
 void e1inp_ipaccess_init(void)
 {
-	e1h = talloc_zero(tall_bsc_ctx, struct ia_e1_handle);
+	tall_ipa_ctx = talloc_named_const(libosmo_abis_ctx, 1, "ipa");
+
+	e1h = talloc_zero(tall_ipa_ctx, struct ia_e1_handle);
 	if (!e1h)
 		return;
 
