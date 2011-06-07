@@ -172,11 +172,13 @@ e1inp_sign_link_create(struct e1inp_ts *ts, enum e1inp_sign_type type,
 			struct gsm_bts_trx *trx, uint8_t tei,
 			uint8_t sapi);
 
-/* configure and initialize one e1inp_ts */
+/* configure and initialize one signalling e1inp_ts */
 int e1inp_ts_config_sign(struct e1inp_ts *ts, struct e1inp_line *line);
+
+/* configure and initialize one timeslot dedicated to TRAU frames. */
 int e1inp_ts_config_trau(struct e1inp_ts *ts, struct e1inp_line *line,
-                         int (*subch_cb)(struct subch_demux *dmx, int ch,
-                                         uint8_t *data, int len, void *_priv));
+                         int (*trau_rcv_cb)(struct subch_demux *dmx, int ch,
+					uint8_t *data, int len, void *_priv));
 
 /* Call from the Stack: configuration of this TS has changed */
 int e1inp_update_ts(struct e1inp_ts *ts);

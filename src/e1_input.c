@@ -259,8 +259,8 @@ int abis_nm_sendmsg(struct msgb *msg)
 
 /* Timeslot */
 int e1inp_ts_config_trau(struct e1inp_ts *ts, struct e1inp_line *line,
-			 int (*subch_cb)(struct subch_demux *dmx, int ch,
-					 uint8_t *data, int len, void *_priv))
+			 int (*trau_rcv_cb)(struct subch_demux *dmx, int ch,
+					uint8_t *data, int len, void *_priv))
 {
 	if (ts->type == E1INP_TS_TYPE_TRAU && ts->line && line)
 		return 0;
@@ -269,7 +269,7 @@ int e1inp_ts_config_trau(struct e1inp_ts *ts, struct e1inp_line *line,
 	ts->line = line;
 
 	subchan_mux_init(&ts->trau.mux);
-	ts->trau.demux.out_cb = subch_cb;
+	ts->trau.demux.out_cb = trau_rcv_cb;
 	ts->trau.demux.data = ts;
 	subch_demux_init(&ts->trau.demux);
 	return 0;
@@ -474,8 +474,7 @@ int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
 		ts->line->rx(msg, ts);
 		break;
 	case E1INP_TS_TYPE_TRAU:
-		ts->line->rx(msg, ts);
-//		ret = subch_demux_in(&ts->trau.demux, msg->l2h, msgb_l2len(msg));
+		ret = subch_demux_in(&ts->trau.demux, msg->l2h, msgb_l2len(msg));
 		break;
 	default:
 		ret = -EINVAL;
