@@ -33,32 +33,6 @@ enum signal_global {
 	S_GLOBAL_BTS_CLOSE_OM,
 };
 
-/* from include/openbsc/vty.h, we need E1INP_NODE */
-#include <osmocom/vty/vty.h>
-#include <osmocom/vty/buffer.h>
-#include <osmocom/vty/command.h>
-
-enum bsc_vty_node {
-	GSMNET_NODE = _LAST_OSMOVTY_NODE + 1,
-	BTS_NODE,
-	TRX_NODE,
-	TS_NODE,
-	SUBSCR_NODE,
-	MGCP_NODE,
-	GBPROXY_NODE,
-	SGSN_NODE,
-	NS_NODE,
-	BSSGP_NODE,
-	OML_NODE,
-	E1INP_NODE,
-	NAT_NODE,
-	NAT_BSC_NODE,
-	MSC_NODE,
-	OM2K_NODE,
-	TRUNK_NODE,
-	PGROUP_NODE,
-};
-
 /* from include/openbsc/debug.h */
 enum {
         DRLL,
@@ -93,13 +67,5 @@ enum {
 struct osmo_fd;
 struct msgb *ipaccess_read_msg(struct osmo_fd *bfd, int *error);
 void ipaccess_prepend_header(struct msgb *msg, int proto);
-
-#include <stdint.h>
-
-int make_sock(struct osmo_fd *bfd, int proto,
-              uint32_t ip, uint16_t port, int priv_nr,
-              int (*cb)(struct osmo_fd *fd, unsigned int what), void *data);
-
-uint8_t *trau_idle_frame(void);
 
 #endif

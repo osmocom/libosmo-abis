@@ -59,5 +59,6 @@ int decode_trau_frame(struct decoded_trau_frame *fr, const uint8_t *trau_bits);
 int encode_trau_frame(uint8_t *trau_bits, const struct decoded_trau_frame *fr);
 int trau_frame_up2down(struct decoded_trau_frame *fr);
 
+uint8_t *trau_idle_frame(void);
 
 #endif /* _TRAU_FRAME_H */
