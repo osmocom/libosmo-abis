@@ -49,7 +49,7 @@
 #include <osmocom/core/msgb.h>
 #include <osmocom/abis/e1_input.h>
 #include <osmocom/core/logging.h>
-#include <osmocom/gsm/protocol/ipaccess.h>
+#include <osmocom/abis/ipaccess.h>
 #include <osmocom/core/socket.h>
 #include <talloc.h>
 
