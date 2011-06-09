@@ -43,6 +43,7 @@
 #include <osmocom/abis/ipaccess.h>
 #include <osmocom/core/socket.h>
 #include <osmocom/abis/logging.h>
+#include <osmocom/abis/ipa.h>
 
 #define PRIV_OML 1
 #define PRIV_RSL 2
@@ -485,9 +486,12 @@ ipaccess_line_update(struct e1inp_line *line, enum e1inp_line_role role)
 
 	switch(role) {
 	case E1INP_LINE_R_BSC:
+		LOGP(DINP, LOGL_NOTICE, "enabling ipaccess BSC mode\n");
+
 		/* Listen for OML connections */
 		ret = osmo_sock_init(AF_INET, SOCK_STREAM, IPPROTO_TCP,
-					"0.0.0.0", IPA_TCP_PORT_OML, 1);
+				     "0.0.0.0", IPA_TCP_PORT_OML,
+				     OSMO_SOCK_F_BIND);
 		if (ret < 0)
 			return ret;
 
@@ -502,7 +506,8 @@ ipaccess_line_update(struct e1inp_line *line, enum e1inp_line_role role)
 		}
 		/* Listen for RSL connections */
 		ret = osmo_sock_init(AF_INET, SOCK_STREAM, IPPROTO_TCP,
-					"0.0.0.0", IPA_TCP_PORT_RSL, 1);
+				     "0.0.0.0", IPA_TCP_PORT_RSL,
+				     OSMO_SOCK_F_BIND);
 		if (ret < 0)
 			return ret;
 
@@ -516,9 +521,25 @@ ipaccess_line_update(struct e1inp_line *line, enum e1inp_line_role role)
 			return ret;
 		}
 		break;
-	case E1INP_LINE_R_BTS:
-		/* XXX: no implemented yet. */
+	case E1INP_LINE_R_BTS: {
+		struct ipa_link *link;
+
+		LOGP(DINP, LOGL_NOTICE, "enabling ipaccess BTS mode\n");
+
+		link = ipa_client_link_create(tall_ipa_ctx);
+		if (link == NULL) {
+			perror("ipa_client_link_create: ");
+			return -ENOMEM;
+		}
+		if (ipa_client_link_open(link) < 0) {
+			perror("ipa_client_link_open: ");
+			ipa_client_link_close(link);
+			ipa_client_link_destroy(link);
+			return -EIO;
+		}
+		ret = 0;
 		break;
+	}
 	default:
 		break;
 	}

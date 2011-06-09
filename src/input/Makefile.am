@@ -6,6 +6,7 @@ AM_LDFLAGS = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(COVERAGE_LDFLAGS)
 
 libosmoabis_input_la_SOURCES  = dahdi.c		\
 				hsl.c		\
+				ipa.c		\
 				ipaccess.c	\
 				lapd.c		\
 				misdn.c
