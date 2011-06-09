@@ -46,13 +46,7 @@
 #include <osmocom/core/logging.h>
 #include <osmocom/abis/e1_input.h>
 #include <talloc.h>
-/*#include <openbsc/debug.h>
-#include <openbsc/gsm_data.h>
-#include <openbsc/abis_nm.h>
-#include <openbsc/abis_rsl.h>
-#include <openbsc/subchan_demux.h>
-#include <openbsc/e1_input.h>
-#include <openbsc/signal.h> */
+#include <osmocom/abis/logging.h>
 
 #define TS1_ALLOC_SIZE	300
 

@@ -42,6 +42,7 @@
 #include <osmocom/abis/e1_input.h>
 #include <osmocom/abis/ipaccess.h>
 #include <osmocom/core/socket.h>
+#include <osmocom/abis/logging.h>
 
 #define PRIV_OML 1
 #define PRIV_RSL 2

@@ -28,6 +28,7 @@
 #include <osmocom/abis/trau_frame.h>
 #include <osmocom/abis/subchan_demux.h>
 #include <osmocom/core/logging.h>
+#include <osmocom/abis/logging.h>
 
 static uint32_t get_bits(const uint8_t *bitbuf, int offset, int num)
 {

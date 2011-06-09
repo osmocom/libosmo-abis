@@ -51,6 +51,7 @@
 #include <osmocom/core/logging.h>
 #include <osmocom/abis/ipaccess.h>
 #include <osmocom/core/socket.h>
+#include <osmocom/abis/logging.h>
 #include <talloc.h>
 
 #define HSL_TCP_PORT	2500
