@@ -2,6 +2,8 @@
 #include <talloc.h>
 #include <osmocom/abis/abis.h>
 #include <osmocom/abis/e1_input.h>
+#include <osmocom/core/application.h>
+#include <osmocom/core/logging.h>
 
 static void *tall_test;
 
@@ -23,12 +25,31 @@ static int error(struct msgb *msg, int error)
 	return 0;
 }
 
+#define DBSCTEST OSMO_LOG_SS_APPS
+
+struct log_info_cat bsc_test_cat[] = {
+	[DBSCTEST] = {
+		.name = "DBSCTEST",
+		.description = "BSC-mode test",
+		.color = "\033[1;35m",
+		.enabled = 1, .loglevel = LOGL_NOTICE,
+	},
+};
+
+const struct log_info bsc_test_log_info = {
+        .filter_fn = NULL,
+        .cat = bsc_test_cat,
+        .num_cat = ARRAY_SIZE(bsc_test_cat),
+};
+
 int main(void)
 {
 	struct e1inp_line *line;
 
 	tall_test = talloc_named_const(NULL, 1, "e1inp_test");
 	libosmo_abis_init(tall_test);
+
+	osmo_init_logging(&bsc_test_log_info);
 
 	struct e1inp_line_ops ops = {
 		.sign_link_up	= sign_link_up,
@@ -40,7 +61,7 @@ int main(void)
 
 	line = e1inp_line_create(LINENR, "ipa", &ops);
 	if (line == NULL) {
-		fprintf(stderr, "problem creating E1 line\n");
+		LOGP(DBSCTEST, LOGL_ERROR, "problem creating E1 line\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -56,9 +77,11 @@ int main(void)
 	 */
 
 	if (e1inp_line_update(line, E1INP_LINE_R_BSC) < 0) {
-		fprintf(stderr, "problem enabling E1 line\n");
+		LOGP(DBSCTEST, LOGL_ERROR, "problem creating E1 line\n");
 		exit(EXIT_FAILURE);
 	}
+
+	LOGP(DBSCTEST, LOGL_NOTICE, "entering main loop\n");
 
 	while (1) {
 		osmo_select_main(0);

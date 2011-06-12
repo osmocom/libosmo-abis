@@ -583,7 +583,7 @@ int e1inp_line_update(struct e1inp_line *line, enum e1inp_line_role role)
 	return rc;
 }
 
-static int e1i_sig_cb(unsigned int subsys, unsigned int signal,
+static int e1i_sig_cb(uint8_t subsys, unsigned int signal,
 		      void *handler_data, void *signal_data)
 {
 	if (subsys != SS_GLOBAL ||
