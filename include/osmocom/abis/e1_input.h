@@ -115,7 +115,7 @@ struct e1inp_driver {
 	struct llist_head list;
 	const char *name;
 	int (*want_write)(struct e1inp_ts *ts);
-	int (*line_update)(struct e1inp_line *line, enum e1inp_line_role role);
+	int (*line_update)(struct e1inp_line *line, enum e1inp_line_role role, const char *addr);
 	int default_delay;
 };
 
@@ -206,7 +206,7 @@ void e1_set_pcap_fd(int fd);
 struct subch_mux *e1inp_get_mux(uint8_t e1_nr, uint8_t ts_nr);
 
 void e1inp_sign_link_destroy(struct e1inp_sign_link *link);
-int e1inp_line_update(struct e1inp_line *line, enum e1inp_line_role role);
+int e1inp_line_update(struct e1inp_line *line, enum e1inp_line_role role, const char *addr);
 
 struct gsm_network;
 int ipaccess_setup(struct gsm_network *gsmnet);

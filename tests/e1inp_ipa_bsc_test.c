@@ -76,7 +76,7 @@ int main(void)
 	 * it explains how this is done with ISDN.
 	 */
 
-	if (e1inp_line_update(line, E1INP_LINE_R_BSC) < 0) {
+	if (e1inp_line_update(line, E1INP_LINE_R_BSC, "0.0.0.0") < 0) {
 		LOGP(DBSCTEST, LOGL_ERROR, "problem creating E1 line\n");
 		exit(EXIT_FAILURE);
 	}

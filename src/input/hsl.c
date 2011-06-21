@@ -242,7 +242,8 @@ static int hsl_fd_cb(struct osmo_fd *bfd, unsigned int what)
 	return rc;
 }
 
-static int hsl_line_update(struct e1inp_line *line, enum e1inp_line_role role);
+static int hsl_line_update(struct e1inp_line *line,
+			   enum e1inp_line_role role, const char *addr);
 
 struct e1inp_driver hsl_driver = {
 	.name = "hsl",
@@ -300,8 +301,8 @@ static int listen_fd_cb(struct osmo_fd *listen_bfd, unsigned int what)
         return ret;
 }
 
-static int
-hsl_line_update(struct e1inp_line *line, enum e1inp_line_role role)
+static int hsl_line_update(struct e1inp_line *line,
+			   enum e1inp_line_role role, const char *addr)
 {
 	int ret = -ENOENT;
 

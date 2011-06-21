@@ -367,8 +367,8 @@ static int dahdi_fd_cb(struct osmo_fd *bfd, unsigned int what)
 	return rc;
 }
 
-static int
-dahdi_e1_line_update(struct e1inp_line *line, enum e1inp_line_role role);
+static int dahdi_e1_line_update(struct e1inp_line *line,
+				enum e1inp_line_role role, const char *addr);
 
 struct e1inp_driver dahdi_driver = {
 	.name = "dahdi",
@@ -477,8 +477,8 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 	return 0;
 }
 
-static int
-dahdi_e1_line_update(struct e1inp_line *line, enum e1inp_line_role role)
+static int dahdi_e1_line_update(struct e1inp_line *line,
+				enum e1inp_line_role role, void *data)
 {
 	if (line->driver != &dahdi_driver)
 		return -EINVAL;

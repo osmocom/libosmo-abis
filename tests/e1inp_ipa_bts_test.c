@@ -76,7 +76,7 @@ int main(void)
 	 * it explains how this is done with ISDN.
 	 */
 
-	if (e1inp_line_update(line, E1INP_LINE_R_BTS) < 0) {
+	if (e1inp_line_update(line, E1INP_LINE_R_BTS, "127.0.0.1") < 0) {
 		LOGP(DBTSTEST, LOGL_ERROR, "problem enabling E1 line\n");
 		exit(EXIT_FAILURE);
 	}

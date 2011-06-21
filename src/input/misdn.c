@@ -384,8 +384,8 @@ static int activate_bchan(struct e1inp_line *line, int ts, int act)
 	return ret;
 }
 
-static int
-mi_e1_line_update(struct e1inp_line *line, enum e1inp_line_role role);
+static int mi_e1_line_update(struct e1inp_line *line,
+			     enum e1inp_line_role role, const char *addr);
 
 struct e1inp_driver misdn_driver = {
 	.name = "misdn",
@@ -483,8 +483,8 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 	return 0;
 }
 
-static int
-mi_e1_line_update(struct e1inp_line *line, enum e1inp_line_role role)
+static int mi_e1_line_update(struct e1inp_line *line,
+			     enum e1inp_line_role role, const char *addr)
 {
 	struct mISDN_devinfo devinfo;
 	int sk, ret, cnt;

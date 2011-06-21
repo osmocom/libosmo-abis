@@ -378,8 +378,8 @@ static int ipaccess_fd_cb(struct osmo_fd *bfd, unsigned int what)
 	return rc;
 }
 
-static int
-ipaccess_line_update(struct e1inp_line *line, enum e1inp_line_role role);
+static int ipaccess_line_update(struct e1inp_line *line,
+				enum e1inp_line_role role, const char *addr);
 
 struct e1inp_driver ipaccess_driver = {
 	.name = "ipa",
@@ -479,8 +479,8 @@ static int rsl_listen_fd_cb(struct osmo_fd *listen_bfd, unsigned int what)
 	return 0;
 }
 
-static int
-ipaccess_line_update(struct e1inp_line *line, enum e1inp_line_role role)
+static int ipaccess_line_update(struct e1inp_line *line,
+				enum e1inp_line_role role, const char *addr)
 {
 	int ret = -ENOENT;
 
@@ -490,8 +490,7 @@ ipaccess_line_update(struct e1inp_line *line, enum e1inp_line_role role)
 
 		/* Listen for OML connections */
 		ret = osmo_sock_init(AF_INET, SOCK_STREAM, IPPROTO_TCP,
-				     "0.0.0.0", IPA_TCP_PORT_OML,
-				     OSMO_SOCK_F_BIND);
+				     addr, IPA_TCP_PORT_OML, OSMO_SOCK_F_BIND);
 		if (ret < 0)
 			return ret;
 
@@ -506,8 +505,7 @@ ipaccess_line_update(struct e1inp_line *line, enum e1inp_line_role role)
 		}
 		/* Listen for RSL connections */
 		ret = osmo_sock_init(AF_INET, SOCK_STREAM, IPPROTO_TCP,
-				     "0.0.0.0", IPA_TCP_PORT_RSL,
-				     OSMO_SOCK_F_BIND);
+				     addr, IPA_TCP_PORT_RSL, OSMO_SOCK_F_BIND);
 		if (ret < 0)
 			return ret;
 
@@ -526,7 +524,7 @@ ipaccess_line_update(struct e1inp_line *line, enum e1inp_line_role role)
 
 		LOGP(DINP, LOGL_NOTICE, "enabling ipaccess BTS mode\n");
 
-		link = ipa_client_link_create(tall_ipa_ctx);
+		link = ipa_client_link_create(tall_ipa_ctx, addr);
 		if (link == NULL) {
 			perror("ipa_client_link_create: ");
 			return -ENOMEM;

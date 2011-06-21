@@ -560,7 +560,8 @@ struct e1inp_driver *e1inp_driver_find(const char *name)
 	return NULL;
 }
 
-int e1inp_line_update(struct e1inp_line *line, enum e1inp_line_role role)
+int e1inp_line_update(struct e1inp_line *line,
+		      enum e1inp_line_role role, const char *addr)
 {
 	struct input_signal_data isd;
 	int rc;
@@ -570,7 +571,7 @@ int e1inp_line_update(struct e1inp_line *line, enum e1inp_line_role role)
 		return 0;
 
 	if (line->driver && line->driver->line_update)
-		rc = line->driver->line_update(line, role);
+		rc = line->driver->line_update(line, role, addr);
 	else
 		rc = 0;
 

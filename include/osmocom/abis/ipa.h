@@ -17,11 +17,11 @@ struct ipa_link {
 	struct llist_head	tx_queue;
 	struct osmo_timer_list	timer;
 	enum ipa_link_state	state;
-	struct sockaddr_in	addr;
+	const char		*addr;
 	int (*process)(struct ipa_link *link, struct msgb *msg);
 };
 
-struct ipa_link *ipa_client_link_create(void *ctx);
+struct ipa_link *ipa_client_link_create(void *ctx, const char *addr);
 void ipa_client_link_destroy(struct ipa_link *link);
 
 int ipa_client_link_open(struct ipa_link *link);
