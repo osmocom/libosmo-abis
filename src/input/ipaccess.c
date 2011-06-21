@@ -428,7 +428,7 @@ static int rsl_listen_fd_cb(struct osmo_fd *listen_bfd, unsigned int what)
 	return 0;
 }
 
-static int ipaccess_bts_cb(struct ipa_link *link, struct msgb *msg)
+static int ipaccess_bts_cb(struct ipa_client_link *link, struct msgb *msg)
 {
 	struct ipaccess_head *hh = (struct ipaccess_head *) msg->data;
 	struct e1inp_ts *e1i_ts = NULL;
@@ -519,7 +519,7 @@ static int ipaccess_line_update(struct e1inp_line *line,
 		}
 		break;
 	case E1INP_LINE_R_BTS: {
-		struct ipa_link *link, *rsl_link;
+		struct ipa_client_link *link, *rsl_link;
 
 		LOGP(DINP, LOGL_NOTICE, "enabling ipaccess BTS mode\n");
 

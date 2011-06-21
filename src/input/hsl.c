@@ -302,7 +302,7 @@ static int listen_fd_cb(struct osmo_fd *listen_bfd, unsigned int what)
         return ret;
 }
 
-static int hsl_bts_process(struct ipa_link *link, struct msgb *msg)
+static int hsl_bts_process(struct ipa_client_link *link, struct msgb *msg)
 {
 	/* XXX: not implemented yet. */
 	return 0;
@@ -333,7 +333,7 @@ static int hsl_line_update(struct e1inp_line *line,
 		}
 		break;
 	case E1INP_LINE_R_BTS: {
-		struct ipa_link *link;
+		struct ipa_client_link *link;
 
 		LOGP(DINP, LOGL_NOTICE, "enabling hsl BTS mode\n");
 

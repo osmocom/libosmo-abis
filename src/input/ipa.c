@@ -74,24 +74,24 @@ int ipa_msg_recv(int fd, struct msgb **rmsg)
 	return ret;
 }
 
-void ipa_client_link_close(struct ipa_link *link);
+void ipa_client_link_close(struct ipa_client_link *link);
 
-static void ipa_client_retry(struct ipa_link *link)
+static void ipa_client_retry(struct ipa_client_link *link)
 {
 	LOGP(DINP, LOGL_NOTICE, "connection closed\n");
 	ipa_client_link_close(link);
 	LOGP(DINP, LOGL_NOTICE, "retrying in 5 seconds...\n");
 	osmo_timer_schedule(&link->timer, 5, 0);
-	link->state = IPA_LINK_STATE_CONNECTING;
+	link->state = IPA_CLIENT_LINK_STATE_CONNECTING;
 }
 
-void ipa_client_link_close(struct ipa_link *link)
+void ipa_client_link_close(struct ipa_client_link *link)
 {
 	osmo_fd_unregister(&link->ofd);
 	close(link->ofd.fd);
 }
 
-static void ipa_client_read(struct ipa_link *link)
+static void ipa_client_read(struct ipa_client_link *link)
 {
 	struct osmo_fd *ofd = &link->ofd;
 	struct msgb *msg;
@@ -117,7 +117,7 @@ static void ipa_client_read(struct ipa_link *link)
 		link->cb(link, msg);
 }
 
-static void ipa_client_write(struct ipa_link *link)
+static void ipa_client_write(struct ipa_client_link *link)
 {
 	struct osmo_fd *ofd = &link->ofd;
 	struct msgb *msg;
@@ -146,12 +146,12 @@ static void ipa_client_write(struct ipa_link *link)
 
 int ipa_client_fd_cb(struct osmo_fd *ofd, unsigned int what)
 {
-	struct ipa_link *link = ofd->data;
+	struct ipa_client_link *link = ofd->data;
 	int error, ret;
 	size_t len = sizeof(error);
 
 	switch(link->state) {
-	case IPA_LINK_STATE_CONNECTING:
+	case IPA_CLIENT_LINK_STATE_CONNECTING:
 		ret = getsockopt(ofd->fd, SOL_SOCKET, SO_ERROR, &error, &len);
 		if (ret >= 0 && error > 0) {
 			ipa_client_retry(link);
@@ -159,9 +159,9 @@ int ipa_client_fd_cb(struct osmo_fd *ofd, unsigned int what)
 		}
 		ofd->when &= ~BSC_FD_WRITE;
 		LOGP(DINP, LOGL_NOTICE, "connection done.\n");
-		link->state = IPA_LINK_STATE_CONNECTED;
+		link->state = IPA_CLIENT_LINK_STATE_CONNECTED;
 		break;
-	case IPA_LINK_STATE_CONNECTED:
+	case IPA_CLIENT_LINK_STATE_CONNECTED:
 		LOGP(DINP, LOGL_NOTICE, "connected read/write\n");
 		if (what & BSC_FD_READ)
 			ipa_client_read(link);
@@ -176,21 +176,21 @@ int ipa_client_fd_cb(struct osmo_fd *ofd, unsigned int what)
 
 static void ipa_link_timer_cb(void *data);
 
-struct ipa_link *
+struct ipa_client_link *
 ipa_client_link_create(void *ctx, struct e1inp_line *line,
 		       const char *addr, uint16_t port,
-		       int (*cb)(struct ipa_link *link, struct msgb *msgb))
+		       int (*cb)(struct ipa_client_link *link, struct msgb *msgb))
 {
-	struct ipa_link *ipa_link;
+	struct ipa_client_link *ipa_link;
 
-	ipa_link = talloc_zero(ctx, struct ipa_link);
+	ipa_link = talloc_zero(ctx, struct ipa_client_link);
 	if (!ipa_link)
 		return NULL;
 
 	ipa_link->ofd.when |= BSC_FD_READ | BSC_FD_WRITE;
 	ipa_link->ofd.cb = ipa_client_fd_cb;
 	ipa_link->ofd.data = ipa_link;
-	ipa_link->state = IPA_LINK_STATE_CONNECTING;
+	ipa_link->state = IPA_CLIENT_LINK_STATE_CONNECTING;
 	ipa_link->timer.cb = ipa_link_timer_cb;
 	ipa_link->timer.data = ipa_link;
 	ipa_link->addr = talloc_strdup(ipa_link, addr);
@@ -201,12 +201,12 @@ ipa_client_link_create(void *ctx, struct e1inp_line *line,
 	return ipa_link;
 }
 
-void ipa_client_link_destroy(struct ipa_link *link)
+void ipa_client_link_destroy(struct ipa_client_link *link)
 {
 	talloc_free(link);
 }
 
-int ipa_client_link_open(struct ipa_link *link)
+int ipa_client_link_open(struct ipa_client_link *link)
 {
 	int ret;
 
@@ -227,12 +227,12 @@ int ipa_client_link_open(struct ipa_link *link)
 
 static void ipa_link_timer_cb(void *data)
 {
-	struct ipa_link *link = data;
+	struct ipa_client_link *link = data;
 
 	LOGP(DINP, LOGL_NOTICE, "reconnecting.\n");
 
 	switch(link->state) {
-	case IPA_LINK_STATE_CONNECTING:
+	case IPA_CLIENT_LINK_STATE_CONNECTING:
 		ipa_client_link_open(link);
 	        break;
 	default:
