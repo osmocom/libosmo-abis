@@ -50,16 +50,6 @@
 
 static void *tall_ipa_ctx;
 
-/* data structure for one E1 interface with A-bis */
-struct ia_e1_handle {
-	struct osmo_fd listen_fd;
-	struct osmo_fd rsl_listen_fd;
-	struct gsm_network *gsmnet;
-};
-
-static struct ia_e1_handle *e1h;
-
-
 #define TS1_ALLOC_SIZE	900
 
 /*
@@ -583,19 +573,8 @@ int ipaccess_connect(struct e1inp_line *line, struct sockaddr_in *sa)
 	//return e1inp_line_register(line);
 }
 
-int ipaccess_setup(struct gsm_network *gsmnet)
-{
-	e1h->gsmnet = gsmnet;
-	return 0;
-}
-
 void e1inp_ipaccess_init(void)
 {
 	tall_ipa_ctx = talloc_named_const(libosmo_abis_ctx, 1, "ipa");
-
-	e1h = talloc_zero(tall_ipa_ctx, struct ia_e1_handle);
-	if (!e1h)
-		return;
-
 	e1inp_driver_register(&ipaccess_driver);
 }
