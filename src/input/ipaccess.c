@@ -428,6 +428,56 @@ static int rsl_listen_fd_cb(struct osmo_fd *listen_bfd, unsigned int what)
 	return 0;
 }
 
+static int ipaccess_bts_cb(struct ipa_link *link, struct msgb *msg)
+{
+	struct ipaccess_head *hh = (struct ipaccess_head *) msg->data;
+	struct e1inp_ts *e1i_ts = NULL;
+	struct e1inp_sign_link *sign_link;
+
+	/* special handling for IPA CCM. */
+	if (hh->proto == IPAC_PROTO_IPACCESS) {
+		uint8_t msg_type = *(msg->l2h);
+
+		/* ping, pong and acknowledgment cases. */
+		ipaccess_rcvmsg_base(msg, &link->ofd);
+
+		/* this is a request for identification from the BSC. */
+		if (msg_type == IPAC_MSGT_ID_GET) {
+			LOGP(DINP, LOGL_NOTICE, "received ID get\n");
+			if (!link->line->ops.sign_link_up) {
+				LOGP(DINP, LOGL_ERROR, "Fix your application, "
+					"no action set if the signalling link "
+					"becomes ready\n");
+				return -EINVAL;
+			}
+			link->line->ops.sign_link_up(msg, link->line);
+		}
+		return 0;
+	} else if (link->port == IPA_TCP_PORT_OML)
+		e1i_ts = &link->line->ts[0];
+	else if (link->port == IPA_TCP_PORT_RSL)
+		e1i_ts = &link->line->ts[1];
+
+	/* look up for some existing signaling link. */
+	sign_link = e1inp_lookup_sign_link(e1i_ts, hh->proto, 0);
+	if (sign_link == NULL) {
+		LOGP(DINP, LOGL_ERROR, "no matching signalling link for "
+			"hh->proto=0x%02x\n", hh->proto);
+		msgb_free(msg);
+		return -EIO;
+	}
+	msg->dst = sign_link;
+
+	/* XXX better use e1inp_ts_rx? */
+	if (!link->line->ops.sign_link) {
+		LOGP(DINP, LOGL_ERROR, "Fix your application, "
+			"no action set for signalling messages.\n");
+		return -ENOENT;
+	}
+	link->line->ops.sign_link(msg, sign_link);
+	return 0;
+}
+
 static int ipaccess_line_update(struct e1inp_line *line,
 				enum e1inp_line_role role, const char *addr)
 {
@@ -473,8 +523,9 @@ static int ipaccess_line_update(struct e1inp_line *line,
 
 		LOGP(DINP, LOGL_NOTICE, "enabling ipaccess BTS mode\n");
 
-		link = ipa_client_link_create(tall_ipa_ctx,
-						addr, IPA_TCP_PORT_OML);
+		link = ipa_client_link_create(tall_ipa_ctx, line,
+					      addr, IPA_TCP_PORT_OML,
+					      ipaccess_bts_cb);
 		if (link == NULL) {
 			LOGP(DINP, LOGL_ERROR, "cannot create OML "
 				"BTS link: %s\n", strerror(errno));
@@ -487,8 +538,9 @@ static int ipaccess_line_update(struct e1inp_line *line,
 			ipa_client_link_destroy(link);
 			return -EIO;
 		}
-		rsl_link = ipa_client_link_create(tall_ipa_ctx,
-						  addr, IPA_TCP_PORT_RSL);
+		rsl_link = ipa_client_link_create(tall_ipa_ctx, line,
+						  addr, IPA_TCP_PORT_RSL,
+						  ipaccess_bts_cb);
 		if (rsl_link == NULL) {
 			LOGP(DINP, LOGL_ERROR, "cannot create RSL "
 				"BTS link: %s\n", strerror(errno));

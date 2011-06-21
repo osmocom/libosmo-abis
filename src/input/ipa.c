@@ -113,8 +113,8 @@ static void ipa_client_read(struct ipa_link *link)
 		ipa_client_retry(link);
 		return;
 	}
-	if (link->process)
-		link->process(link, msg);
+	if (link->cb)
+		link->cb(link, msg);
 }
 
 static void ipa_client_write(struct ipa_link *link)
@@ -177,7 +177,9 @@ int ipa_client_fd_cb(struct osmo_fd *ofd, unsigned int what)
 static void ipa_link_timer_cb(void *data);
 
 struct ipa_link *
-ipa_client_link_create(void *ctx, const char *addr, uint16_t port)
+ipa_client_link_create(void *ctx, struct e1inp_line *line,
+		       const char *addr, uint16_t port,
+		       int (*cb)(struct ipa_link *link, struct msgb *msgb))
 {
 	struct ipa_link *ipa_link;
 
@@ -193,6 +195,8 @@ ipa_client_link_create(void *ctx, const char *addr, uint16_t port)
 	ipa_link->timer.data = ipa_link;
 	ipa_link->addr = talloc_strdup(ipa_link, addr);
 	ipa_link->port = port;
+	ipa_link->cb = cb;
+	ipa_link->line = line;
 
 	return ipa_link;
 }

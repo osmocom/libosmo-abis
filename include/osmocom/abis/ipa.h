@@ -20,10 +20,10 @@ struct ipa_link {
 	enum ipa_link_state	state;
 	const char		*addr;
 	uint16_t		port;
-	int (*process)(struct ipa_link *link, struct msgb *msg);
+	int (*cb)(struct ipa_link *link, struct msgb *msg);
 };
 
-struct ipa_link *ipa_client_link_create(void *ctx, const char *addr, uint16_t port);
+struct ipa_link *ipa_client_link_create(void *ctx, struct e1inp_line *line, const char *addr, uint16_t port, int (*cb)(struct ipa_link *link, struct msgb *msgb));
 void ipa_client_link_destroy(struct ipa_link *link);
 
 int ipa_client_link_open(struct ipa_link *link);

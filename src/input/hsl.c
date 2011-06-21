@@ -302,6 +302,12 @@ static int listen_fd_cb(struct osmo_fd *listen_bfd, unsigned int what)
         return ret;
 }
 
+static int hsl_bts_process(struct ipa_link *link, struct msgb *msg)
+{
+	/* XXX: not implemented yet. */
+	return 0;
+}
+
 static int hsl_line_update(struct e1inp_line *line,
 			   enum e1inp_line_role role, const char *addr)
 {
@@ -331,7 +337,8 @@ static int hsl_line_update(struct e1inp_line *line,
 
 		LOGP(DINP, LOGL_NOTICE, "enabling hsl BTS mode\n");
 
-		link = ipa_client_link_create(tall_hsl_ctx, addr, HSL_TCP_PORT);
+		link = ipa_client_link_create(tall_hsl_ctx, line, addr,
+						HSL_TCP_PORT, hsl_bts_process);
 		if (link == NULL) {
 			LOGP(DINP, LOGL_ERROR, "cannot create BTS link: %s\n",
 				strerror(errno));
