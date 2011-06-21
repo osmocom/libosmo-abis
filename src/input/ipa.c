@@ -239,3 +239,76 @@ static void ipa_link_timer_cb(void *data)
 		break;
 	}
 }
+
+int ipa_server_fd_cb(struct osmo_fd *ofd, unsigned int what)
+{
+	int ret;
+	struct sockaddr_in sa;
+	socklen_t sa_len = sizeof(sa);
+	struct ipa_server_link *link = ofd->data;
+
+	ret = accept(ofd->fd, (struct sockaddr *)&sa, &sa_len);
+	if (ret < 0) {
+		LOGP(DINP, LOGL_ERROR, "failed to accept from origin "
+			"peer, reason=`%s'\n", strerror(errno));
+		return ret;
+	}
+	LOGP(DINP, LOGL_NOTICE, "accept()ed new link from %s to port %u\n",
+		inet_ntoa(sa.sin_addr), link->port);
+
+	if (link->accept_cb)
+		link->accept_cb(link, ret);
+
+	return 0;
+}
+
+struct ipa_server_link *
+ipa_server_link_create(void *ctx, struct e1inp_line *line,
+		       const char *addr, uint16_t port,
+		       int (*accept_cb)(struct ipa_server_link *link, int fd))
+{
+	struct ipa_server_link *ipa_link;
+
+	ipa_link = talloc_zero(ctx, struct ipa_server_link);
+	if (!ipa_link)
+		return NULL;
+
+	ipa_link->ofd.when |= BSC_FD_READ | BSC_FD_WRITE;
+	ipa_link->ofd.cb = ipa_server_fd_cb;
+	ipa_link->ofd.data = ipa_link;
+	ipa_link->addr = talloc_strdup(ipa_link, addr);
+	ipa_link->port = port;
+	ipa_link->accept_cb = accept_cb;
+	ipa_link->line = line;
+
+	return ipa_link;
+
+}
+
+void ipa_server_link_destroy(struct ipa_server_link *link)
+{
+	talloc_free(link);
+}
+
+int ipa_server_link_open(struct ipa_server_link *link)
+{
+	int ret;
+
+	ret = osmo_sock_init(AF_INET, SOCK_STREAM, IPPROTO_TCP,
+			     link->addr, link->port, OSMO_SOCK_F_BIND);
+	if (ret < 0)
+		return ret;
+
+	link->ofd.fd = ret;
+	if (osmo_fd_register(&link->ofd) < 0) {
+		close(ret);
+		return -EIO;
+	}
+	return 0;
+}
+
+void ipa_server_link_close(struct ipa_server_link *link)
+{
+	osmo_fd_unregister(&link->ofd);
+	close(link->ofd.fd);
+}

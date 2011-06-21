@@ -5,6 +5,21 @@
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/timer.h>
 
+struct ipa_server_link {
+	struct e1inp_line		*line;
+	struct osmo_fd			ofd;
+	struct llist_head		tx_queue;
+	const char			*addr;
+	uint16_t			port;
+	int (*accept_cb)(struct ipa_server_link *link, int fd);
+};
+
+struct ipa_server_link *ipa_server_link_create(void *ctx, struct e1inp_line *line, const char *addr, uint16_t port, int (*accept_cb)(struct ipa_server_link *link, int fd));
+void ipa_server_link_destroy(struct ipa_server_link *link);
+
+int ipa_server_link_open(struct ipa_server_link *link);
+void ipa_server_link_close(struct ipa_server_link *link);
+
 enum ipa_client_link_state {
 	IPA_CLIENT_LINK_STATE_NONE         = 0,
 	IPA_CLIENT_LINK_STATE_CONNECTING   = 1,

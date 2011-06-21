@@ -181,6 +181,7 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 		        osmo_fd_unregister(bfd);
 		        close(bfd->fd);
 		        bfd->fd = -1;
+			talloc_free(bfd);
 		}
 		return error;
 	}
@@ -338,27 +339,18 @@ struct e1inp_driver ipaccess_driver = {
 };
 
 /* callback of the OML listening filedescriptor */
-static int listen_fd_cb(struct osmo_fd *listen_bfd, unsigned int what)
+static int ipaccess_bsc_oml_cb(struct ipa_server_link *link, int fd)
 {
 	int ret;
 	int idx = 0;
 	int i;
-	struct e1inp_line *line = listen_bfd->data;
+	struct e1inp_line *line = link->line;
 	struct e1inp_ts *e1i_ts;
 	struct osmo_fd *bfd;
-	struct sockaddr_in sa;
-	socklen_t sa_len = sizeof(sa);
 
-	if (!(what & BSC_FD_READ))
-		return 0;
-
-	ret = accept(listen_bfd->fd, (struct sockaddr *) &sa, &sa_len);
-	if (ret < 0) {
-		perror("accept");
-		return ret;
-	}
-	LOGP(DINP, LOGL_NOTICE, "accept()ed new OML link from %s\n",
-		inet_ntoa(sa.sin_addr));
+	bfd = talloc_zero(tall_ipa_ctx, struct osmo_fd);
+	if (!bfd)
+		return -ENOMEM;
 
 	/* create virrtual E1 timeslots for signalling */
 	e1inp_ts_config_sign(&line->ts[1-1], line);
@@ -369,8 +361,7 @@ static int listen_fd_cb(struct osmo_fd *listen_bfd, unsigned int what)
 
 	e1i_ts = &line->ts[idx];
 
-	bfd = &e1i_ts->driver.ipaccess.fd;
-	bfd->fd = ret;
+	bfd->fd = fd;
 	bfd->data = line;
 	bfd->priv_nr = PRIV_OML;
 	bfd->cb = ipaccess_fd_cb;
@@ -379,6 +370,7 @@ static int listen_fd_cb(struct osmo_fd *listen_bfd, unsigned int what)
 	if (ret < 0) {
 		LOGP(DINP, LOGL_ERROR, "could not register FD\n");
 		close(bfd->fd);
+		talloc_free(bfd);
 		return ret;
 	}
 
@@ -388,30 +380,16 @@ static int listen_fd_cb(struct osmo_fd *listen_bfd, unsigned int what)
         return ret;
 }
 
-static int rsl_listen_fd_cb(struct osmo_fd *listen_bfd, unsigned int what)
+static int ipaccess_bsc_rsl_cb(struct ipa_server_link *link, int fd)
 {
-	struct sockaddr_in sa;
-	socklen_t sa_len = sizeof(sa);
 	struct osmo_fd *bfd;
 	int ret;
-
-	if (!(what & BSC_FD_READ))
-		return 0;
 
 	bfd = talloc_zero(tall_ipa_ctx, struct osmo_fd);
 	if (!bfd)
 		return -ENOMEM;
 
-	/* Some BTS has connected to us, but we don't know yet which line
-	 * (as created by the OML link) to associate it with.  Thus, we
-	 * allocate a temporary bfd until we have received ID from BTS */
-
-	bfd->fd = accept(listen_bfd->fd, (struct sockaddr *) &sa, &sa_len);
-	if (bfd->fd < 0) {
-		perror("accept");
-		return bfd->fd;
-	}
-	LOGP(DINP, LOGL_NOTICE, "accept()ed new RSL link from %s\n", inet_ntoa(sa.sin_addr));
+	bfd->fd = fd;
 	bfd->priv_nr = PRIV_RSL;
 	bfd->cb = ipaccess_fd_cb;
 	bfd->when = BSC_FD_READ;
@@ -484,40 +462,44 @@ static int ipaccess_line_update(struct e1inp_line *line,
 	int ret = -ENOENT;
 
 	switch(role) {
-	case E1INP_LINE_R_BSC:
+	case E1INP_LINE_R_BSC: {
+		struct ipa_server_link *oml_link, *rsl_link;
+
 		LOGP(DINP, LOGL_NOTICE, "enabling ipaccess BSC mode\n");
 
-		/* Listen for OML connections */
-		ret = osmo_sock_init(AF_INET, SOCK_STREAM, IPPROTO_TCP,
-				     addr, IPA_TCP_PORT_OML, OSMO_SOCK_F_BIND);
-		if (ret < 0)
-			return ret;
-
-		e1h->listen_fd.fd = ret;
-		e1h->listen_fd.when |= BSC_FD_READ;
-		e1h->listen_fd.cb = listen_fd_cb;
-		e1h->listen_fd.data = line;
-
-		if (osmo_fd_register(&e1h->listen_fd) < 0) {
-			close(ret);
-			return ret;
+		oml_link = ipa_server_link_create(tall_ipa_ctx, line,
+					          "0.0.0.0", IPA_TCP_PORT_OML,
+						  ipaccess_bsc_oml_cb);
+		if (oml_link == NULL) {
+			LOGP(DINP, LOGL_ERROR, "cannot create OML "
+				"BSC link: %s\n", strerror(errno));
+			return -ENOMEM;
 		}
-		/* Listen for RSL connections */
-		ret = osmo_sock_init(AF_INET, SOCK_STREAM, IPPROTO_TCP,
-				     addr, IPA_TCP_PORT_RSL, OSMO_SOCK_F_BIND);
-		if (ret < 0)
-			return ret;
-
-		e1h->rsl_listen_fd.fd = ret;
-		e1h->rsl_listen_fd.when |= BSC_FD_READ;
-		e1h->rsl_listen_fd.cb = rsl_listen_fd_cb;
-		e1h->rsl_listen_fd.data = NULL;
-
-		if (osmo_fd_register(&e1h->rsl_listen_fd) < 0) {
-			close(ret);
-			return ret;
+		if (ipa_server_link_open(oml_link) < 0) {
+			LOGP(DINP, LOGL_ERROR, "cannot open OML BSC link: %s\n",
+				strerror(errno));
+			ipa_server_link_close(oml_link);
+			ipa_server_link_destroy(oml_link);
+			return -EIO;
 		}
+		rsl_link = ipa_server_link_create(tall_ipa_ctx, line,
+						  "0.0.0.0", IPA_TCP_PORT_RSL,
+						  ipaccess_bsc_rsl_cb);
+		if (rsl_link == NULL) {
+			LOGP(DINP, LOGL_ERROR, "cannot create RSL "
+				"BSC link: %s\n", strerror(errno));
+			return -ENOMEM;
+		}
+		if (ipa_server_link_open(rsl_link) < 0) {
+			LOGP(DINP, LOGL_ERROR, "cannot open RSL BSC link: %s\n",
+				strerror(errno));
+			ipa_server_link_close(rsl_link);
+			ipa_server_link_destroy(rsl_link);
+			return -EIO;
+		}
+		ret = 0;
 		break;
+	}
 	case E1INP_LINE_R_BTS: {
 		struct ipa_client_link *link, *rsl_link;
 
