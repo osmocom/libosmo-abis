@@ -117,61 +117,6 @@ int ipaccess_send_id_req(int fd)
 	return ipaccess_send(fd, ipa_id_req_msg, sizeof(ipa_id_req_msg));
 }
 
-/*
- * read one ipa message from the socket
- * return NULL in case of error
- */
-struct msgb *ipaccess_read_msg(struct osmo_fd *bfd, int *error)
-{
-	struct msgb *msg = msgb_alloc(TS1_ALLOC_SIZE, "Abis/IP");
-	struct ipaccess_head *hh;
-	int len, ret = 0;
-
-	if (!msg) {
-		*error = -ENOMEM;
-		return NULL;
-	}
-
-	/* first read our 3-byte header */
-	hh = (struct ipaccess_head *) msg->data;
-	ret = recv(bfd->fd, msg->data, sizeof(*hh), 0);
-	if (ret == 0) {
-		msgb_free(msg);
-		*error = ret;
-		return NULL;
-	} else if (ret != sizeof(*hh)) {
-		if (errno != EAGAIN)
-			LOGP(DINP, LOGL_ERROR, "recv error %d %s\n", ret, strerror(errno));
-		msgb_free(msg);
-		*error = ret;
-		return NULL;
-	}
-
-	msgb_put(msg, ret);
-
-	/* then read te length as specified in header */
-	msg->l2h = msg->data + sizeof(*hh);
-	len = ntohs(hh->len);
-
-	if (len < 0 || TS1_ALLOC_SIZE < len + sizeof(*hh)) {
-		LOGP(DINP, LOGL_ERROR, "Can not read this packet. %d avail\n", len);
-		msgb_free(msg);
-		*error = -EIO;
-		return NULL;
-	}
-
-	ret = recv(bfd->fd, msg->l2h, len, 0);
-	if (ret < len) {
-		LOGP(DINP, LOGL_ERROR, "short read! Got %d from %d\n", ret, len);
-		msgb_free(msg);
-		*error = -EIO;
-		return NULL;
-	}
-	msgb_put(msg, ret);
-
-	return msg;
-}
-
 /* base handling of the ip.access protocol */
 int ipaccess_rcvmsg_base(struct msgb *msg,
 			 struct osmo_fd *bfd)
@@ -227,8 +172,8 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 	struct msgb *msg;
 	int ret = 0, error;
 
-	msg = ipaccess_read_msg(bfd, &error);
-	if (!msg) {
+	error = ipa_msg_recv(bfd->fd, &msg);
+	if (error <= 0) {
 		if (e1i_ts->line->ops.error)
 			e1i_ts->line->ops.error(NULL, error);
 		if (error == 0) {

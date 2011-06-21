@@ -84,8 +84,8 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 	struct msgb *msg;
 	int ret = 0, error;
 
-	msg = ipaccess_read_msg(bfd, &error);
-	if (!msg) {
+	error = ipa_msg_recv(bfd->fd, &msg);
+	if (error <= 0) {
 		if (e1i_ts->line->ops.error)
 			e1i_ts->line->ops.error(NULL, error);
 		if (error == 0) {
