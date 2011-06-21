@@ -166,7 +166,7 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
-	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
+	struct e1inp_ts *e1i_ts = NULL;
 	struct e1inp_sign_link *link;
 	struct ipaccess_head *hh;
 	struct msgb *msg;
@@ -174,7 +174,8 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 
 	error = ipa_msg_recv(bfd->fd, &msg);
 	if (error <= 0) {
-		if (e1i_ts->line->ops.error)
+		/* skip if RSL line is not set yet. */
+		if (e1i_ts && e1i_ts->line->ops.error)
 			e1i_ts->line->ops.error(NULL, error);
 		if (error == 0) {
 		        osmo_fd_unregister(bfd);
@@ -184,6 +185,9 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 		return error;
 	}
 	DEBUGP(DMI, "RX %u: %s\n", ts_nr, osmo_hexdump(msgb_l2(msg), msgb_l2len(msg)));
+
+	/* Now that we're sure that we've got a line for socket. */
+	e1i_ts = &line->ts[ts_nr-1];
 
 	hh = (struct ipaccess_head *) msg->data;
 	if (hh->proto == IPAC_PROTO_IPACCESS) {
@@ -465,20 +469,36 @@ static int ipaccess_line_update(struct e1inp_line *line,
 		}
 		break;
 	case E1INP_LINE_R_BTS: {
-		struct ipa_link *link;
+		struct ipa_link *link, *rsl_link;
 
 		LOGP(DINP, LOGL_NOTICE, "enabling ipaccess BTS mode\n");
 
 		link = ipa_client_link_create(tall_ipa_ctx,
 						addr, IPA_TCP_PORT_OML);
 		if (link == NULL) {
-			perror("ipa_client_link_create: ");
+			LOGP(DINP, LOGL_ERROR, "cannot create OML "
+				"BTS link: %s\n", strerror(errno));
 			return -ENOMEM;
 		}
 		if (ipa_client_link_open(link) < 0) {
-			perror("ipa_client_link_open: ");
+			LOGP(DINP, LOGL_ERROR, "cannot open OML BTS link: %s\n",
+				strerror(errno));
 			ipa_client_link_close(link);
 			ipa_client_link_destroy(link);
+			return -EIO;
+		}
+		rsl_link = ipa_client_link_create(tall_ipa_ctx,
+						  addr, IPA_TCP_PORT_RSL);
+		if (rsl_link == NULL) {
+			LOGP(DINP, LOGL_ERROR, "cannot create RSL "
+				"BTS link: %s\n", strerror(errno));
+			return -ENOMEM;
+		}
+		if (ipa_client_link_open(rsl_link) < 0) {
+			LOGP(DINP, LOGL_ERROR, "cannot open RSL BTS link: %s\n",
+				strerror(errno));
+			ipa_client_link_close(rsl_link);
+			ipa_client_link_destroy(rsl_link);
 			return -EIO;
 		}
 		ret = 0;
