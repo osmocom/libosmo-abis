@@ -524,7 +524,8 @@ static int ipaccess_line_update(struct e1inp_line *line,
 
 		LOGP(DINP, LOGL_NOTICE, "enabling ipaccess BTS mode\n");
 
-		link = ipa_client_link_create(tall_ipa_ctx, addr);
+		link = ipa_client_link_create(tall_ipa_ctx,
+						addr, IPA_TCP_PORT_OML);
 		if (link == NULL) {
 			perror("ipa_client_link_create: ");
 			return -ENOMEM;

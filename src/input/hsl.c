@@ -52,6 +52,7 @@
 #include <osmocom/abis/ipaccess.h>
 #include <osmocom/core/socket.h>
 #include <osmocom/abis/logging.h>
+#include <osmocom/abis/ipa.h>
 #include <talloc.h>
 
 #define HSL_TCP_PORT	2500
@@ -308,8 +309,10 @@ static int hsl_line_update(struct e1inp_line *line,
 
 	switch(role) {
 	case E1INP_LINE_R_BSC:
+		LOGP(DINP, LOGL_NOTICE, "enabling hsl BSC mode\n");
+
 		ret = osmo_sock_init(AF_INET, SOCK_STREAM, IPPROTO_TCP,
-					 "0.0.0.0", HSL_TCP_PORT, 1);
+				     addr, HSL_TCP_PORT, OSMO_SOCK_F_BIND);
 		if (ret < 0)
 			return ret;
 
@@ -323,9 +326,27 @@ static int hsl_line_update(struct e1inp_line *line,
 			return ret;
 		}
 		break;
-	case E1INP_LINE_R_BTS:
-		/* XXX: not implemented yet. */
+	case E1INP_LINE_R_BTS: {
+		struct ipa_link *link;
+
+		LOGP(DINP, LOGL_NOTICE, "enabling hsl BTS mode\n");
+
+		link = ipa_client_link_create(tall_hsl_ctx, addr, HSL_TCP_PORT);
+		if (link == NULL) {
+			LOGP(DINP, LOGL_ERROR, "cannot create BTS link: %s\n",
+				strerror(errno));
+			return -ENOMEM;
+		}
+		if (ipa_client_link_open(link) < 0) {
+			LOGP(DINP, LOGL_ERROR, "cannot open BTS link: %s\n",
+				strerror(errno));
+			ipa_client_link_close(link);
+			ipa_client_link_destroy(link);
+			return -EIO;
+		}
+		ret = 0;
 		break;
+	}
 	default:
 		break;
 	}

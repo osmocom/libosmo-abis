@@ -1,6 +1,7 @@
 #ifndef _OSMO_IPA_H_
 #define _OSMO_IPA_H_
 
+#include <stdint.h>
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/timer.h>
 
@@ -18,10 +19,11 @@ struct ipa_link {
 	struct osmo_timer_list	timer;
 	enum ipa_link_state	state;
 	const char		*addr;
+	uint16_t		port;
 	int (*process)(struct ipa_link *link, struct msgb *msg);
 };
 
-struct ipa_link *ipa_client_link_create(void *ctx, const char *addr);
+struct ipa_link *ipa_client_link_create(void *ctx, const char *addr, uint16_t port);
 void ipa_client_link_destroy(struct ipa_link *link);
 
 int ipa_client_link_open(struct ipa_link *link);

@@ -176,7 +176,8 @@ int ipa_client_fd_cb(struct osmo_fd *ofd, unsigned int what)
 
 static void ipa_link_timer_cb(void *data);
 
-struct ipa_link *ipa_client_link_create(void *ctx, const char *addr)
+struct ipa_link *
+ipa_client_link_create(void *ctx, const char *addr, uint16_t port)
 {
 	struct ipa_link *ipa_link;
 
@@ -191,6 +192,7 @@ struct ipa_link *ipa_client_link_create(void *ctx, const char *addr)
 	ipa_link->timer.cb = ipa_link_timer_cb;
 	ipa_link->timer.data = ipa_link;
 	ipa_link->addr = talloc_strdup(ipa_link, addr);
+	ipa_link->port = port;
 
 	return ipa_link;
 }
@@ -205,7 +207,7 @@ int ipa_client_link_open(struct ipa_link *link)
 	int ret;
 
 	ret = osmo_sock_init(AF_INET, SOCK_STREAM, IPPROTO_TCP,
-			     link->addr, IPA_TCP_PORT_OML,
+			     link->addr, link->port,
 			     OSMO_SOCK_F_CONNECT|OSMO_SOCK_F_NONBLOCK);
 	if (ret < 0) {
 		if (errno != EINPROGRESS)
