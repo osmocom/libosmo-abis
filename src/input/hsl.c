@@ -338,7 +338,8 @@ static int hsl_line_update(struct e1inp_line *line,
 		LOGP(DINP, LOGL_NOTICE, "enabling hsl BTS mode\n");
 
 		link = ipa_client_link_create(tall_hsl_ctx, line, addr,
-						HSL_TCP_PORT, hsl_bts_process);
+						HSL_TCP_PORT, hsl_bts_process,
+						NULL);
 		if (link == NULL) {
 			LOGP(DINP, LOGL_ERROR, "cannot create BTS link: %s\n",
 				strerror(errno));

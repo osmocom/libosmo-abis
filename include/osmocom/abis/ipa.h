@@ -12,9 +12,10 @@ struct ipa_server_link {
 	const char			*addr;
 	uint16_t			port;
 	int (*accept_cb)(struct ipa_server_link *link, int fd);
+	void				*data;
 };
 
-struct ipa_server_link *ipa_server_link_create(void *ctx, struct e1inp_line *line, const char *addr, uint16_t port, int (*accept_cb)(struct ipa_server_link *link, int fd));
+struct ipa_server_link *ipa_server_link_create(void *ctx, struct e1inp_line *line, const char *addr, uint16_t port, int (*accept_cb)(struct ipa_server_link *link, int fd), void *data);
 void ipa_server_link_destroy(struct ipa_server_link *link);
 
 int ipa_server_link_open(struct ipa_server_link *link);
@@ -36,9 +37,10 @@ struct ipa_client_link {
 	const char			*addr;
 	uint16_t			port;
 	int (*cb)(struct ipa_client_link *link, struct msgb *msg);
+	void				*data;
 };
 
-struct ipa_client_link *ipa_client_link_create(void *ctx, struct e1inp_line *line, const char *addr, uint16_t port, int (*cb)(struct ipa_client_link *link, struct msgb *msgb));
+struct ipa_client_link *ipa_client_link_create(void *ctx, struct e1inp_line *line, const char *addr, uint16_t port, int (*cb)(struct ipa_client_link *link, struct msgb *msgb), void *data);
 void ipa_client_link_destroy(struct ipa_client_link *link);
 
 int ipa_client_link_open(struct ipa_client_link *link);

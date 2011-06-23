@@ -459,7 +459,7 @@ static int ipaccess_line_update(struct e1inp_line *line,
 
 		oml_link = ipa_server_link_create(tall_ipa_ctx, line,
 					          "0.0.0.0", IPA_TCP_PORT_OML,
-						  ipaccess_bsc_oml_cb);
+						  ipaccess_bsc_oml_cb, NULL);
 		if (oml_link == NULL) {
 			LOGP(DINP, LOGL_ERROR, "cannot create OML "
 				"BSC link: %s\n", strerror(errno));
@@ -474,7 +474,7 @@ static int ipaccess_line_update(struct e1inp_line *line,
 		}
 		rsl_link = ipa_server_link_create(tall_ipa_ctx, line,
 						  "0.0.0.0", IPA_TCP_PORT_RSL,
-						  ipaccess_bsc_rsl_cb);
+						  ipaccess_bsc_rsl_cb, NULL);
 		if (rsl_link == NULL) {
 			LOGP(DINP, LOGL_ERROR, "cannot create RSL "
 				"BSC link: %s\n", strerror(errno));
@@ -497,7 +497,7 @@ static int ipaccess_line_update(struct e1inp_line *line,
 
 		link = ipa_client_link_create(tall_ipa_ctx, line,
 					      addr, IPA_TCP_PORT_OML,
-					      ipaccess_bts_cb);
+					      ipaccess_bts_cb, NULL);
 		if (link == NULL) {
 			LOGP(DINP, LOGL_ERROR, "cannot create OML "
 				"BTS link: %s\n", strerror(errno));
@@ -512,7 +512,7 @@ static int ipaccess_line_update(struct e1inp_line *line,
 		}
 		rsl_link = ipa_client_link_create(tall_ipa_ctx, line,
 						  addr, IPA_TCP_PORT_RSL,
-						  ipaccess_bts_cb);
+						  ipaccess_bts_cb, NULL);
 		if (rsl_link == NULL) {
 			LOGP(DINP, LOGL_ERROR, "cannot create RSL "
 				"BTS link: %s\n", strerror(errno));

@@ -179,7 +179,8 @@ static void ipa_link_timer_cb(void *data);
 struct ipa_client_link *
 ipa_client_link_create(void *ctx, struct e1inp_line *line,
 		       const char *addr, uint16_t port,
-		       int (*cb)(struct ipa_client_link *link, struct msgb *msgb))
+		       int (*cb)(struct ipa_client_link *link,
+				 struct msgb *msgb), void *data)
 {
 	struct ipa_client_link *ipa_link;
 
@@ -197,6 +198,7 @@ ipa_client_link_create(void *ctx, struct e1inp_line *line,
 	ipa_link->port = port;
 	ipa_link->cb = cb;
 	ipa_link->line = line;
+	ipa_link->data = data;
 
 	return ipa_link;
 }
@@ -265,7 +267,8 @@ int ipa_server_fd_cb(struct osmo_fd *ofd, unsigned int what)
 struct ipa_server_link *
 ipa_server_link_create(void *ctx, struct e1inp_line *line,
 		       const char *addr, uint16_t port,
-		       int (*accept_cb)(struct ipa_server_link *link, int fd))
+		       int (*accept_cb)(struct ipa_server_link *link, int fd),
+		       void *data)
 {
 	struct ipa_server_link *ipa_link;
 
@@ -280,6 +283,7 @@ ipa_server_link_create(void *ctx, struct e1inp_line *line,
 	ipa_link->port = port;
 	ipa_link->accept_cb = accept_cb;
 	ipa_link->line = line;
+	ipa_link->data = data;
 
 	return ipa_link;
 
