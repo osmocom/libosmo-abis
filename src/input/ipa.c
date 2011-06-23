@@ -199,6 +199,7 @@ ipa_client_link_create(void *ctx, struct e1inp_line *line,
 	ipa_link->cb = cb;
 	ipa_link->line = line;
 	ipa_link->data = data;
+	INIT_LLIST_HEAD(&ipa_link->tx_queue);
 
 	return ipa_link;
 }
@@ -240,6 +241,12 @@ static void ipa_link_timer_cb(void *data)
 	default:
 		break;
 	}
+}
+
+void ipa_client_link_send(struct ipa_client_link *link, struct msgb *msg)
+{
+	msgb_enqueue(&link->tx_queue, msg);
+	link->ofd.when |= BSC_FD_WRITE;
 }
 
 int ipa_server_fd_cb(struct osmo_fd *ofd, unsigned int what)
@@ -401,6 +408,8 @@ ipa_server_peer_create(void *ctx, struct ipa_server_link *link, int fd,
 	peer->ofd.when = BSC_FD_READ;
 	peer->cb = cb;
 	peer->data = data;
+	INIT_LLIST_HEAD(&peer->tx_queue);
+
 	if (osmo_fd_register(&peer->ofd) < 0) {
 		LOGP(DINP, LOGL_ERROR, "could not register FD\n");
 		talloc_free(peer);
@@ -414,4 +423,10 @@ void ipa_server_peer_destroy(struct ipa_server_peer *peer)
 	close(peer->ofd.fd);
 	osmo_fd_unregister(&peer->ofd);
 	talloc_free(peer);
+}
+
+void ipa_server_peer_send(struct ipa_server_peer *peer, struct msgb *msg)
+{
+	msgb_enqueue(&peer->tx_queue, msg);
+	peer->ofd.when |= BSC_FD_WRITE;
 }

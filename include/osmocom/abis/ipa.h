@@ -31,6 +31,8 @@ struct ipa_server_peer {
 struct ipa_server_peer *ipa_server_peer_create(void *ctx, struct ipa_server_link *link, int fd, int (*cb)(struct ipa_server_peer *peer, struct msgb *msg), void *data);
 void ipa_server_peer_destroy(struct ipa_server_peer *peer);
 
+void ipa_server_peer_send(struct ipa_server_peer *peer, struct msgb *msg);
+
 enum ipa_client_link_state {
 	IPA_CLIENT_LINK_STATE_NONE         = 0,
 	IPA_CLIENT_LINK_STATE_CONNECTING   = 1,
@@ -55,6 +57,8 @@ void ipa_client_link_destroy(struct ipa_client_link *link);
 
 int ipa_client_link_open(struct ipa_client_link *link);
 void ipa_client_link_close(struct ipa_client_link *link);
+
+void ipa_client_link_send(struct ipa_client_link *link, struct msgb *msg);
 
 int ipa_msg_recv(int fd, struct msgb **rmsg);
 
