@@ -1,6 +1,9 @@
 #ifndef _INTERNAL_H_
 #define _INTERNAL_H_
 
+/* XXX: fix this in libosmocore, we need some reserved range */
+#define IPA_NODE _LAST_OSMOVTY_NODE + 100
+
 /* talloc context for libosmo-abis. */
 extern void *libosmo_abis_ctx;
 
