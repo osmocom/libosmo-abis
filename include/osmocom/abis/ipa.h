@@ -8,7 +8,6 @@
 struct ipa_server_link {
 	struct e1inp_line		*line;
 	struct osmo_fd			ofd;
-	struct llist_head		tx_queue;
 	const char			*addr;
 	uint16_t			port;
 	int (*accept_cb)(struct ipa_server_link *link, int fd);
@@ -20,6 +19,17 @@ void ipa_server_link_destroy(struct ipa_server_link *link);
 
 int ipa_server_link_open(struct ipa_server_link *link);
 void ipa_server_link_close(struct ipa_server_link *link);
+
+struct ipa_server_peer {
+	struct ipa_server_link		*server;
+	struct osmo_fd			ofd;
+	struct llist_head		tx_queue;
+	int (*cb)(struct ipa_server_peer *peer, struct msgb *msg);
+	void				*data;
+};
+
+struct ipa_server_peer *ipa_server_peer_create(void *ctx, struct ipa_server_link *link, int fd, int (*cb)(struct ipa_server_peer *peer, struct msgb *msg), void *data);
+void ipa_server_peer_destroy(struct ipa_server_peer *peer);
 
 enum ipa_client_link_state {
 	IPA_CLIENT_LINK_STATE_NONE         = 0,

@@ -316,3 +316,102 @@ void ipa_server_link_close(struct ipa_server_link *link)
 	osmo_fd_unregister(&link->ofd);
 	close(link->ofd.fd);
 }
+
+static void ipa_server_peer_read(struct ipa_server_peer *peer)
+{
+	struct osmo_fd *ofd = &peer->ofd;
+	struct msgb *msg;
+	int ret;
+
+	LOGP(DINP, LOGL_NOTICE, "message received\n");
+
+	ret = ipa_msg_recv(ofd->fd, &msg);
+	if (ret < 0) {
+		if (errno == EPIPE || errno == ECONNRESET) {
+			LOGP(DINP, LOGL_ERROR, "lost connection with server\n");
+		} else {
+			LOGP(DINP, LOGL_ERROR, "unknown error\n");
+		}
+		return;
+	} else if (ret == 0) {
+		LOGP(DINP, LOGL_ERROR, "connection closed with server\n");
+		ipa_server_peer_destroy(peer);
+		return;
+	}
+	if (peer->cb)
+		peer->cb(peer, msg);
+
+	return;
+}
+
+static void ipa_server_peer_write(struct ipa_server_peer *peer)
+{
+	struct osmo_fd *ofd = &peer->ofd;
+	struct msgb *msg;
+	struct llist_head *lh;
+	int ret;
+
+	LOGP(DINP, LOGL_NOTICE, "sending data\n");
+
+	if (llist_empty(&peer->tx_queue)) {
+		ofd->when &= ~BSC_FD_WRITE;
+		return;
+	}
+	lh = peer->tx_queue.next;
+	llist_del(lh);
+	msg = llist_entry(lh, struct msgb, list);
+
+	ret = send(peer->ofd.fd, msg->data, msg->len, 0);
+	if (ret < 0) {
+		LOGP(DINP, LOGL_ERROR, "error to send\n");
+	}
+	msgb_free(msg);
+}
+
+static int ipa_server_peer_cb(struct osmo_fd *ofd, unsigned int what)
+{
+	struct ipa_server_peer *peer = ofd->data;
+
+	LOGP(DINP, LOGL_NOTICE, "connected read/write\n");
+	if (what & BSC_FD_READ)
+		ipa_server_peer_read(peer);
+	if (what & BSC_FD_WRITE)
+		ipa_server_peer_write(peer);
+
+	return 0;
+}
+
+struct ipa_server_peer *
+ipa_server_peer_create(void *ctx, struct ipa_server_link *link, int fd,
+		int (*cb)(struct ipa_server_peer *peer, struct msgb *msg),
+		void *data)
+{
+	struct ipa_server_peer *peer;
+
+	peer = talloc_zero(ctx, struct ipa_server_peer);
+	if (peer == NULL) {
+		LOGP(DINP, LOGL_ERROR, "cannot allocate new peer in server, "
+			"reason=`%s'\n", strerror(errno));
+		return NULL;
+	}
+	peer->server = link;
+	peer->ofd.fd = fd;
+	peer->ofd.data = peer;
+	peer->ofd.cb = ipa_server_peer_cb;
+	peer->ofd.when = BSC_FD_READ;
+	peer->cb = cb;
+	peer->data = data;
+	if (osmo_fd_register(&peer->ofd) < 0) {
+		LOGP(DINP, LOGL_ERROR, "could not register FD\n");
+		talloc_free(peer);
+		return NULL;
+	}
+	return peer;
+}
+
+void ipa_server_peer_destroy(struct ipa_server_peer *peer)
+{
+	close(peer->ofd.fd);
+	osmo_fd_unregister(&peer->ofd);
+	talloc_free(peer);
+}
