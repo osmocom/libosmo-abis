@@ -533,45 +533,6 @@ static int ipaccess_line_update(struct e1inp_line *line,
 	return ret;
 }
 
-/* Actively connect to a BTS.  Currently used by ipaccess-config.c */
-int ipaccess_connect(struct e1inp_line *line, struct sockaddr_in *sa)
-{
-	struct e1inp_ts *e1i_ts = &line->ts[0];
-	struct osmo_fd *bfd = &e1i_ts->driver.ipaccess.fd;
-	int ret, on = 1;
-
-	bfd->fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	bfd->cb = ipaccess_fd_cb;
-	bfd->when = BSC_FD_READ | BSC_FD_WRITE;
-	bfd->data = line;
-	bfd->priv_nr = PRIV_OML;
-
-	if (bfd->fd < 0) {
-		LOGP(DINP, LOGL_ERROR, "could not create TCP socket.\n");
-		return -EIO;
-	}
-
-	setsockopt(bfd->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
-
-	ret = connect(bfd->fd, (struct sockaddr *) sa, sizeof(*sa));
-	if (ret < 0) {
-		LOGP(DINP, LOGL_ERROR, "could not connect socket\n");
-		close(bfd->fd);
-		return ret;
-	}
-
-	ret = osmo_fd_register(bfd);
-	if (ret < 0) {
-		close(bfd->fd);
-		return ret;
-	}
-
-	line->driver = &ipaccess_driver;
-
-        return ret;
-	//return e1inp_line_register(line);
-}
-
 void e1inp_ipaccess_init(void)
 {
 	tall_ipa_ctx = talloc_named_const(libosmo_abis_ctx, 1, "ipa");
