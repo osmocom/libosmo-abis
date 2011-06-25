@@ -45,9 +45,6 @@
 #include <osmocom/abis/logging.h>
 #include <osmocom/abis/ipa.h>
 
-#define PRIV_OML 1
-#define PRIV_RSL 2
-
 static void *tall_ipa_ctx;
 
 #define TS1_ALLOC_SIZE	900
@@ -140,13 +137,13 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 	switch (msg_type) {
 	case IPAC_MSGT_ID_RESP:
 		DEBUGP(DMI, "ID_RESP\n");
-		if (!line->ops.sign_link_up) {
+		if (!line->ops->sign_link_up) {
 			LOGP(DINP, LOGL_ERROR, "Fix your application, "
 				"no action set if the signalling link "
 				"becomes ready\n");
 			return -EINVAL;
 		}
-		line->ops.sign_link_up(msg, line);
+		line->ops->sign_link_up(msg, line, bfd->priv_nr);
 		break;
 	}
 	return 0;
@@ -165,8 +162,8 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 	error = ipa_msg_recv(bfd->fd, &msg);
 	if (error <= 0) {
 		/* skip if RSL line is not set yet. */
-		if (e1i_ts && e1i_ts->line->ops.error)
-			e1i_ts->line->ops.error(NULL, error);
+		if (e1i_ts && e1i_ts->line->ops->error)
+			e1i_ts->line->ops->error(NULL, line, ts_nr, error);
 		if (error == 0) {
 		        osmo_fd_unregister(bfd);
 		        close(bfd->fd);
@@ -199,12 +196,12 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 	msg->dst = link;
 
 	/* XXX better use e1inp_ts_rx? */
-	if (!e1i_ts->line->ops.sign_link) {
+	if (!e1i_ts->line->ops->sign_link) {
 		LOGP(DINP, LOGL_ERROR, "Fix your application, "
 			"no action set for signalling messages.\n");
 		return -ENOENT;
 	}
-	e1i_ts->line->ops.sign_link(msg, link);
+	e1i_ts->line->ops->sign_link(msg, line, link);
 
 	return ret;
 }
@@ -353,7 +350,7 @@ static int ipaccess_bsc_oml_cb(struct ipa_server_link *link, int fd)
 
 	bfd->fd = fd;
 	bfd->data = line;
-	bfd->priv_nr = PRIV_OML;
+	bfd->priv_nr = E1INP_SIGN_OML;
 	bfd->cb = ipaccess_fd_cb;
 	bfd->when = BSC_FD_READ;
 	ret = osmo_fd_register(bfd);
@@ -380,7 +377,7 @@ static int ipaccess_bsc_rsl_cb(struct ipa_server_link *link, int fd)
 		return -ENOMEM;
 
 	bfd->fd = fd;
-	bfd->priv_nr = PRIV_RSL;
+	bfd->priv_nr = E1INP_SIGN_RSL;
 	bfd->cb = ipaccess_fd_cb;
 	bfd->when = BSC_FD_READ;
 	ret = osmo_fd_register(bfd);
@@ -412,13 +409,15 @@ static int ipaccess_bts_cb(struct ipa_client_link *link, struct msgb *msg)
 		/* this is a request for identification from the BSC. */
 		if (msg_type == IPAC_MSGT_ID_GET) {
 			LOGP(DINP, LOGL_NOTICE, "received ID get\n");
-			if (!link->line->ops.sign_link_up) {
+			if (!link->line->ops->sign_link_up) {
 				LOGP(DINP, LOGL_ERROR, "Fix your application, "
 					"no action set if the signalling link "
 					"becomes ready\n");
 				return -EINVAL;
 			}
-			link->line->ops.sign_link_up(msg, link->line);
+			link->line->ops->sign_link_up(msg, link->line,
+				     link->port == IPA_TCP_PORT_OML ?
+					E1INP_SIGN_OML : E1INP_SIGN_RSL);
 		}
 		return 0;
 	} else if (link->port == IPA_TCP_PORT_OML)
@@ -437,12 +436,12 @@ static int ipaccess_bts_cb(struct ipa_client_link *link, struct msgb *msg)
 	msg->dst = sign_link;
 
 	/* XXX better use e1inp_ts_rx? */
-	if (!link->line->ops.sign_link) {
+	if (!link->line->ops->sign_link) {
 		LOGP(DINP, LOGL_ERROR, "Fix your application, "
 			"no action set for signalling messages.\n");
 		return -ENOENT;
 	}
-	link->line->ops.sign_link(msg, sign_link);
+	link->line->ops->sign_link(msg, link->line, sign_link);
 	return 0;
 }
 

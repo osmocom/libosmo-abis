@@ -306,8 +306,7 @@ struct e1inp_line *e1inp_line_get(uint8_t e1_nr)
 }
 
 struct e1inp_line *
-e1inp_line_create(uint8_t e1_nr, const char *driver_name,
-		  const struct e1inp_line_ops *ops)
+e1inp_line_create(uint8_t e1_nr, const char *driver_name)
 {
 	struct e1inp_driver *driver;
 	struct e1inp_line *line;
@@ -332,7 +331,6 @@ e1inp_line_create(uint8_t e1_nr, const char *driver_name,
 		return NULL;
 
 	line->driver = driver;
-	memcpy(&line->ops, ops, sizeof(struct e1inp_line_ops));
 
 	line->num = e1_nr;
 	for (i = 0; i < NUM_E1_TS; i++) {
@@ -342,6 +340,12 @@ e1inp_line_create(uint8_t e1_nr, const char *driver_name,
 	llist_add_tail(&line->list, &e1inp_line_list);
 
 	return line;
+}
+
+void
+e1inp_line_bind_ops(struct e1inp_line *line, const struct e1inp_line_ops *ops)
+{
+	line->ops = ops;
 }
 
 #if 0
@@ -467,12 +471,12 @@ int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
 				"tei %d, sapi %d\n", tei, sapi);
 			return -EINVAL;
 		}
-		if (!ts->line->ops.sign_link) {
+		if (!ts->line->ops->sign_link) {
 	                LOGP(DINP, LOGL_ERROR, "Fix your application, "
 				"no action set for signalling messages.\n");
 			return -ENOENT;
 		}
-		ts->line->ops.sign_link(msg, link);
+		ts->line->ops->sign_link(msg, ts->line, link);
 		break;
 	case E1INP_TS_TYPE_TRAU:
 		ret = subch_demux_in(&ts->trau.demux, msg->l2h, msgb_l2len(msg));
@@ -560,8 +564,7 @@ struct e1inp_driver *e1inp_driver_find(const char *name)
 	return NULL;
 }
 
-int e1inp_line_update(struct e1inp_line *line,
-		      enum e1inp_line_role role, const char *addr)
+int e1inp_line_update(struct e1inp_line *line)
 {
 	struct input_signal_data isd;
 	int rc;
@@ -570,9 +573,10 @@ int e1inp_line_update(struct e1inp_line *line,
 	if (++line->refcnt > 1)
 		return 0;
 
-	if (line->driver && line->driver->line_update)
-		rc = line->driver->line_update(line, role, addr);
-	else
+	if (line->driver && line->ops && line->driver->line_update) {
+		rc = line->driver->line_update(line, line->ops->role,
+						line->ops->addr);
+	} else
 		rc = 0;
 
 	/* Send a signal to anyone who is interested in new lines being

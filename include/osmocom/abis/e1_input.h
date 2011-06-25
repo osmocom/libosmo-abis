@@ -120,9 +120,12 @@ struct e1inp_driver {
 };
 
 struct e1inp_line_ops {
-	int	(*sign_link_up)(struct msgb *msg, struct e1inp_line *line);
-	int	(*sign_link)(struct msgb *msg, struct e1inp_sign_link *link);
-	int	(*error)(struct msgb *msg, int error);
+	enum e1inp_line_role	role;
+	char			*addr;
+
+	int	(*sign_link_up)(struct msgb *msg, struct e1inp_line *line, enum e1inp_sign_type type);
+	int	(*sign_link)(struct msgb *msg, struct e1inp_line *line, struct e1inp_sign_link *link);
+	int	(*error)(struct msgb *msg, struct e1inp_line *line, enum e1inp_sign_type type, int error);
 };
 
 struct e1inp_line {
@@ -135,7 +138,7 @@ struct e1inp_line {
 	/* array of timestlots */
 	struct e1inp_ts ts[NUM_E1_TS];
 
-	struct e1inp_line_ops ops;
+	const struct e1inp_line_ops *ops;
 
 	struct e1inp_driver *driver;
 	void *driver_data;
@@ -164,7 +167,10 @@ int e1inp_line_register(struct e1inp_line *line);
 struct e1inp_line *e1inp_line_get(uint8_t e1_nr);
 
 /* create a line in the E1 input core */
-struct e1inp_line *e1inp_line_create(uint8_t e1_nr, const char *driver_name, const struct e1inp_line_ops *ops);
+struct e1inp_line *e1inp_line_create(uint8_t e1_nr, const char *driver_name);
+
+/* bind operations to one E1 input line */
+void e1inp_line_bind_ops(struct e1inp_line *line, const struct e1inp_line_ops *ops);
 
 /* find a sign_link for given TEI and SAPI in a TS */
 struct e1inp_sign_link *
@@ -206,7 +212,7 @@ void e1_set_pcap_fd(int fd);
 struct subch_mux *e1inp_get_mux(uint8_t e1_nr, uint8_t ts_nr);
 
 void e1inp_sign_link_destroy(struct e1inp_sign_link *link);
-int e1inp_line_update(struct e1inp_line *line, enum e1inp_line_role role, const char *addr);
+int e1inp_line_update(struct e1inp_line *line);
 
 struct gsm_network;
 int ipaccess_setup(struct gsm_network *gsmnet);

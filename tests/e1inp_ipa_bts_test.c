@@ -7,19 +7,22 @@
 
 static void *tall_test;
 
-static int sign_link_up(struct msgb *msg, struct e1inp_line *line)
+static int sign_link_up(struct msgb *msg, struct e1inp_line *line,
+			enum e1inp_sign_type type)
 {
 	printf("ID_RESP received, create sign link.\n");
 	return 0;
 }
 
-static int sign_link(struct msgb *msg, struct e1inp_sign_link *link)
+static int sign_link(struct msgb *msg, struct e1inp_line *line,
+			struct e1inp_sign_link *link)
 {
 	printf("OML/RSL data received\n");
 	return 0;
 }
 
-static int error(struct msgb *msg, int error)
+static int error(struct msgb *msg, struct e1inp_line *line,
+		 enum e1inp_sign_type type, int error)
 {
 	printf("error, malformed message\n");
 	return 0;
@@ -52,6 +55,8 @@ int main(void)
 	osmo_init_logging(&bts_test_log_info);
 
 	struct e1inp_line_ops ops = {
+		.role		= E1INP_LINE_R_BTS,
+		.addr		= "127.0.0.1",
 		.sign_link_up	= sign_link_up,
 		.sign_link	= sign_link,
 		.error		= error,
@@ -59,11 +64,12 @@ int main(void)
 
 #define LINENR 0
 
-	line = e1inp_line_create(LINENR, "ipa", &ops);
+	line = e1inp_line_create(LINENR, "ipa");
 	if (line == NULL) {
 		LOGP(DBTSTEST, LOGL_ERROR, "problem enabling E1 line\n");
 		exit(EXIT_FAILURE);
 	}
+	e1inp_line_bind_ops(line, &ops);
 
 	/*
 	 * Depending if this is a real or virtual E1 lines:
@@ -76,7 +82,7 @@ int main(void)
 	 * it explains how this is done with ISDN.
 	 */
 
-	if (e1inp_line_update(line, E1INP_LINE_R_BTS, "127.0.0.1") < 0) {
+	if (e1inp_line_update(line) < 0) {
 		LOGP(DBTSTEST, LOGL_ERROR, "problem enabling E1 line\n");
 		exit(EXIT_FAILURE);
 	}

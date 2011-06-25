@@ -86,8 +86,8 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 
 	error = ipa_msg_recv(bfd->fd, &msg);
 	if (error <= 0) {
-		if (e1i_ts->line->ops.error)
-			e1i_ts->line->ops.error(NULL, error);
+		if (e1i_ts->line->ops->error)
+			e1i_ts->line->ops->error(NULL, line, ts_nr, error);
 		if (error == 0) {
 			osmo_fd_unregister(bfd);
 			close(bfd->fd);
@@ -106,17 +106,18 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 
 	/* HSL proprietary RSL extension */
 	if (hh->proto == 0 && (msg->l2h[0] == 0x81 || msg->l2h[0] == 0x80)) {
-		if (!line->ops.sign_link_up) {
+		if (!line->ops->sign_link_up) {
 			LOGP(DINP, LOGL_ERROR, "Fix your application, no "
 				"action set if the signalling link "
 				"becomes ready.\n");
 			return -EINVAL;
 		}
-		ret = line->ops.sign_link_up(msg, line);
+		ret = line->ops->sign_link_up(msg, line, E1INP_SIGN_RSL);
 		if (ret < 0) {
 			/* FIXME: close connection */
-			if (line->ops.error)
-				line->ops.error(msg, -EBADMSG);
+			if (line->ops->error)
+				line->ops->error(msg, line,
+						E1INP_SIGN_RSL, -EBADMSG);
 			return ret;
 		} else if (ret == 1)
 			return 0;
@@ -138,12 +139,12 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 	msg->dst = link;
 
 	/* XXX: better use e1inp_ts_rx? */
-	if (!e1i_ts->line->ops.sign_link) {
+	if (!e1i_ts->line->ops->sign_link) {
 		LOGP(DINP, LOGL_ERROR, "Fix your application, "
 			"no action set for signalling messages.\n");
 		return -ENOENT;
 	}
-	e1i_ts->line->ops.sign_link(msg, link);
+	e1i_ts->line->ops->sign_link(msg, line, link);
 
 	return ret;
 }
