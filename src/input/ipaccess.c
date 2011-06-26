@@ -336,10 +336,6 @@ static int ipaccess_bsc_oml_cb(struct ipa_server_link *link, int fd)
 	struct e1inp_ts *e1i_ts;
 	struct osmo_fd *bfd;
 
-	bfd = talloc_zero(tall_ipa_ctx, struct osmo_fd);
-	if (!bfd)
-		return -ENOMEM;
-
 	/* create virrtual E1 timeslots for signalling */
 	e1inp_ts_config_sign(&line->ts[1-1], line);
 
@@ -349,6 +345,7 @@ static int ipaccess_bsc_oml_cb(struct ipa_server_link *link, int fd)
 
 	e1i_ts = &line->ts[idx];
 
+	bfd = &e1i_ts->driver.ipaccess.fd;
 	bfd->fd = fd;
 	bfd->data = line;
 	bfd->priv_nr = E1INP_SIGN_OML;
@@ -358,7 +355,6 @@ static int ipaccess_bsc_oml_cb(struct ipa_server_link *link, int fd)
 	if (ret < 0) {
 		LOGP(DINP, LOGL_ERROR, "could not register FD\n");
 		close(bfd->fd);
-		talloc_free(bfd);
 		return ret;
 	}
 
