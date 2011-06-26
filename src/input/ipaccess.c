@@ -194,6 +194,7 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 		return -EIO;
 	}
 	msg->dst = link;
+	msg->trx = link->trx;
 
 	/* XXX better use e1inp_ts_rx? */
 	if (!e1i_ts->line->ops->sign_link) {
@@ -434,6 +435,7 @@ static int ipaccess_bts_cb(struct ipa_client_link *link, struct msgb *msg)
 		return -EIO;
 	}
 	msg->dst = sign_link;
+	msg->trx = sign_link->trx;
 
 	/* XXX better use e1inp_ts_rx? */
 	if (!link->line->ops->sign_link) {
