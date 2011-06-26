@@ -230,4 +230,6 @@ struct input_signal_data {
 	struct e1inp_line *line;
 };
 
+int abis_sendmsg(struct msgb *msg);
+
 #endif /* _E1_INPUT_H */

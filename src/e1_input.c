@@ -203,7 +203,7 @@ const char *e1inp_tstype_name(enum e1inp_ts_type tp)
 	return ts_types[tp];
 }
 
-int abis_rsl_sendmsg(struct msgb *msg)
+int abis_sendmsg(struct msgb *msg)
 {
 	struct e1inp_sign_link *sign_link = msg->dst;
 	struct e1inp_driver *e1inp_driver;
@@ -213,7 +213,7 @@ int abis_rsl_sendmsg(struct msgb *msg)
 
 	/* don't know how to route this message. */
 	if (sign_link == NULL) {
-		LOGP(DRSL, LOGL_ERROR, "rsl_sendmsg: msg->trx == NULL: %s\n",
+		LOGP(DRSL, LOGL_ERROR, "abis_sendmsg: msg->dst == NULL: %s\n",
 			osmo_hexdump(msg->data, msg->len));
 		talloc_free(msg);
 		return -EINVAL;
@@ -232,31 +232,9 @@ int abis_rsl_sendmsg(struct msgb *msg)
 	return 0;
 }
 
-int abis_nm_sendmsg(struct msgb *msg)
+int abis_rsl_sendmsg(struct msgb *msg)
 {
-	struct e1inp_sign_link *sign_link = msg->dst;
-	struct e1inp_driver *e1inp_driver;
-	struct e1inp_ts *e1i_ts;
-
-	msg->l2h = msg->data;
-
-	if (!sign_link) {
-		LOGP(DNM, LOGL_ERROR, "nm_sendmsg: msg->trx == NULL\n");
-		return -EINVAL;
-	}
-
-	e1i_ts = sign_link->ts;
-	if (!osmo_timer_pending(&e1i_ts->sign.tx_timer)) {
-		/* notify the driver we have something to write */
-		e1inp_driver = sign_link->ts->line->driver;
-		e1inp_driver->want_write(e1i_ts);
-	}
-	msgb_enqueue(&sign_link->tx_list, msg);
-
-	/* dump it */
-	write_pcap_packet(PCAP_OUTPUT, sign_link->sapi, sign_link->tei, msg);
-
-	return 0;
+	return abis_sendmsg(msg);
 }
 
 /* Timeslot */
