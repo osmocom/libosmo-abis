@@ -337,7 +337,7 @@ static int ipaccess_bsc_oml_cb(struct ipa_server_link *link, int fd)
 	struct osmo_fd *bfd;
 
 	/* create virrtual E1 timeslots for signalling */
-	e1inp_ts_config_sign(&line->ts[1-1], line);
+	e1inp_ts_config_sign(&line->ts[E1INP_SIGN_OML-1], line);
 
 	/* initialize the fds */
 	for (i = 0; i < ARRAY_SIZE(line->ts); ++i)
