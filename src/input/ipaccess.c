@@ -367,13 +367,18 @@ static int ipaccess_bsc_oml_cb(struct ipa_server_link *link, int fd)
 static int ipaccess_bsc_rsl_cb(struct ipa_server_link *link, int fd)
 {
 	struct osmo_fd *bfd;
+	struct e1inp_line *line = link->line;
 	int ret;
+
+	/* create virtual E1 timeslots for signalling */
+	e1inp_ts_config_sign(&line->ts[E1INP_SIGN_RSL-1], line);
 
 	bfd = talloc_zero(tall_ipa_ctx, struct osmo_fd);
 	if (!bfd)
 		return -ENOMEM;
 
 	bfd->fd = fd;
+	bfd->data = line;
 	bfd->priv_nr = E1INP_SIGN_RSL;
 	bfd->cb = ipaccess_fd_cb;
 	bfd->when = BSC_FD_READ;
