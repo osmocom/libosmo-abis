@@ -90,4 +90,14 @@ struct sdp_header_entry {
 	uint32_t start;
 } __attribute__((packed));
 
+struct ipaccess_unit {
+	uint16_t site_id;
+	uint16_t bts_id;
+	uint16_t trx_id;
+};
+
+struct hsl_unit {
+	unsigned long serno;
+};
+
 #endif /* _OSMO_PROTO_IPACCESS_H */

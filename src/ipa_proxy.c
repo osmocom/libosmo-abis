@@ -186,10 +186,12 @@ ipa_sock_src_accept_cb(struct ipa_server_link *link, int fd)
 
 	LOGP(DINP, LOGL_NOTICE, "now trying to connect to destination\n");
 
-	conn->dst = ipa_client_link_create(NULL, NULL,
+	conn->dst = ipa_client_link_create(NULL, NULL, NULL, 0,
 					   route->shared->dst.inst->net.addr,
 					   route->shared->dst.inst->net.port,
-					   ipa_sock_dst_cb, conn);
+					   ipa_sock_dst_cb,
+					   ipa_client_write_default_cb,
+					   conn);
 	if (conn->dst == NULL) {
 		LOGP(DINP, LOGL_ERROR, "could not create client: %s\n",
 			strerror(errno));

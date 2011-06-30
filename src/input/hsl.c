@@ -74,6 +74,47 @@ static struct hsl_e1_handle *e1h;
 
 #define TS1_ALLOC_SIZE	900
 
+static void hsl_drop(struct e1inp_line *line, struct osmo_fd *bfd)
+{
+	line->ops->sign_link_down(line);
+}
+
+static int process_hsl_rsl(struct msgb *msg, struct e1inp_line *line)
+{
+	char serno_buf[16];
+	uint8_t serno_len;
+	struct hsl_unit unit_data;
+
+	switch (msg->l2h[1]) {
+	case 0x80:
+		/*, contains Serial Number + SW version */
+		if (msg->l2h[2] != 0xc0)
+			break;
+		serno_len = msg->l2h[3];
+		if (serno_len > sizeof(serno_buf)-1)
+			serno_len = sizeof(serno_buf)-1;
+		memcpy(serno_buf, msg->l2h+4, serno_len);
+		serno_buf[serno_len] = '\0';
+		unit_data.serno = strtoul(serno_buf, NULL, 10);
+
+		if (!line->ops->sign_link_up) {
+			LOGP(DINP, LOGL_ERROR, "Fix your application, "
+				"no action set if the signalling link "
+				"becomes ready\n");
+			return -EINVAL;
+		}
+		line->ops->sign_link_up(&unit_data, line, E1INP_SIGN_NONE);
+		msgb_free(msg);
+		return 1;       /* == we have taken over the msg */
+	case 0x82:
+		/* FIXME: do something with BSSGP, i.e. forward it over
+		 * NSIP to OsmoSGSN */
+		msgb_free(msg);
+		return 1;
+	}
+	return 0;
+}
+
 static int handle_ts1_read(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
@@ -85,14 +126,11 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 	int ret = 0, error;
 
 	error = ipa_msg_recv(bfd->fd, &msg);
-	if (error <= 0) {
-		if (e1i_ts->line->ops->error)
-			e1i_ts->line->ops->error(NULL, line, ts_nr, error);
-		if (error == 0) {
-			osmo_fd_unregister(bfd);
-			close(bfd->fd);
-			bfd->fd = -1;
-		}
+	if (error < 0)
+		return error;
+	else if (error == 0) {
+		hsl_drop(e1i_ts->line, bfd);
+		LOGP(DINP, LOGL_NOTICE, "Sign link vanished, dead socket\n");
 		return error;
 	}
 	DEBUGP(DMI, "RX %u: %s\n", ts_nr, osmo_hexdump(msgb_l2(msg), msgb_l2len(msg)));
@@ -106,19 +144,10 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 
 	/* HSL proprietary RSL extension */
 	if (hh->proto == 0 && (msg->l2h[0] == 0x81 || msg->l2h[0] == 0x80)) {
-		if (!line->ops->sign_link_up) {
-			LOGP(DINP, LOGL_ERROR, "Fix your application, no "
-				"action set if the signalling link "
-				"becomes ready.\n");
-			return -EINVAL;
-		}
-		ret = line->ops->sign_link_up(msg, line, E1INP_SIGN_RSL);
-		if (ret < 0) {
-			/* FIXME: close connection */
-			if (line->ops->error)
-				line->ops->error(msg, line,
-						E1INP_SIGN_RSL, -EBADMSG);
-			return ret;
+                ret = process_hsl_rsl(msg, line);
+                if (ret < 0) {
+                        hsl_drop(e1i_ts->line, bfd);
+                        return ret;
 		} else if (ret == 1)
 			return 0;
 		/* else: continue... */
@@ -144,7 +173,7 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 			"no action set for signalling messages.\n");
 		return -ENOENT;
 	}
-	e1i_ts->line->ops->sign_link(msg, line, link);
+	e1i_ts->line->ops->sign_link(msg, link);
 
 	return ret;
 }
@@ -338,8 +367,10 @@ static int hsl_line_update(struct e1inp_line *line,
 
 		LOGP(DINP, LOGL_NOTICE, "enabling hsl BTS mode\n");
 
-		link = ipa_client_link_create(tall_hsl_ctx, line, addr,
-						HSL_TCP_PORT, hsl_bts_process,
+		link = ipa_client_link_create(tall_hsl_ctx,
+						&line->ts[0], "hsl", 0,
+						addr, HSL_TCP_PORT,
+						hsl_bts_process, NULL,
 						NULL);
 		if (link == NULL) {
 			LOGP(DINP, LOGL_ERROR, "cannot create BTS link: %s\n",

@@ -109,8 +109,7 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 	}
 
 	if (alen != sizeof(l2addr)) {
-		if (line->ops->error)
-			line->ops->error(NULL, line, ts_nr, -EBADMSG);
+		fprintf(stderr, "%s error len\n", __func__);
 		return -EINVAL;
 	}
 
@@ -173,8 +172,6 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 		l2addr.channel, l2addr.sapi, l2addr.tei);
 		break;
 	default:
-		if (line->ops->error)
-			line->ops->error(NULL, line, ts_nr, -EBADMSG);
 		break;
 	}
 	return ret;

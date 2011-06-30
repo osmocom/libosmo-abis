@@ -6,25 +6,42 @@
 #include <osmocom/core/logging.h>
 
 static void *tall_test;
+static struct e1inp_sign_link *oml_sign_link, *rsl_sign_link;
 
-static int sign_link_up(struct msgb *msg, struct e1inp_line *line,
-			enum e1inp_sign_type type)
+static struct e1inp_sign_link *
+sign_link_up(void *dev, struct e1inp_line *line, enum e1inp_sign_type type)
 {
-	printf("ID_RESP received, create sign link.\n");
-	return 0;
+	struct e1inp_sign_link *sign_link = NULL;
+
+	switch(type) {
+	case E1INP_SIGN_OML:
+		e1inp_ts_config_sign(&line->ts[E1INP_SIGN_OML - 1], line);
+		sign_link = oml_sign_link =
+			e1inp_sign_link_create(&line->ts[E1INP_SIGN_OML - 1],
+					       E1INP_SIGN_OML, NULL, 255, 0);
+		break;
+	case E1INP_SIGN_RSL:
+		e1inp_ts_config_sign(&line->ts[E1INP_SIGN_RSL - 1], line);
+		sign_link = rsl_sign_link =
+			e1inp_sign_link_create(&line->ts[E1INP_SIGN_RSL - 1],
+					       E1INP_SIGN_OML, NULL, 0, 0);
+		break;
+	default:
+		break;
+	}
+	return sign_link;
 }
 
-static int sign_link(struct msgb *msg, struct e1inp_line *line,
-		     struct e1inp_sign_link *link)
+static void sign_link_down(struct e1inp_line *line)
+{
+	printf("link got down.\n");
+	e1inp_sign_link_destroy(oml_sign_link);
+	e1inp_sign_link_destroy(rsl_sign_link);
+}
+
+static int sign_link(struct msgb *msg, struct e1inp_sign_link *link)
 {
 	printf("OML/RSL data received\n");
-	return 0;
-}
-
-static int error(struct msgb *msg, struct e1inp_line *line,
-		 enum e1inp_sign_type type, int error)
-{
-	printf("error, malformed message\n");
 	return 0;
 }
 
@@ -58,8 +75,8 @@ int main(void)
 		.addr		= "0.0.0.0",
 		.role		= E1INP_LINE_R_BSC,
 		.sign_link_up	= sign_link_up,
+		.sign_link_down	= sign_link_down,
 		.sign_link	= sign_link,
-		.error		= error,
 	};
 
 #define LINENR 0

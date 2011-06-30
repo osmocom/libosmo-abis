@@ -428,6 +428,9 @@ void e1inp_sign_link_destroy(struct e1inp_sign_link *link)
 	if (link->ts->type == E1INP_TS_TYPE_SIGN)
 		osmo_timer_del(&link->ts->sign.tx_timer);
 
+	if (link->ts->line->driver->close)
+		link->ts->line->driver->close(link->ts);
+
 	talloc_free(link);
 }
 
@@ -454,7 +457,7 @@ int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
 				"no action set for signalling messages.\n");
 			return -ENOENT;
 		}
-		ts->line->ops->sign_link(msg, ts->line, link);
+		ts->line->ops->sign_link(msg, link);
 		break;
 	case E1INP_TS_TYPE_TRAU:
 		ret = subch_demux_in(&ts->trau.demux, msg->l2h, msgb_l2len(msg));

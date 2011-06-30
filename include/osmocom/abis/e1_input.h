@@ -116,6 +116,7 @@ struct e1inp_driver {
 	const char *name;
 	int (*want_write)(struct e1inp_ts *ts);
 	int (*line_update)(struct e1inp_line *line, enum e1inp_line_role role, const char *addr);
+	void (*close)(struct e1inp_ts *ts);
 	int default_delay;
 };
 
@@ -123,9 +124,9 @@ struct e1inp_line_ops {
 	enum e1inp_line_role	role;
 	char			*addr;
 
-	int	(*sign_link_up)(struct msgb *msg, struct e1inp_line *line, enum e1inp_sign_type type);
-	int	(*sign_link)(struct msgb *msg, struct e1inp_line *line, struct e1inp_sign_link *link);
-	int	(*error)(struct msgb *msg, struct e1inp_line *line, enum e1inp_sign_type type, int error);
+	struct e1inp_sign_link *	(*sign_link_up)(void *unit_info, struct e1inp_line *line, enum e1inp_sign_type type);
+	void	(*sign_link_down)(struct e1inp_line *line);
+	int	(*sign_link)(struct msgb *msg, struct e1inp_sign_link *link);
 };
 
 struct e1inp_line {

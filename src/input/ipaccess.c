@@ -75,6 +75,91 @@ const uint8_t ipa_id_req_msg[] = {
 	0x01, IPAC_IDTAG_SERNR,
 };
 
+static const char *idtag_names[] = {
+	[IPAC_IDTAG_SERNR]	= "Serial_Number",
+	[IPAC_IDTAG_UNITNAME]	= "Unit_Name",
+	[IPAC_IDTAG_LOCATION1]	= "Location_1",
+	[IPAC_IDTAG_LOCATION2]	= "Location_2",
+	[IPAC_IDTAG_EQUIPVERS]	= "Equipment_Version",
+	[IPAC_IDTAG_SWVERSION]	= "Software_Version",
+	[IPAC_IDTAG_IPADDR]	= "IP_Address",
+	[IPAC_IDTAG_MACADDR]	= "MAC_Address",
+	[IPAC_IDTAG_UNIT]	= "Unit_ID",
+};
+
+const char *ipaccess_idtag_name(uint8_t tag)
+{
+	if (tag >= ARRAY_SIZE(idtag_names))
+		return "unknown";
+
+	return idtag_names[tag];
+}
+
+int ipaccess_idtag_parse(struct tlv_parsed *dec, unsigned char *buf, int len)
+{
+	uint8_t t_len;
+	uint8_t t_tag;
+	uint8_t *cur = buf;
+
+	memset(dec, 0, sizeof(*dec));
+
+	while (len >= 2) {
+		len -= 2;
+		t_len = *cur++;
+		t_tag = *cur++;
+
+		if (t_len > len + 1) {
+			LOGP(DMI, LOGL_ERROR, "The tag does not fit: %d\n", t_len);
+			return -EINVAL;
+		}
+
+		DEBUGPC(DMI, "%s='%s' ", ipaccess_idtag_name(t_tag), cur);
+
+		dec->lv[t_tag].len = t_len;
+		dec->lv[t_tag].val = cur;
+
+		cur += t_len;
+		len -= t_len;
+	}
+	return 0;
+}
+
+int ipaccess_parse_unitid(const char *str, struct ipaccess_unit *unit_data)
+{
+	unsigned long ul;
+	char *endptr;
+	const char *nptr;
+
+	nptr = str;
+	ul = strtoul(nptr, &endptr, 10);
+	if (endptr <= nptr)
+		return -EINVAL;
+	if (unit_data->site_id)
+		unit_data->site_id = ul & 0xffff;
+
+	if (*endptr++ != '/')
+		return -EINVAL;
+
+	nptr = endptr;
+	ul = strtoul(nptr, &endptr, 10);
+	if (endptr <= nptr)
+		return -EINVAL;
+	if (unit_data->bts_id)
+		unit_data->bts_id = ul & 0xffff;
+
+	if (*endptr++ != '/')
+		return -EINVAL;
+
+	nptr = endptr;
+	ul = strtoul(nptr, &endptr, 10);
+	if (endptr <= nptr)
+		return -EINVAL;
+	if (unit_data->trx_id)
+		unit_data->trx_id = ul & 0xffff;
+
+	return 0;
+}
+
 static int ipaccess_send(int fd, const void *msg, size_t msglen)
 {
 	int ret;
@@ -126,10 +211,48 @@ int ipaccess_rcvmsg_base(struct msgb *msg,
 	return 0;
 }
 
+/* base handling of the ip.access protocol */
+int ipaccess_rcvmsg_bts_base(struct msgb *msg,
+			     struct osmo_fd *bfd)
+{
+	uint8_t msg_type = *(msg->l2h);
+	int ret = 0;
+
+	switch (msg_type) {
+	case IPAC_MSGT_PING:
+		ret = ipaccess_send_pong(bfd->fd);
+		break;
+	case IPAC_MSGT_PONG:
+		DEBUGP(DMI, "PONG!\n");
+		break;
+	case IPAC_MSGT_ID_ACK:
+		DEBUGP(DMI, "ID_ACK\n");
+		break;
+	}
+	return 0;
+}
+
+static void ipaccess_drop(struct osmo_fd *bfd)
+{
+	struct e1inp_line *line = bfd->data;
+
+	/* e1inp_sign_link_destroy releases the socket descriptors for us. */
+	line->ops->sign_link_down(line);
+
+	/* RSL connection without ID_RESP, release temporary socket. */
+	if (line->ts[E1INP_SIGN_OML-1].type == E1INP_SIGN_NONE)
+		talloc_free(bfd);
+}
+
 static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 			   struct osmo_fd *bfd)
 {
+	struct tlv_parsed tlvp;
 	uint8_t msg_type = *(msg->l2h);
+	struct ipaccess_unit unit_data = {};
+	struct e1inp_sign_link *sign_link;
+	char *unitid;
+	int len, ret;
 
 	/* handle base messages */
 	ipaccess_rcvmsg_base(msg, bfd);
@@ -137,13 +260,71 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 	switch (msg_type) {
 	case IPAC_MSGT_ID_RESP:
 		DEBUGP(DMI, "ID_RESP\n");
+		/* parse tags, search for Unit ID */
+		ret = ipaccess_idtag_parse(&tlvp, (uint8_t *)msg->l2h + 2,
+						msgb_l2len(msg)-2);
+		DEBUGP(DMI, "\n");
+		if (ret < 0) {
+			LOGP(DINP, LOGL_ERROR, "ignoring IPA response message "
+				"with malformed TLVs\n");
+			return ret;
+		}
+		if (!TLVP_PRESENT(&tlvp, IPAC_IDTAG_UNIT))
+			break;
+
+		len = TLVP_LEN(&tlvp, IPAC_IDTAG_UNIT);
+		if (len < 1)
+			break;
+
+		unitid = (char *) TLVP_VAL(&tlvp, IPAC_IDTAG_UNIT);
+		unitid[len - 1] = '\0';
+		ipaccess_parse_unitid(unitid, &unit_data);
+
 		if (!line->ops->sign_link_up) {
 			LOGP(DINP, LOGL_ERROR, "Fix your application, "
 				"no action set if the signalling link "
 				"becomes ready\n");
 			return -EINVAL;
 		}
-		line->ops->sign_link_up(msg, line, bfd->priv_nr);
+		/* the BSC creates the new sign links at this stage. */
+		if (bfd->priv_nr == E1INP_SIGN_OML) {
+			sign_link =
+				line->ops->sign_link_up(&unit_data, line,
+							E1INP_SIGN_OML);
+			if (sign_link == NULL) {
+				LOGP(DINP, LOGL_ERROR,
+				     "No OML signal link set by BSC\n");
+			}
+		} else if (bfd->priv_nr == E1INP_SIGN_RSL) {
+			struct e1inp_ts *e1i_ts;
+                        struct osmo_fd *newbfd;
+
+			sign_link =
+				line->ops->sign_link_up(&unit_data, line,
+							E1INP_SIGN_RSL);
+			if (sign_link == NULL) {
+				LOGP(DINP, LOGL_ERROR, "Don't know where "
+					"to attach this RSL link.\n");
+				osmo_fd_unregister(bfd);
+				close(bfd->fd);
+				bfd->fd = -1;
+				talloc_free(bfd);
+				return 0;
+			}
+			/* Finally, we know which OML link is associated with
+			 * this RSL link, attach it to this socket. */
+			bfd->data = line = sign_link->ts->line;
+			e1i_ts = &line->ts[E1INP_SIGN_RSL+unit_data.trx_id-1];
+			newbfd = &e1i_ts->driver.ipaccess.fd;
+
+			/* get rid of our old temporary bfd */
+			memcpy(newbfd, bfd, sizeof(*newbfd));
+			newbfd->priv_nr = E1INP_SIGN_RSL + unit_data.trx_id;
+			osmo_fd_unregister(bfd);
+			bfd->fd = -1;
+			talloc_free(bfd);
+			osmo_fd_register(newbfd);
+		}
 		break;
 	}
 	return 0;
@@ -160,16 +341,11 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 	int ret = 0, error;
 
 	error = ipa_msg_recv(bfd->fd, &msg);
-	if (error <= 0) {
-		/* skip if RSL line is not set yet. */
-		if (e1i_ts && e1i_ts->line->ops->error)
-			e1i_ts->line->ops->error(NULL, line, ts_nr, error);
-		if (error == 0) {
-		        osmo_fd_unregister(bfd);
-		        close(bfd->fd);
-		        bfd->fd = -1;
-			talloc_free(bfd);
-		}
+	if (error < 0)
+		return error;
+	else if (error == 0) {
+		ipaccess_drop(bfd);
+		LOGP(DINP, LOGL_NOTICE, "Sign link vanished, dead socket\n");
 		return error;
 	}
 	DEBUGP(DMI, "RX %u: %s\n", ts_nr, osmo_hexdump(msgb_l2(msg), msgb_l2len(msg)));
@@ -202,7 +378,7 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 			"no action set for signalling messages.\n");
 		return -ENOENT;
 	}
-	e1i_ts->line->ops->sign_link(msg, line, link);
+	e1i_ts->line->ops->sign_link(msg, link);
 
 	return ret;
 }
@@ -233,6 +409,14 @@ static int ts_want_write(struct e1inp_ts *e1i_ts)
 	return 0;
 }
 
+static void ipaccess_close(struct e1inp_ts *e1i_ts)
+{
+	struct osmo_fd *bfd = &e1i_ts->driver.ipaccess.fd;
+	osmo_fd_unregister(bfd);
+	close(bfd->fd);
+	bfd->fd = -1;
+}
+
 static void timeout_ts1_write(void *data)
 {
 	struct e1inp_ts *e1i_ts = (struct e1inp_ts *)data;
@@ -241,9 +425,8 @@ static void timeout_ts1_write(void *data)
 	ts_want_write(e1i_ts);
 }
 
-static int handle_ts1_write(struct osmo_fd *bfd)
+static int __handle_ts1_write(struct osmo_fd *bfd, struct e1inp_line *line)
 {
-	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
 	struct e1inp_sign_link *sign_link;
@@ -274,7 +457,9 @@ static int handle_ts1_write(struct osmo_fd *bfd)
 	}
 
 	msg->l2h = msg->data;
-	ipaccess_prepend_header(msg, sign_link->tei);
+	/* This is an IPA CCM, it already contains the header, skip. */
+	if (msgb_tailroom(msg) < sizeof(struct ipaccess_head))
+		ipaccess_prepend_header(msg, sign_link->tei);
 
 	DEBUGP(DMI, "TX %u: %s\n", ts_nr, osmo_hexdump(msg->l2h, msgb_l2len(msg)));
 
@@ -291,27 +476,29 @@ static int handle_ts1_write(struct osmo_fd *bfd)
 	return ret;
 }
 
+int handle_ts1_write(struct osmo_fd *bfd)
+{
+	struct e1inp_line *line = bfd->data;
+
+	return __handle_ts1_write(bfd, line);
+}
+
+int ipaccess_bts_write_cb(struct ipa_client_link *link)
+{
+	struct e1inp_line *line = link->line;
+
+	return __handle_ts1_write(link->ofd, line);
+}
+
 /* callback from select.c in case one of the fd's can be read/written */
 static int ipaccess_fd_cb(struct osmo_fd *bfd, unsigned int what)
 {
-	struct e1inp_line *line = bfd->data;
-	unsigned int ts_nr = bfd->priv_nr;
-	unsigned int idx = ts_nr-1;
-	struct e1inp_ts *e1i_ts;
 	int rc = 0;
 
-	/* In case of early RSL we might not yet have a line */
-
-	if (line)
- 		e1i_ts = &line->ts[idx];
-
-	if (!line || e1i_ts->type == E1INP_TS_TYPE_SIGN) {
-		if (what & BSC_FD_READ)
-			rc = handle_ts1_read(bfd);
-		if (what & BSC_FD_WRITE)
-			rc = handle_ts1_write(bfd);
-	} else
-		LOGP(DINP, LOGL_ERROR, "unknown E1 TS type %u\n", e1i_ts->type);
+	if (what & BSC_FD_READ)
+		rc = handle_ts1_read(bfd);
+	if (what & BSC_FD_WRITE)
+		rc = handle_ts1_write(bfd);
 
 	return rc;
 }
@@ -323,6 +510,7 @@ struct e1inp_driver ipaccess_driver = {
 	.name = "ipa",
 	.want_write = ts_want_write,
 	.line_update = ipaccess_line_update,
+	.close = ipaccess_close,
 	.default_delay = 0,
 };
 
@@ -332,9 +520,17 @@ static int ipaccess_bsc_oml_cb(struct ipa_server_link *link, int fd)
 	int ret;
 	int idx = 0;
 	int i;
-	struct e1inp_line *line = link->line;
+	struct e1inp_line *line;
 	struct e1inp_ts *e1i_ts;
 	struct osmo_fd *bfd;
+
+	/* clone virtual E1 line for this new OML link. */
+	line = talloc_zero(tall_ipa_ctx, struct e1inp_line);
+	if (line == NULL) {
+		LOGP(DINP, LOGL_ERROR, "could not clone E1 line\n");
+		return -1;
+	}
+	memcpy(line, link->line, sizeof(struct e1inp_line));
 
 	/* create virrtual E1 timeslots for signalling */
 	e1inp_ts_config_sign(&line->ts[E1INP_SIGN_OML-1], line);
@@ -367,18 +563,17 @@ static int ipaccess_bsc_oml_cb(struct ipa_server_link *link, int fd)
 static int ipaccess_bsc_rsl_cb(struct ipa_server_link *link, int fd)
 {
 	struct osmo_fd *bfd;
-	struct e1inp_line *line = link->line;
 	int ret;
 
-	/* create virtual E1 timeslots for signalling */
-	e1inp_ts_config_sign(&line->ts[E1INP_SIGN_RSL-1], line);
-
+        /* We don't know yet which OML link to associate it with. Thus, we
+         * allocate a temporary bfd until we have received ID. */
 	bfd = talloc_zero(tall_ipa_ctx, struct osmo_fd);
 	if (!bfd)
 		return -ENOMEM;
 
 	bfd->fd = fd;
-	bfd->data = line;
+	/* This dummy line is replaced once we can attach it to the OML link */
+	bfd->data = link->line;
 	bfd->priv_nr = E1INP_SIGN_RSL;
 	bfd->cb = ipaccess_fd_cb;
 	bfd->when = BSC_FD_READ;
@@ -406,7 +601,7 @@ static int ipaccess_bts_cb(struct ipa_client_link *link, struct msgb *msg)
 		uint8_t msg_type = *(msg->l2h);
 
 		/* ping, pong and acknowledgment cases. */
-		ipaccess_rcvmsg_base(msg, &link->ofd);
+		ipaccess_rcvmsg_bts_base(msg, link->ofd);
 
 		/* this is a request for identification from the BSC. */
 		if (msg_type == IPAC_MSGT_ID_GET) {
@@ -417,9 +612,14 @@ static int ipaccess_bts_cb(struct ipa_client_link *link, struct msgb *msg)
 					"becomes ready\n");
 				return -EINVAL;
 			}
-			link->line->ops->sign_link_up(msg, link->line,
-				     link->port == IPA_TCP_PORT_OML ?
-					E1INP_SIGN_OML : E1INP_SIGN_RSL);
+			/*
+			 * FIXME: parse request here and pass data to callback.
+			 */
+			struct e1inp_sign_link *sign_link;
+
+			sign_link = link->line->ops->sign_link_up(msg,
+					link->line,
+					link->ofd->priv_nr);
 		}
 		return 0;
 	} else if (link->port == IPA_TCP_PORT_OML)
@@ -444,7 +644,7 @@ static int ipaccess_bts_cb(struct ipa_client_link *link, struct msgb *msg)
 			"no action set for signalling messages.\n");
 		return -ENOENT;
 	}
-	link->line->ops->sign_link(msg, link->line, sign_link);
+	link->line->ops->sign_link(msg, sign_link);
 	return 0;
 }
 
@@ -497,9 +697,13 @@ static int ipaccess_line_update(struct e1inp_line *line,
 
 		LOGP(DINP, LOGL_NOTICE, "enabling ipaccess BTS mode\n");
 
-		link = ipa_client_link_create(tall_ipa_ctx, line,
+		link = ipa_client_link_create(tall_ipa_ctx,
+					      &line->ts[E1INP_SIGN_OML-1],
+					      "ipa", E1INP_SIGN_OML,
 					      addr, IPA_TCP_PORT_OML,
-					      ipaccess_bts_cb, NULL);
+					      ipaccess_bts_cb,
+					      ipaccess_bts_write_cb,
+					      NULL);
 		if (link == NULL) {
 			LOGP(DINP, LOGL_ERROR, "cannot create OML "
 				"BTS link: %s\n", strerror(errno));
@@ -512,9 +716,13 @@ static int ipaccess_line_update(struct e1inp_line *line,
 			ipa_client_link_destroy(link);
 			return -EIO;
 		}
-		rsl_link = ipa_client_link_create(tall_ipa_ctx, line,
+		rsl_link = ipa_client_link_create(tall_ipa_ctx,
+						  &line->ts[E1INP_SIGN_RSL-1],
+						  "ipa", E1INP_SIGN_RSL,
 						  addr, IPA_TCP_PORT_RSL,
-						  ipaccess_bts_cb, NULL);
+						  ipaccess_bts_cb,
+						  ipaccess_bts_write_cb,
+						  NULL);
 		if (rsl_link == NULL) {
 			LOGP(DINP, LOGL_ERROR, "cannot create RSL "
 				"BTS link: %s\n", strerror(errno));
