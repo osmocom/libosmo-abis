@@ -35,44 +35,51 @@ sign_link_up(void *unit, struct e1inp_line *line, enum e1inp_sign_type type)
 
 	switch(type) {
 	case E1INP_SIGN_OML:
-		printf("ID_RESP for OML received.\n");
+		LOGP(DBTSTEST, LOGL_NOTICE, "OML link up request received.\n");
 
 		e1inp_ts_config_sign(&line->ts[E1INP_SIGN_OML - 1], line);
 		sign_link = oml_sign_link =
 			e1inp_sign_link_create(&line->ts[E1INP_SIGN_OML - 1],
 						E1INP_SIGN_OML, NULL, 255, 0);
-		if (!oml_sign_link)
-			printf("cannot create OML sign link\n");
-
+		if (!oml_sign_link) {
+			LOGP(DBTSTEST, LOGL_ERROR,
+				"cannot create OML sign link\n");
+		}
 		dst = oml_sign_link;
 		break;
 	case E1INP_SIGN_RSL:
-		printf("ID_RESP for RSL received.\n");
+		LOGP(DBTSTEST, LOGL_NOTICE, "RSL link up request received.\n");
 
 		e1inp_ts_config_sign(&line->ts[E1INP_SIGN_RSL - 1], line);
 
 		sign_link = rsl_sign_link =
 			e1inp_sign_link_create(&line->ts[E1INP_SIGN_RSL - 1],
 						E1INP_SIGN_RSL, NULL, 0, 0);
-		if (!rsl_sign_link)
-			printf("cannot create RSL sign link\n");
-
+		if (!rsl_sign_link) {
+			LOGP(DBTSTEST, LOGL_ERROR,
+				"cannot create RSL sign link\n");
+		}
 		dst = rsl_sign_link;
 		break;
 	default:
 		return NULL;
 	}
+	if (sign_link)
+		LOGP(DBTSTEST, LOGL_NOTICE, "signal link has been set up.\n");
+
 	return sign_link;
 }
 
 static void sign_link_down(struct e1inp_line *line)
 {
-	printf("closing sign link.\n");
+	LOGP(DBTSTEST, LOGL_NOTICE, "signal link has been closed\n");
+	e1inp_sign_link_destroy(oml_sign_link);
+	e1inp_sign_link_destroy(rsl_sign_link);
 }
 
 static int sign_link(struct msgb *msg, struct e1inp_sign_link *link)
 {
-	printf("OML/RSL data received\n");
+	LOGP(DBTSTEST, LOGL_NOTICE, "OML/RSL message received.\n");
 	return 0;
 }
 

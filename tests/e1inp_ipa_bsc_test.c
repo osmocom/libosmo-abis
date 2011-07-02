@@ -8,43 +8,6 @@
 static void *tall_test;
 static struct e1inp_sign_link *oml_sign_link, *rsl_sign_link;
 
-static struct e1inp_sign_link *
-sign_link_up(void *dev, struct e1inp_line *line, enum e1inp_sign_type type)
-{
-	struct e1inp_sign_link *sign_link = NULL;
-
-	switch(type) {
-	case E1INP_SIGN_OML:
-		e1inp_ts_config_sign(&line->ts[E1INP_SIGN_OML - 1], line);
-		sign_link = oml_sign_link =
-			e1inp_sign_link_create(&line->ts[E1INP_SIGN_OML - 1],
-					       E1INP_SIGN_OML, NULL, 255, 0);
-		break;
-	case E1INP_SIGN_RSL:
-		e1inp_ts_config_sign(&line->ts[E1INP_SIGN_RSL - 1], line);
-		sign_link = rsl_sign_link =
-			e1inp_sign_link_create(&line->ts[E1INP_SIGN_RSL - 1],
-					       E1INP_SIGN_OML, NULL, 0, 0);
-		break;
-	default:
-		break;
-	}
-	return sign_link;
-}
-
-static void sign_link_down(struct e1inp_line *line)
-{
-	printf("link got down.\n");
-	e1inp_sign_link_destroy(oml_sign_link);
-	e1inp_sign_link_destroy(rsl_sign_link);
-}
-
-static int sign_link(struct msgb *msg, struct e1inp_sign_link *link)
-{
-	printf("OML/RSL data received\n");
-	return 0;
-}
-
 #define DBSCTEST OSMO_LOG_SS_APPS
 
 struct log_info_cat bsc_test_cat[] = {
@@ -55,6 +18,48 @@ struct log_info_cat bsc_test_cat[] = {
 		.enabled = 1, .loglevel = LOGL_NOTICE,
 	},
 };
+
+static struct e1inp_sign_link *
+sign_link_up(void *dev, struct e1inp_line *line, enum e1inp_sign_type type)
+{
+	struct e1inp_sign_link *sign_link = NULL;
+
+	switch(type) {
+	case E1INP_SIGN_OML:
+		LOGP(DBSCTEST, LOGL_NOTICE, "OML link up request received.\n");
+		e1inp_ts_config_sign(&line->ts[E1INP_SIGN_OML - 1], line);
+		sign_link = oml_sign_link =
+			e1inp_sign_link_create(&line->ts[E1INP_SIGN_OML - 1],
+					       E1INP_SIGN_OML, NULL, 255, 0);
+		break;
+	case E1INP_SIGN_RSL:
+		LOGP(DBSCTEST, LOGL_NOTICE, "RSL link up request received.\n");
+		e1inp_ts_config_sign(&line->ts[E1INP_SIGN_RSL - 1], line);
+		sign_link = rsl_sign_link =
+			e1inp_sign_link_create(&line->ts[E1INP_SIGN_RSL - 1],
+					       E1INP_SIGN_OML, NULL, 0, 0);
+		break;
+	default:
+		break;
+	}
+	if (sign_link)
+		LOGP(DBSCTEST, LOGL_NOTICE, "signal link has been set up.\n");
+
+	return sign_link;
+}
+
+static void sign_link_down(struct e1inp_line *line)
+{
+	LOGP(DBSCTEST, LOGL_NOTICE, "signal link has been closed\n");
+	e1inp_sign_link_destroy(oml_sign_link);
+	e1inp_sign_link_destroy(rsl_sign_link);
+}
+
+static int sign_link(struct msgb *msg, struct e1inp_sign_link *link)
+{
+	LOGP(DBSCTEST, LOGL_NOTICE, "OML/RSL message received.\n");
+	return 0;
+}
 
 const struct log_info bsc_test_log_info = {
         .filter_fn = NULL,
