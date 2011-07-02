@@ -22,8 +22,6 @@
  *
  */
 
-#ifdef HAVE_DAHDI_USER_H
-
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -38,13 +36,11 @@
 
 #include <osmocom/core/select.h>
 #include <osmocom/core/msgb.h>
-#include <openbsc/debug.h>
-#include <openbsc/gsm_data.h>
-#include <openbsc/abis_nm.h>
-#include <openbsc/abis_rsl.h>
-#include <openbsc/subchan_demux.h>
-#include <openbsc/e1_input.h>
-#include <openbsc/signal.h>
+#include <osmocom/core/logging.h>
+#include <osmocom/abis/subchan_demux.h>
+#include <osmocom/abis/e1_input.h>
+#include <osmocom/abis/signal.h>
+#include <osmocom/abis/logging.h>
 #include <talloc.h>
 
 #include "lapd.h"
@@ -121,11 +117,8 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 	DEBUGP(DMI, "<= len = %d, sapi(%d) tei(%d)", ret, sapi, tei);
 
 	idata = lapd_receive(e1i_ts->driver.dahdi.lapd, msg->data, msg->len, &ilen, &prim);
-	if (!idata && prim == 0) {
-		if (line->ops->error)
-			line->ops->error(NULL, -EBADMSG);
+	if (!idata && prim == 0)
 		return -EIO;
-	}
 
 	msgb_pull(msg, 2);
 
@@ -152,8 +145,7 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 		ret = e1inp_rx_ts(e1i_ts, msg, tei, sapi);
 		break;
 	default:
-		if (line->ops->error)
-			line->ops->error(NULL, -EBADMSG);
+		printf("ERROR: unknown prim\n");
 		break;
 	}
 
@@ -478,7 +470,7 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 }
 
 static int dahdi_e1_line_update(struct e1inp_line *line,
-				enum e1inp_line_role role, void *data)
+				enum e1inp_line_role role, const char *addr)
 {
 	if (line->driver != &dahdi_driver)
 		return -EINVAL;
@@ -493,5 +485,3 @@ int e1inp_dahdi_init(void)
 	/* register the driver with the core */
 	return e1inp_driver_register(&dahdi_driver);
 }
-
-#endif /* HAVE_DAHDI_USER_H */

@@ -39,6 +39,8 @@ PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 0.3.0)
 PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 0.3.0)
 PKG_CHECK_MODULES([LIBTALLOC], talloc >= 2.0.1)
 
+AC_CHECK_HEADERS(dahdi/user.h,,AC_MSG_ERROR(DAHDI input driver headers missing))
+
 AC_OUTPUT(
 	libosmoabis.pc
 	include/Makefile
