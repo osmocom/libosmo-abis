@@ -37,9 +37,9 @@
 #include <osmocom/core/select.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/logging.h>
+#include <osmocom/core/signal.h>
 #include <osmocom/abis/subchan_demux.h>
 #include <osmocom/abis/e1_input.h>
-#include <osmocom/abis/signal.h>
 #include <talloc.h>
 
 #include <osmocom/abis/lapd.h>

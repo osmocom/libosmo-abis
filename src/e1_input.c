@@ -47,7 +47,6 @@
 #include <osmocom/abis/e1_input.h>
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/abis/subchan_demux.h>
-#include <osmocom/abis/signal.h>
 #include <talloc.h>
 
 #define NUM_E1_TS	32
@@ -569,7 +568,7 @@ int e1inp_line_update(struct e1inp_line *line)
 	return rc;
 }
 
-static int e1i_sig_cb(uint8_t subsys, unsigned int signal,
+static int e1i_sig_cb(unsigned int subsys, unsigned int signal,
 		      void *handler_data, void *signal_data)
 {
 	if (subsys != SS_GLOBAL ||
