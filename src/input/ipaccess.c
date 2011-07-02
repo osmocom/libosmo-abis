@@ -590,6 +590,113 @@ static int ipaccess_bsc_rsl_cb(struct ipa_server_link *link, int fd)
 	return 0;
 }
 
+static struct msgb *abis_msgb_alloc(int headroom)
+{
+	struct msgb *nmsg;
+
+	headroom += sizeof(struct ipaccess_head);
+
+	nmsg = msgb_alloc_headroom(1200 + headroom, headroom, "dummy BTS");
+	if (!nmsg)
+		return NULL;
+	return nmsg;
+}
+
+static void abis_push_ipa(struct msgb *msg, uint8_t proto)
+{
+	struct ipaccess_head *nhh;
+
+	msg->l2h = msg->data;
+	nhh = (struct ipaccess_head *) msgb_push(msg, sizeof(*nhh));
+	nhh->proto = proto;
+	nhh->len = htons(msgb_l2len(msg));
+}
+
+static struct msgb *
+ipa_bts_id_resp(struct ipaccess_unit *dev, uint8_t *data, int len)
+{
+	struct msgb *nmsg;
+	char str[64];
+	uint8_t *tag;
+
+	nmsg = abis_msgb_alloc(0);
+	if (!nmsg)
+		return NULL;
+
+	*msgb_put(nmsg, 1) = IPAC_MSGT_ID_RESP;
+	while (len) {
+		if (len < 2) {
+			LOGP(DINP, LOGL_NOTICE,
+				"Short read of ipaccess tag\n");
+			msgb_free(nmsg);
+			return NULL;
+		}
+		switch (data[1]) {
+		case IPAC_IDTAG_UNIT:
+			sprintf(str, "%u/%u/%u",
+				dev->site_id, dev->bts_id, dev->trx_id);
+			break;
+		case IPAC_IDTAG_MACADDR:
+			sprintf(str, "%02x:%02x:%02x:%02x:%02x:%02x",
+				dev->mac_addr[0], dev->mac_addr[1],
+				dev->mac_addr[2], dev->mac_addr[3],
+				dev->mac_addr[4], dev->mac_addr[5]);
+			break;
+		case IPAC_IDTAG_LOCATION1:
+			strcpy(str, dev->location1);
+			break;
+		case IPAC_IDTAG_LOCATION2:
+			strcpy(str, dev->location2);
+			break;
+		case IPAC_IDTAG_EQUIPVERS:
+			strcpy(str, dev->equipvers);
+			break;
+		case IPAC_IDTAG_SWVERSION:
+			strcpy(str, dev->swversion);
+			break;
+		case IPAC_IDTAG_UNITNAME:
+			sprintf(str, "%s-%02x-%02x-%02x-%02x-%02x-%02x",
+				dev->unit_name,
+				dev->mac_addr[0], dev->mac_addr[1],
+				dev->mac_addr[2], dev->mac_addr[3],
+				dev->mac_addr[4], dev->mac_addr[5]);
+			break;
+		case IPAC_IDTAG_SERNR:
+			strcpy(str, dev->serno);
+			break;
+		default:
+			LOGP(DINP, LOGL_NOTICE,
+				"Unknown ipaccess tag 0x%02x\n", *data);
+			msgb_free(nmsg);
+			return NULL;
+		}
+		LOGP(DINP, LOGL_INFO, " tag %d: %s\n", data[1], str);
+		tag = msgb_put(nmsg, 3 + strlen(str) + 1);
+		tag[0] = 0x00;
+		tag[1] = 1 + strlen(str) + 1;
+		tag[2] = data[1];
+		memcpy(tag + 3, str, strlen(str) + 1);
+		data += 2;
+		len -= 2;
+	}
+	abis_push_ipa(nmsg, IPAC_PROTO_IPACCESS);
+	return nmsg;
+}
+
+static struct msgb *ipa_bts_id_ack(void)
+{
+	struct msgb *nmsg2;
+
+	nmsg2 = abis_msgb_alloc(0);
+	if (!nmsg2)
+		return NULL;
+
+	*msgb_put(nmsg2, 1) = IPAC_MSGT_ID_ACK;
+	abis_push_ipa(nmsg2, IPAC_PROTO_IPACCESS);
+
+	return nmsg2;
+}
+
 static int ipaccess_bts_cb(struct ipa_client_link *link, struct msgb *msg)
 {
 	struct ipaccess_head *hh = (struct ipaccess_head *) msg->data;
@@ -605,6 +712,11 @@ static int ipaccess_bts_cb(struct ipa_client_link *link, struct msgb *msg)
 
 		/* this is a request for identification from the BSC. */
 		if (msg_type == IPAC_MSGT_ID_GET) {
+			struct e1inp_sign_link *sign_link;
+			struct msgb *rmsg;
+			uint8_t *data = msgb_l2(msg);
+			int len = msgb_l2len(msg);
+
 			LOGP(DINP, LOGL_NOTICE, "received ID get\n");
 			if (!link->line->ops->sign_link_up) {
 				LOGP(DINP, LOGL_ERROR, "Fix your application, "
@@ -612,14 +724,23 @@ static int ipaccess_bts_cb(struct ipa_client_link *link, struct msgb *msg)
 					"becomes ready\n");
 				return -EINVAL;
 			}
-			/*
-			 * FIXME: parse request here and pass data to callback.
-			 */
-			struct e1inp_sign_link *sign_link;
-
 			sign_link = link->line->ops->sign_link_up(msg,
 					link->line,
 					link->ofd->priv_nr);
+			if (sign_link == NULL) {
+				LOGP(DINP, LOGL_ERROR,
+					"No sign link created\n");
+				return -EINVAL;
+			}
+			rmsg = ipa_bts_id_resp(link->line->ops->data,
+						data + 1, len - 1);
+			ipaccess_send(link->ofd->fd, rmsg->data, rmsg->len);
+			msgb_free(rmsg);
+
+			/* send ID_ACK. */
+			rmsg = ipa_bts_id_ack();
+			ipaccess_send(link->ofd->fd, rmsg->data, rmsg->len);
+			msgb_free(rmsg);
 		}
 		return 0;
 	} else if (link->port == IPA_TCP_PORT_OML)
