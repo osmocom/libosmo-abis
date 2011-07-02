@@ -79,10 +79,12 @@ static void hsl_drop(struct e1inp_line *line, struct osmo_fd *bfd)
 	line->ops->sign_link_down(line);
 }
 
-static int process_hsl_rsl(struct msgb *msg, struct e1inp_line *line)
+static int process_hsl_rsl(struct msgb *msg, struct e1inp_line *line,
+			   struct osmo_fd *bfd)
 {
 	char serno_buf[16];
 	uint8_t serno_len;
+	struct e1inp_sign_link *sign_link;
 	struct hsl_unit unit_data;
 
 	switch (msg->l2h[1]) {
@@ -98,12 +100,23 @@ static int process_hsl_rsl(struct msgb *msg, struct e1inp_line *line)
 		unit_data.serno = strtoul(serno_buf, NULL, 10);
 
 		if (!line->ops->sign_link_up) {
-			LOGP(DINP, LOGL_ERROR, "Fix your application, "
-				"no action set if the signalling link "
-				"becomes ready\n");
+			LOGP(DINP, LOGL_ERROR,
+			     "Unable to set signal link, closing socket.\n");
+			osmo_fd_unregister(bfd);
+			close(bfd->fd);
+			bfd->fd = -1;
 			return -EINVAL;
 		}
-		line->ops->sign_link_up(&unit_data, line, E1INP_SIGN_NONE);
+		sign_link = line->ops->sign_link_up(&unit_data,
+						    line, E1INP_SIGN_NONE);
+		if (sign_link == NULL) {
+			LOGP(DINP, LOGL_ERROR,
+			     "Unable to set signal link, closing socket.\n");
+			osmo_fd_unregister(bfd);
+			close(bfd->fd);
+			bfd->fd = -1;
+			return -EINVAL;
+		}
 		msgb_free(msg);
 		return 1;       /* == we have taken over the msg */
 	case 0x82:
@@ -144,7 +157,7 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 
 	/* HSL proprietary RSL extension */
 	if (hh->proto == 0 && (msg->l2h[0] == 0x81 || msg->l2h[0] == 0x80)) {
-                ret = process_hsl_rsl(msg, line);
+                ret = process_hsl_rsl(msg, line, bfd);
                 if (ret < 0) {
                         hsl_drop(e1i_ts->line, bfd);
                         return ret;

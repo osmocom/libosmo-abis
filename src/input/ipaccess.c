@@ -281,9 +281,11 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 		ipaccess_parse_unitid(unitid, &unit_data);
 
 		if (!line->ops->sign_link_up) {
-			LOGP(DINP, LOGL_ERROR, "Fix your application, "
-				"no action set if the signalling link "
-				"becomes ready\n");
+			LOGP(DINP, LOGL_ERROR,
+			     "Unable to set signal link, closing socket.\n");
+			osmo_fd_unregister(bfd);
+			close(bfd->fd);
+			bfd->fd = -1;
 			return -EINVAL;
 		}
 		/* the BSC creates the new sign links at this stage. */
@@ -293,7 +295,12 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 							E1INP_SIGN_OML);
 			if (sign_link == NULL) {
 				LOGP(DINP, LOGL_ERROR,
-				     "No OML signal link set by BSC\n");
+					"Unable to set signal link, "
+					"closing socket.\n");
+				osmo_fd_unregister(bfd);
+				close(bfd->fd);
+				bfd->fd = -1;
+				return -EINVAL;
 			}
 		} else if (bfd->priv_nr == E1INP_SIGN_RSL) {
 			struct e1inp_ts *e1i_ts;
@@ -303,8 +310,9 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 				line->ops->sign_link_up(&unit_data, line,
 							E1INP_SIGN_RSL);
 			if (sign_link == NULL) {
-				LOGP(DINP, LOGL_ERROR, "Don't know where "
-					"to attach this RSL link.\n");
+				LOGP(DINP, LOGL_ERROR,
+					"Unable to set signal link, "
+					"closing socket.\n");
 				osmo_fd_unregister(bfd);
 				close(bfd->fd);
 				bfd->fd = -1;
@@ -719,9 +727,12 @@ static int ipaccess_bts_cb(struct ipa_client_link *link, struct msgb *msg)
 
 			LOGP(DINP, LOGL_NOTICE, "received ID get\n");
 			if (!link->line->ops->sign_link_up) {
-				LOGP(DINP, LOGL_ERROR, "Fix your application, "
-					"no action set if the signalling link "
-					"becomes ready\n");
+				LOGP(DINP, LOGL_ERROR,
+					"Unable to set signal link, "
+					"closing socket.\n");
+				osmo_fd_unregister(link->ofd);
+				close(link->ofd->fd);
+				link->ofd->fd = -1;
 				return -EINVAL;
 			}
 			sign_link = link->line->ops->sign_link_up(msg,
@@ -729,7 +740,11 @@ static int ipaccess_bts_cb(struct ipa_client_link *link, struct msgb *msg)
 					link->ofd->priv_nr);
 			if (sign_link == NULL) {
 				LOGP(DINP, LOGL_ERROR,
-					"No sign link created\n");
+					"Unable to set signal link, "
+					"closing socket.\n");
+				osmo_fd_unregister(link->ofd);
+				close(link->ofd->fd);
+				link->ofd->fd = -1;
 				return -EINVAL;
 			}
 			rmsg = ipa_bts_id_resp(link->line->ops->data,
