@@ -11,8 +11,7 @@ extern void *libosmo_abis_ctx;
 void e1inp_init(void);
 
 /* hsl requires these functions defined in ipaccess driver. */
-struct osmo_fd;
-struct msgb *ipaccess_read_msg(struct osmo_fd *bfd, int *error);
+struct msgb;
 void ipaccess_prepend_header(struct msgb *msg, int proto);
 
 #endif
