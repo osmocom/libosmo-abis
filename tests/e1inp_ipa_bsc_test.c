@@ -8,7 +8,7 @@
 static void *tall_test;
 static struct e1inp_sign_link *oml_sign_link, *rsl_sign_link;
 
-#define DBSCTEST OSMO_LOG_SS_APPS
+#define DBSCTEST 0
 
 struct log_info_cat bsc_test_cat[] = {
 	[DBSCTEST] = {

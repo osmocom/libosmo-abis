@@ -1,7 +1,6 @@
 osmoabis_HEADERS = abis.h		\
 		   e1_input.h		\
 		   lapd.h		\
-		   logging.h		\
 		   subchan_demux.h	\
 		   ipa_proxy.h		\
 		   ipaccess.h		\

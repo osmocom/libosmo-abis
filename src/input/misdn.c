@@ -46,7 +46,6 @@
 #include <osmocom/core/logging.h>
 #include <osmocom/abis/e1_input.h>
 #include <talloc.h>
-#include <osmocom/abis/logging.h>
 
 #define TS1_ALLOC_SIZE	300
 

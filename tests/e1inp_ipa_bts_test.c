@@ -10,7 +10,7 @@
 static void *tall_test;
 static struct e1inp_sign_link *oml_sign_link, *rsl_sign_link;
 
-#define DBTSTEST OSMO_LOG_SS_APPS
+#define DBTSTEST 0
 
 struct log_info_cat bts_test_cat[] = {
 	[DBTSTEST] = {

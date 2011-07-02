@@ -13,7 +13,7 @@
 
 static void *tall_test;
 
-#define DIPA_PROXY_TEST OSMO_LOG_SS_APPS
+#define DIPA_PROXY_TEST 0
 
 struct log_info_cat ipa_proxy_test_cat[] = {
 	[DIPA_PROXY_TEST] = {

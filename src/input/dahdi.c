@@ -40,7 +40,6 @@
 #include <osmocom/abis/subchan_demux.h>
 #include <osmocom/abis/e1_input.h>
 #include <osmocom/abis/signal.h>
-#include <osmocom/abis/logging.h>
 #include <talloc.h>
 
 #include <osmocom/abis/lapd.h>

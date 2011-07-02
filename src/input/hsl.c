@@ -51,7 +51,6 @@
 #include <osmocom/core/logging.h>
 #include <osmocom/abis/ipaccess.h>
 #include <osmocom/core/socket.h>
-#include <osmocom/abis/logging.h>
 #include <osmocom/abis/ipa.h>
 #include <talloc.h>
 
