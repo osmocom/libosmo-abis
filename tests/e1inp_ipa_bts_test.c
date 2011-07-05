@@ -77,7 +77,7 @@ static void sign_link_down(struct e1inp_line *line)
 	e1inp_sign_link_destroy(rsl_sign_link);
 }
 
-static int sign_link(struct msgb *msg, struct e1inp_sign_link *link)
+static int sign_link(struct msgb *msg)
 {
 	LOGP(DBTSTEST, LOGL_NOTICE, "OML/RSL message received.\n");
 	return 0;

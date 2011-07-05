@@ -386,7 +386,7 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 			"no action set for signalling messages.\n");
 		return -ENOENT;
 	}
-	e1i_ts->line->ops->sign_link(msg, link);
+	e1i_ts->line->ops->sign_link(msg);
 
 	return ret;
 }
@@ -782,7 +782,7 @@ static int ipaccess_bts_cb(struct ipa_client_link *link, struct msgb *msg)
 			"no action set for signalling messages.\n");
 		return -ENOENT;
 	}
-	link->line->ops->sign_link(msg, sign_link);
+	link->line->ops->sign_link(msg);
 	return 0;
 }
 

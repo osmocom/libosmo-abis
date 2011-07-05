@@ -127,7 +127,7 @@ struct e1inp_line_ops {
 
 	struct e1inp_sign_link *	(*sign_link_up)(void *unit_info, struct e1inp_line *line, enum e1inp_sign_type type);
 	void	(*sign_link_down)(struct e1inp_line *line);
-	int	(*sign_link)(struct msgb *msg, struct e1inp_sign_link *link);
+	int	(*sign_link)(struct msgb *msg);
 };
 
 struct e1inp_line {

@@ -186,7 +186,7 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 			"no action set for signalling messages.\n");
 		return -ENOENT;
 	}
-	e1i_ts->line->ops->sign_link(msg, link);
+	e1i_ts->line->ops->sign_link(msg);
 
 	return ret;
 }
