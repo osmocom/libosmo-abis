@@ -116,7 +116,7 @@ struct e1inp_driver {
 	const char *name;
 	int (*want_write)(struct e1inp_ts *ts);
 	int (*line_update)(struct e1inp_line *line, enum e1inp_line_role role, const char *addr);
-	void (*close)(struct e1inp_ts *ts);
+	void (*close)(struct e1inp_sign_link *link);
 	int default_delay;
 };
 

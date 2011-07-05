@@ -417,9 +417,11 @@ static int ts_want_write(struct e1inp_ts *e1i_ts)
 	return 0;
 }
 
-static void ipaccess_close(struct e1inp_ts *e1i_ts)
+static void ipaccess_close(struct e1inp_sign_link *sign_link)
 {
+	struct e1inp_ts *e1i_ts = sign_link->ts;
 	struct osmo_fd *bfd = &e1i_ts->driver.ipaccess.fd;
+	e1inp_event(e1i_ts, S_INP_TEI_DN, sign_link->tei, sign_link->sapi);
 	osmo_fd_unregister(bfd);
 	close(bfd->fd);
 	bfd->fd = -1;

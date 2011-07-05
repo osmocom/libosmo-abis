@@ -429,7 +429,7 @@ void e1inp_sign_link_destroy(struct e1inp_sign_link *link)
 		osmo_timer_del(&link->ts->sign.tx_timer);
 
 	if (link->ts->line->driver->close)
-		link->ts->line->driver->close(link->ts);
+		link->ts->line->driver->close(link);
 
 	talloc_free(link);
 }
