@@ -4,6 +4,7 @@
 #include <osmocom/abis/e1_input.h>
 #include <osmocom/core/application.h>
 #include <osmocom/core/logging.h>
+#include <osmocom/gsm/protocol/gsm_12_21.h>
 
 static void *tall_test;
 static struct e1inp_sign_link *oml_sign_link, *rsl_sign_link;
@@ -55,10 +56,125 @@ static void sign_link_down(struct e1inp_line *line)
 	e1inp_sign_link_destroy(rsl_sign_link);
 }
 
+static void fill_om_hdr(struct abis_om_hdr *oh, uint8_t len)
+{
+	oh->mdisc = ABIS_OM_MDISC_FOM;
+	oh->placement = ABIS_OM_PLACEMENT_ONLY;
+	oh->sequence = 0;
+	oh->length = len;
+}
+
+static void fill_om_fom_hdr(struct abis_om_hdr *oh, uint8_t len,
+                            uint8_t msg_type, uint8_t obj_class,
+                            uint8_t bts_nr, uint8_t trx_nr, uint8_t ts_nr)
+{
+	struct abis_om_fom_hdr *foh =
+		(struct abis_om_fom_hdr *) oh->data;
+
+	fill_om_hdr(oh, len+sizeof(*foh));
+	foh->msg_type = msg_type;
+	foh->obj_class = obj_class;
+	foh->obj_inst.bts_nr = bts_nr;
+	foh->obj_inst.trx_nr = trx_nr;
+	foh->obj_inst.ts_nr = ts_nr;
+}
+
+#define OM_ALLOC_SIZE           1024
+#define OM_HEADROOM_SIZE        128
+
+static struct msgb *nm_msgb_alloc(void)
+{
+	return msgb_alloc_headroom(OM_ALLOC_SIZE, OM_HEADROOM_SIZE, "OML");
+}
+
+
+static int abis_nm_sw_act_req_ack(struct e1inp_sign_link *sign_link,
+				  uint8_t obj_class,
+				  uint8_t i1, uint8_t i2, uint8_t i3,
+				  uint8_t *attr, int att_len)
+{
+	struct abis_om_hdr *oh;
+	struct msgb *msg = nm_msgb_alloc();
+	uint8_t msgtype = NM_MT_SW_ACT_REQ_ACK;
+
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	fill_om_fom_hdr(oh, att_len, msgtype, obj_class, i1, i2, i3);
+
+	if (attr) {
+		uint8_t *ptr = msgb_put(msg, att_len);
+		memcpy(ptr, attr, att_len);
+	}
+	msg->dst = sign_link;
+	return abis_sendmsg(msg);
+}
+
+static int abis_nm_rx_sw_act_req(struct msgb *msg)
+{
+	struct abis_om_hdr *oh = msgb_l2(msg);
+	struct abis_om_fom_hdr *foh = msgb_l3(msg);
+	int ret;
+
+        ret = abis_nm_sw_act_req_ack(msg->dst,
+				     foh->obj_class,
+				     foh->obj_inst.bts_nr,
+				     foh->obj_inst.trx_nr,
+				     foh->obj_inst.ts_nr,
+				     foh->data, oh->length-sizeof(*foh));
+
+	return ret;
+}
+
+static int abis_nm_rcvmsg_fom(struct msgb *msg)
+{
+	struct abis_om_fom_hdr *foh = msgb_l3(msg);
+	uint8_t mt = foh->msg_type;
+	int ret = 0;
+
+	switch (mt) {
+	case NM_MT_SW_ACT_REQ:	/* Software activate request from BTS. */
+		ret = abis_nm_rx_sw_act_req(msg);
+		break;
+	default:
+		break;
+	}
+	return ret;
+}
+
+static int abis_nm_rcvmsg(struct msgb *msg)
+{
+	int ret = 0;
+	struct abis_om_hdr *oh = msgb_l2(msg);
+
+	msg->l3h = (unsigned char *)oh + sizeof(*oh);
+	switch (oh->mdisc) {
+	case ABIS_OM_MDISC_FOM:
+		ret = abis_nm_rcvmsg_fom(msg);
+		break;
+	default:
+		LOGP(DBSCTEST, LOGL_ERROR, "unknown OML message\n");
+		break;
+	}
+	return ret;
+}
+
 static int sign_link(struct msgb *msg)
 {
-	LOGP(DBSCTEST, LOGL_NOTICE, "OML/RSL message received.\n");
-	return 0;
+	int ret = 0;
+	struct e1inp_sign_link *link = msg->dst;
+
+	switch(link->type) {
+	case E1INP_SIGN_RSL:
+		LOGP(DBSCTEST, LOGL_NOTICE, "RSL message received.\n");
+		break;
+	case E1INP_SIGN_OML:
+		LOGP(DBSCTEST, LOGL_NOTICE, "OML message received.\n");
+		ret = abis_nm_rcvmsg(msg);
+		break;
+	default:
+		LOGP(DBSCTEST, LOGL_ERROR, "Unknown signallin message.\n");
+		break;
+	}
+	return ret;
 }
 
 const struct log_info bsc_test_log_info = {
