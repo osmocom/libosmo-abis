@@ -216,6 +216,8 @@ struct subch_mux *e1inp_get_mux(uint8_t e1_nr, uint8_t ts_nr);
 void e1inp_sign_link_destroy(struct e1inp_sign_link *link);
 int e1inp_line_update(struct e1inp_line *line);
 
+int e1inp_vty_init(void);
+
 struct gsm_network;
 int ipaccess_setup(struct gsm_network *gsmnet);
 int hsl_setup(struct gsm_network *gsmnet);
