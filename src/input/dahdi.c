@@ -43,7 +43,7 @@
 #include <osmocom/abis/logging.h>
 #include <talloc.h>
 
-#include "lapd.h"
+#include <osmocom/abis/lapd.h>
 
 #define TS1_ALLOC_SIZE	300
 

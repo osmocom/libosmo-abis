@@ -1,3 +1,3 @@
-noinst_HEADERS=mISDNif.h internal.h lapd.h
+noinst_HEADERS=mISDNif.h internal.h
 
 SUBDIRS=osmocom

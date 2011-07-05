@@ -36,7 +36,7 @@
 #include <assert.h>
 #include <errno.h>
 
-#include "lapd.h"
+#include <osmocom/abis/lapd.h>
 
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/logging.h>
