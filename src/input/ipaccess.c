@@ -134,8 +134,7 @@ int ipaccess_parse_unitid(const char *str, struct ipaccess_unit *unit_data)
 	ul = strtoul(nptr, &endptr, 10);
 	if (endptr <= nptr)
 		return -EINVAL;
-	if (unit_data->site_id)
-		unit_data->site_id = ul & 0xffff;
+	unit_data->site_id = ul & 0xffff;
 
 	if (*endptr++ != '/')
 		return -EINVAL;
@@ -144,8 +143,7 @@ int ipaccess_parse_unitid(const char *str, struct ipaccess_unit *unit_data)
 	ul = strtoul(nptr, &endptr, 10);
 	if (endptr <= nptr)
 		return -EINVAL;
-	if (unit_data->bts_id)
-		unit_data->bts_id = ul & 0xffff;
+	unit_data->bts_id = ul & 0xffff;
 
 	if (*endptr++ != '/')
 		return -EINVAL;
@@ -154,8 +152,7 @@ int ipaccess_parse_unitid(const char *str, struct ipaccess_unit *unit_data)
 	ul = strtoul(nptr, &endptr, 10);
 	if (endptr <= nptr)
 		return -EINVAL;
-	if (unit_data->trx_id)
-		unit_data->trx_id = ul & 0xffff;
+	unit_data->trx_id = ul & 0xffff;
 
 	return 0;
 }
