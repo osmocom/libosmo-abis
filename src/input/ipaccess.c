@@ -462,9 +462,7 @@ static int __handle_ts1_write(struct osmo_fd *bfd, struct e1inp_line *line)
 	}
 
 	msg->l2h = msg->data;
-	/* This is an IPA CCM, it already contains the header, skip. */
-	if (msgb_tailroom(msg) < sizeof(struct ipaccess_head))
-		ipaccess_prepend_header(msg, sign_link->tei);
+	ipaccess_prepend_header(msg, sign_link->tei);
 
 	DEBUGP(DMI, "TX %u: %s\n", ts_nr, osmo_hexdump(msg->l2h, msgb_l2len(msg)));
 
