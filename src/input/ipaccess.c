@@ -232,23 +232,27 @@ int ipaccess_rcvmsg_bts_base(struct msgb *msg,
 	return 0;
 }
 
-static void ipaccess_drop(struct osmo_fd *bfd)
+static int ipaccess_drop(struct osmo_fd *bfd)
 {
+	int ret = 0;
 	struct e1inp_line *line = bfd->data;
 
 	/* e1inp_sign_link_destroy releases the socket descriptors for us. */
 	line->ops->sign_link_down(line);
 
-	/* RSL connection without ID_RESP, release temporary socket. */
-	if (line->ts[E1INP_SIGN_OML-1].type == E1INP_SIGN_NONE) {
+	/* Error case: we did not see any ID_RESP yet for this socket. */
+	if (bfd->fd != -1) {
+		LOGP(DINP, LOGL_ERROR, "Forcing socket shutdown with "
+					"no signal link set\n");
 		osmo_fd_unregister(bfd);
 		close(bfd->fd);
 		bfd->fd = -1;
-		talloc_free(bfd);
+		ret = -ENOENT;
 	}
 	/* release the virtual E1 line that we cloned for this socket,
 	 * OML and RSL links should have been closed after sign_link_down. */
 	talloc_free(line);
+	return ret;
 }
 
 static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
@@ -273,17 +277,25 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 						msgb_l2len(msg)-2);
 		DEBUGP(DMI, "\n");
 		if (ret < 0) {
-			LOGP(DINP, LOGL_ERROR, "ignoring IPA response message "
+			LOGP(DINP, LOGL_ERROR, "IPA response message "
 				"with malformed TLVs\n");
-			return ret;
+			ret = -EINVAL;
+			goto err;
 		}
-		if (!TLVP_PRESENT(&tlvp, IPAC_IDTAG_UNIT))
-			break;
+		if (!TLVP_PRESENT(&tlvp, IPAC_IDTAG_UNIT)) {
+			LOGP(DINP, LOGL_ERROR, "IPA response message "
+				"without unit ID\n");
+			ret = -EINVAL;
+			goto err;
 
+		}
 		len = TLVP_LEN(&tlvp, IPAC_IDTAG_UNIT);
-		if (len < 1)
-			break;
-
+		if (len < 1) {
+			LOGP(DINP, LOGL_ERROR, "IPA response message "
+				"with too small unit ID\n");
+			ret = -EINVAL;
+			goto err;
+		}
 		unitid = (char *) TLVP_VAL(&tlvp, IPAC_IDTAG_UNIT);
 		unitid[len - 1] = '\0';
 		ipaccess_parse_unitid(unitid, &unit_data);
@@ -291,10 +303,8 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 		if (!line->ops->sign_link_up) {
 			LOGP(DINP, LOGL_ERROR,
 			     "Unable to set signal link, closing socket.\n");
-			osmo_fd_unregister(bfd);
-			close(bfd->fd);
-			bfd->fd = -1;
-			return -EINVAL;
+			ret = -EINVAL;
+			goto err;
 		}
 		/* the BSC creates the new sign links at this stage. */
 		if (bfd->priv_nr == E1INP_SIGN_OML) {
@@ -305,10 +315,8 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 				LOGP(DINP, LOGL_ERROR,
 					"Unable to set signal link, "
 					"closing socket.\n");
-				osmo_fd_unregister(bfd);
-				close(bfd->fd);
-				bfd->fd = -1;
-				return -EINVAL;
+				ret = -EINVAL;
+				goto err;
 			}
 		} else if (bfd->priv_nr == E1INP_SIGN_RSL) {
 			struct e1inp_ts *e1i_ts;
@@ -321,11 +329,8 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 				LOGP(DINP, LOGL_ERROR,
 					"Unable to set signal link, "
 					"closing socket.\n");
-				osmo_fd_unregister(bfd);
-				close(bfd->fd);
-				bfd->fd = -1;
-				talloc_free(bfd);
-				return 0;
+				ret = -EINVAL;
+				goto err;
 			}
 			/* Finally, we know which OML link is associated with
 			 * this RSL link, attach it to this socket. */
@@ -342,8 +347,17 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 			osmo_fd_register(newbfd);
 		}
 		break;
+	default:
+		LOGP(DINP, LOGL_ERROR, "Unknown IPA message type\n");
+		ret = -EINVAL;
+		goto err;
 	}
 	return 0;
+err:
+	osmo_fd_unregister(bfd);
+	close(bfd->fd);
+	bfd->fd = -1;
+	return ret;
 }
 
 static int handle_ts1_read(struct osmo_fd *bfd)
@@ -360,8 +374,10 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 	if (error < 0)
 		return error;
 	else if (error == 0) {
-		ipaccess_drop(bfd);
-		LOGP(DINP, LOGL_NOTICE, "Sign link vanished, dead socket\n");
+		if (ipaccess_drop(bfd) >= 0) {
+			LOGP(DINP, LOGL_NOTICE, "Sign link vanished, "
+						"dead socket\n");
+		}
 		return error;
 	}
 	DEBUGP(DMI, "RX %u: %s\n", ts_nr, osmo_hexdump(msgb_l2(msg), msgb_l2len(msg)));
@@ -391,10 +407,20 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 	if (!e1i_ts->line->ops->sign_link) {
 		LOGP(DINP, LOGL_ERROR, "Fix your application, "
 			"no action set for signalling messages.\n");
-		return -ENOENT;
+		ret = -EINVAL;
+		goto err;
 	}
-	e1i_ts->line->ops->sign_link(msg);
-
+	if (e1i_ts->line->ops->sign_link(msg) < 0) {
+		LOGP(DINP, LOGL_ERROR, "Bad signalling message,"
+				       "closing socket.\n");
+		ret = -EINVAL;
+		goto err;
+	}
+	return ret;
+err:
+	osmo_fd_unregister(bfd);
+	close(bfd->fd);
+	bfd->fd = -1;
 	return ret;
 }
 
