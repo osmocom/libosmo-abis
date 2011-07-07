@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <errno.h>
 #include <string.h>
 #include <time.h>
@@ -186,25 +187,28 @@ int ipaccess_send_id_req(int fd)
 }
 
 /* base handling of the ip.access protocol */
-int ipaccess_rcvmsg_base(struct msgb *msg,
-			 struct osmo_fd *bfd)
+static bool ipaccess_rcvmsg_base(struct msgb *msg, struct osmo_fd *bfd)
 {
+	bool ipa_ccm = false;
 	uint8_t msg_type = *(msg->l2h);
 	int ret = 0;
 
 	switch (msg_type) {
 	case IPAC_MSGT_PING:
+		ipa_ccm = true;
 		ret = ipaccess_send_pong(bfd->fd);
 		break;
 	case IPAC_MSGT_PONG:
 		DEBUGP(DMI, "PONG!\n");
+		ipa_ccm = true;
 		break;
 	case IPAC_MSGT_ID_ACK:
 		DEBUGP(DMI, "ID_ACK? -> ACK!\n");
+		ipa_ccm = true;
 		ret = ipaccess_send_id_ack(bfd->fd);
 		break;
 	}
-	return 0;
+	return ipa_ccm;
 }
 
 /* base handling of the ip.access protocol */
@@ -257,8 +261,9 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 	char *unitid;
 	int len, ret;
 
-	/* handle base messages */
-	ipaccess_rcvmsg_base(msg, bfd);
+	/* Handle IPA PING, PONG and ID_ACK messages. */
+	if (ipaccess_rcvmsg_base(msg, bfd))
+		return 0;
 
 	switch (msg_type) {
 	case IPAC_MSGT_ID_RESP:
