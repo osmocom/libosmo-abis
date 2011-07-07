@@ -47,7 +47,7 @@ DEFUN(cfg_e1line_driver, cfg_e1_line_driver_cmd,
 	struct e1inp_line *line;
 	int e1_nr = atoi(argv[0]);
 
-	line = e1inp_line_get(e1_nr);
+	line = e1inp_line_find(e1_nr);
 	if (line) {
 		vty_out(vty, "%% Line %d already exists%s", e1_nr, VTY_NEWLINE);
 		return CMD_WARNING;

@@ -269,7 +269,7 @@ int e1inp_ts_config_sign(struct e1inp_ts *ts, struct e1inp_line *line)
 	return 0;
 }
 
-struct e1inp_line *e1inp_line_get(uint8_t e1_nr)
+struct e1inp_line *e1inp_line_find(uint8_t e1_nr)
 {
 	struct e1inp_line *e1i_line;
 
@@ -288,7 +288,7 @@ e1inp_line_create(uint8_t e1_nr, const char *driver_name)
 	struct e1inp_line *line;
 	int i;
 
-	line = e1inp_line_get(e1_nr);
+	line = e1inp_line_find(e1_nr);
 	if (line) {
 		LOGP(DINP, LOGL_ERROR, "E1 Line %u already exists\n",
 		     e1_nr);
@@ -313,9 +313,37 @@ e1inp_line_create(uint8_t e1_nr, const char *driver_name)
 		line->ts[i].num = i+1;
 		line->ts[i].line = line;
 	}
+	line->refcnt++;
 	llist_add_tail(&line->list, &e1inp_line_list);
 
 	return line;
+}
+
+struct e1inp_line *
+e1inp_line_clone(void *ctx, struct e1inp_line *line)
+{
+	struct e1inp_line *clone;
+
+	/* clone virtual E1 line for this new OML link. */
+	clone = talloc_zero(ctx, struct e1inp_line);
+	if (clone == NULL)
+	        return NULL;
+
+	memcpy(clone, line, sizeof(struct e1inp_line));
+	clone->refcnt = 1;
+	return clone;
+}
+
+void e1inp_line_get(struct e1inp_line *line)
+{
+	line->refcnt++;
+}
+
+void e1inp_line_put(struct e1inp_line *line)
+{
+	line->refcnt--;
+	if (line->refcnt == 0)
+		talloc_free(line);
 }
 
 void
@@ -325,12 +353,12 @@ e1inp_line_bind_ops(struct e1inp_line *line, const struct e1inp_line_ops *ops)
 }
 
 #if 0
-struct e1inp_line *e1inp_line_get_create(uint8_t e1_nr)
+struct e1inp_line *e1inp_line_find_create(uint8_t e1_nr)
 {
 	struct e1inp_line *line;
 	int i;
 
-	line = e1inp_line_get(e1_nr);
+	line = e1inp_line_find(e1_nr);
 	if (line)
 		return line;
 
@@ -353,7 +381,7 @@ static struct e1inp_ts *e1inp_ts_get(uint8_t e1_nr, uint8_t ts_nr)
 {
 	struct e1inp_line *e1i_line;
 
-	e1i_line = e1inp_line_get(e1_nr);
+	e1i_line = e1inp_line_find(e1_nr);
 	if (!e1i_line)
 		return NULL;
 
@@ -549,8 +577,10 @@ int e1inp_line_update(struct e1inp_line *line)
 	struct input_signal_data isd;
 	int rc;
 
+	e1inp_line_get(line);
+
 	/* This line has been already initialized, skip this. */
-	if (++line->refcnt > 1)
+	if (line->refcnt > 2)
 		return 0;
 
 	if (line->driver && line->ops && line->driver->line_update) {

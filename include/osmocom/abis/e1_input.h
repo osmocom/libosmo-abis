@@ -166,10 +166,19 @@ struct e1inp_driver *e1inp_driver_find(const char *name);
 int e1inp_line_register(struct e1inp_line *line);
 
 /* get a line by its ID */
-struct e1inp_line *e1inp_line_get(uint8_t e1_nr);
+struct e1inp_line *e1inp_line_find(uint8_t e1_nr);
 
 /* create a line in the E1 input core */
 struct e1inp_line *e1inp_line_create(uint8_t e1_nr, const char *driver_name);
+
+/* clone one existing E1 input line */
+struct e1inp_line *e1inp_line_clone(void *ctx, struct e1inp_line *line);
+
+/* increment refcount use of E1 input line */
+void e1inp_line_get(struct e1inp_line *line);
+
+/* decrement refcount use of E1 input line, release if unused */
+void e1inp_line_put(struct e1inp_line *line);
 
 /* bind operations to one E1 input line */
 void e1inp_line_bind_ops(struct e1inp_line *line, const struct e1inp_line_ops *ops);

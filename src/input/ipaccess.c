@@ -249,9 +249,9 @@ static int ipaccess_drop(struct osmo_fd *bfd)
 		bfd->fd = -1;
 		ret = -ENOENT;
 	}
-	/* release the virtual E1 line that we cloned for this socket,
-	 * OML and RSL links should have been closed after sign_link_down. */
-	talloc_free(line);
+	/* put the virtual E1 line that we cloned for this socket, if
+	 * it becomes unused, it gets released. */
+	e1inp_line_put(line);
 	return ret;
 }
 
@@ -319,8 +319,9 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 				goto err;
 			}
 		} else if (bfd->priv_nr == E1INP_SIGN_RSL) {
-			struct e1inp_ts *e1i_ts;
+			struct e1inp_ts *ts;
                         struct osmo_fd *newbfd;
+			struct e1inp_line *new_line;
 
 			sign_link =
 				line->ops->sign_link_up(&unit_data, line,
@@ -334,17 +335,19 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 			}
 			/* Finally, we know which OML link is associated with
 			 * this RSL link, attach it to this socket. */
-			bfd->data = line = sign_link->ts->line;
-			e1i_ts = &line->ts[E1INP_SIGN_RSL+unit_data.trx_id-1];
-			newbfd = &e1i_ts->driver.ipaccess.fd;
+			bfd->data = new_line = sign_link->ts->line;
+			e1inp_line_get(new_line);
+			ts = &new_line->ts[E1INP_SIGN_RSL+unit_data.trx_id-1];
+			newbfd = &ts->driver.ipaccess.fd;
 
 			/* get rid of our old temporary bfd */
 			memcpy(newbfd, bfd, sizeof(*newbfd));
 			newbfd->priv_nr = E1INP_SIGN_RSL + unit_data.trx_id;
 			osmo_fd_unregister(bfd);
 			bfd->fd = -1;
-			talloc_free(bfd);
 			osmo_fd_register(newbfd);
+			/* now we can release the dummy RSL line. */
+			e1inp_line_put(line);
 		}
 		break;
 	default:
@@ -357,6 +360,7 @@ err:
 	osmo_fd_unregister(bfd);
 	close(bfd->fd);
 	bfd->fd = -1;
+	e1inp_line_put(line);
 	return ret;
 }
 
@@ -364,7 +368,7 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
-	struct e1inp_ts *e1i_ts = NULL;
+	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
 	struct e1inp_sign_link *link;
 	struct ipaccess_head *hh;
 	struct msgb *msg;
@@ -381,9 +385,6 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 		return error;
 	}
 	DEBUGP(DMI, "RX %u: %s\n", ts_nr, osmo_hexdump(msgb_l2(msg), msgb_l2len(msg)));
-
-	/* Now that we're sure that we've got a line for socket. */
-	e1i_ts = &line->ts[ts_nr-1];
 
 	hh = (struct ipaccess_head *) msg->data;
 	if (hh->proto == IPAC_PROTO_IPACCESS) {
@@ -421,6 +422,7 @@ err:
 	osmo_fd_unregister(bfd);
 	close(bfd->fd);
 	bfd->fd = -1;
+	e1inp_line_put(line);
 	return ret;
 }
 
@@ -566,12 +568,11 @@ static int ipaccess_bsc_oml_cb(struct ipa_server_link *link, int fd)
 	struct osmo_fd *bfd;
 
 	/* clone virtual E1 line for this new OML link. */
-	line = talloc_zero(tall_ipa_ctx, struct e1inp_line);
+	line = e1inp_line_clone(tall_ipa_ctx, link->line);
 	if (line == NULL) {
 		LOGP(DINP, LOGL_ERROR, "could not clone E1 line\n");
 		return -1;
 	}
-	memcpy(line, link->line, sizeof(struct e1inp_line));
 
 	/* create virrtual E1 timeslots for signalling */
 	e1inp_ts_config_sign(&line->ts[E1INP_SIGN_OML-1], line);
@@ -592,6 +593,7 @@ static int ipaccess_bsc_oml_cb(struct ipa_server_link *link, int fd)
 	if (ret < 0) {
 		LOGP(DINP, LOGL_ERROR, "could not register FD\n");
 		close(bfd->fd);
+		e1inp_line_put(line);
 		return ret;
 	}
 
@@ -603,18 +605,31 @@ static int ipaccess_bsc_oml_cb(struct ipa_server_link *link, int fd)
 
 static int ipaccess_bsc_rsl_cb(struct ipa_server_link *link, int fd)
 {
+	struct e1inp_line *line;
+	struct e1inp_ts *e1i_ts;
 	struct osmo_fd *bfd;
-	int ret;
+	int i, ret;
 
         /* We don't know yet which OML link to associate it with. Thus, we
-         * allocate a temporary bfd until we have received ID. */
-	bfd = talloc_zero(tall_ipa_ctx, struct osmo_fd);
-	if (!bfd)
-		return -ENOMEM;
+         * allocate a temporary E1 line until we have received ID. */
+	line = e1inp_line_clone(tall_ipa_ctx, link->line);
+	if (line == NULL) {
+		LOGP(DINP, LOGL_ERROR, "could not clone E1 line\n");
+		return -1;
+	}
+	/* initialize the fds */
+	for (i = 0; i < ARRAY_SIZE(line->ts); ++i)
+		line->ts[i].driver.ipaccess.fd.fd = -1;
 
+	/* we need this to initialize this in case to avoid crashes in case
+	 * that the socket is closed before we've seen an ID_RESP. */
+	e1inp_ts_config_sign(&line->ts[E1INP_SIGN_OML-1], line);
+
+	e1i_ts = &line->ts[E1INP_SIGN_RSL-1];
+
+	bfd = &e1i_ts->driver.ipaccess.fd;
 	bfd->fd = fd;
-	/* This dummy line is replaced once we can attach it to the OML link */
-	bfd->data = link->line;
+	bfd->data = line;
 	bfd->priv_nr = E1INP_SIGN_RSL;
 	bfd->cb = ipaccess_fd_cb;
 	bfd->when = BSC_FD_READ;
@@ -622,7 +637,7 @@ static int ipaccess_bsc_rsl_cb(struct ipa_server_link *link, int fd)
 	if (ret < 0) {
 		LOGP(DINP, LOGL_ERROR, "could not register FD\n");
 		close(bfd->fd);
-		talloc_free(bfd);
+		e1inp_line_put(line);
 		return ret;
 	}
 	/* Request ID. FIXME: request LOCATION, HW/SW VErsion, Unit Name, Serno */
