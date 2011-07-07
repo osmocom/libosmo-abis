@@ -242,6 +242,9 @@ static void ipaccess_drop(struct osmo_fd *bfd)
 		bfd->fd = -1;
 		talloc_free(bfd);
 	}
+	/* release the virtual E1 line that we cloned for this socket,
+	 * OML and RSL links should have been closed after sign_link_down. */
+	talloc_free(line);
 }
 
 static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
