@@ -236,8 +236,12 @@ static void ipaccess_drop(struct osmo_fd *bfd)
 	line->ops->sign_link_down(line);
 
 	/* RSL connection without ID_RESP, release temporary socket. */
-	if (line->ts[E1INP_SIGN_OML-1].type == E1INP_SIGN_NONE)
+	if (line->ts[E1INP_SIGN_OML-1].type == E1INP_SIGN_NONE) {
+		osmo_fd_unregister(bfd);
+		close(bfd->fd);
+		bfd->fd = -1;
 		talloc_free(bfd);
+	}
 }
 
 static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
