@@ -405,12 +405,6 @@ static int hsl_line_update(struct e1inp_line *line,
 	return ret;
 }
 
-int hsl_setup(struct gsm_network *gsmnet)
-{
-	e1h->gsmnet = gsmnet;
-	return 0;
-}
-
 void e1inp_hsl_init(void)
 {
 	tall_hsl_ctx = talloc_named_const(libosmo_abis_ctx, 1, "hsl");
