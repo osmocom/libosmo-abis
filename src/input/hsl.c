@@ -307,6 +307,19 @@ static int hsl_fd_cb(struct osmo_fd *bfd, unsigned int what)
 	return rc;
 }
 
+static void hsl_close(struct e1inp_sign_link *sign_link)
+{
+	struct e1inp_ts *ts = sign_link->ts;
+	struct osmo_fd *bfd = &ts->driver.ipaccess.fd;
+	e1inp_event(ts, S_INP_TEI_DN, sign_link->tei, sign_link->sapi);
+	/* the first e1inp_sign_link_destroy call closes the socket. */
+	if (bfd->fd != -1) {
+		osmo_fd_unregister(bfd);
+		close(bfd->fd);
+		bfd->fd = -1;
+	}
+}
+
 static int hsl_line_update(struct e1inp_line *line,
 			   enum e1inp_line_role role, const char *addr);
 
@@ -314,6 +327,7 @@ struct e1inp_driver hsl_driver = {
 	.name = "hsl",
 	.want_write = ts_want_write,
 	.line_update = hsl_line_update,
+	.close = hsl_close,
 	.default_delay = 0,
 };
 
