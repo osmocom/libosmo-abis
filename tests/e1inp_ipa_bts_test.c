@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <talloc.h>
 #include <string.h>
+#include <unistd.h>
 #include <osmocom/abis/abis.h>
 #include <osmocom/abis/e1_input.h>
 #include <osmocom/core/logging.h>
@@ -34,6 +35,9 @@ enum bts_state_machine {
 	BTS_TEST_OML_WAIT_SW_ACT_ACK,
 };
 
+static struct osmo_fd bts_eventfd;
+static int eventfds[2];
+
 static enum bts_state_machine bts_state = BTS_TEST_OML_SIGN_LINK_DOWN;
 
 static struct e1inp_sign_link *
@@ -55,8 +59,18 @@ sign_link_up(void *unit, struct e1inp_line *line, enum e1inp_sign_type type)
 				"cannot create OML sign link\n");
 		}
 		dst = oml_sign_link;
-		/* Now we can send OML messages to the BSC. */
-		bts_state = BTS_TEST_OML_SIGN_LINK_UP;
+		if (oml_sign_link) {
+			unsigned int event_type = 0;
+
+			/* tell GSM 12.21 that we're ready via our eventfd. */
+			if (write(eventfds[1], &event_type,
+						sizeof(unsigned int)) < 0) {
+				LOGP(DBTSTEST, LOGL_ERROR, "cannot write "
+							   "event fd.\n");
+			}
+			/* Now we can send OML messages to the BSC. */
+			bts_state = BTS_TEST_OML_SIGN_LINK_UP;
+		}
 		break;
 	case E1INP_SIGN_RSL:
 		LOGP(DBTSTEST, LOGL_NOTICE, "RSL link up request received.\n");
@@ -192,6 +206,30 @@ static int abis_nm_sw_act_req(struct e1inp_sign_link *sign_link,
 	return abis_sendmsg(msg);
 }
 
+static int test_bts_gsm_12_21_cb(struct osmo_fd *ofd, unsigned int what)
+{
+	int ret;
+	struct ipaccess_unit *unit = ofd->data;
+
+	switch(bts_state) {
+	case BTS_TEST_OML_SIGN_LINK_DOWN:
+		/* Do nothing until OML link becomes ready. */
+		break;
+	case BTS_TEST_OML_SIGN_LINK_UP:
+		/* OML link is up, send SW ACT REQ. */
+		ret = abis_nm_sw_act_req(oml_sign_link, 0,
+					 unit->bts_id,
+					 unit->trx_id,
+					 0, NULL, 0);
+		bts_state = BTS_TEST_OML_WAIT_SW_ACT_ACK;
+		break;
+	case BTS_TEST_OML_WAIT_SW_ACT_ACK:
+		/* ... things should continue after this. */
+		break;
+	}
+	return 0;
+}
+
 int main(void)
 {
 	struct ipaccess_unit bts_dev_info = {
@@ -238,27 +276,21 @@ int main(void)
 
 	LOGP(DBTSTEST, LOGL_NOTICE, "entering main loop\n");
 
+	if (pipe(eventfds) < 0) {
+		LOGP(DBTSTEST, LOGL_ERROR, "cannot create pipe fds\n");
+		exit(EXIT_FAILURE);
+	}
+	bts_eventfd.fd = eventfds[0];
+	bts_eventfd.cb = test_bts_gsm_12_21_cb;
+	bts_eventfd.when = BSC_FD_READ;
+	bts_eventfd.data = &bts_dev_info;
+	if (osmo_fd_register(&bts_eventfd) < 0) {
+		LOGP(DBTSTEST, LOGL_ERROR, "could not register event fd\n");
+		exit(EXIT_FAILURE);
+	}
+
 	while (1) {
-		int ret;
-
 		osmo_select_main(0);
-
-		switch(bts_state) {
-		case BTS_TEST_OML_SIGN_LINK_DOWN:
-			/* Do nothing until OML link becomes ready. */
-			break;
-		case BTS_TEST_OML_SIGN_LINK_UP:
-			/* OML link is up, send SW ACT REQ. */
-			ret = abis_nm_sw_act_req(oml_sign_link, 0,
-						 bts_dev_info.bts_id,
-						 bts_dev_info.trx_id,
-						 0, NULL, 0);
-			bts_state = BTS_TEST_OML_WAIT_SW_ACT_ACK;
-			break;
-		case BTS_TEST_OML_WAIT_SW_ACT_ACK:
-			/* ... things should continue after this. */
-			break;
-		}
 	}
 	return 0;
 }
