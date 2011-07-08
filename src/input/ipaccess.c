@@ -543,7 +543,7 @@ int ipaccess_bts_write_cb(struct ipa_client_link *link)
 }
 
 /* callback from select.c in case one of the fd's can be read/written */
-static int ipaccess_fd_cb(struct osmo_fd *bfd, unsigned int what)
+int ipaccess_fd_cb(struct osmo_fd *bfd, unsigned int what)
 {
 	int rc = 0;
 
