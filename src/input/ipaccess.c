@@ -333,6 +333,15 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 				ret = -EINVAL;
 				goto err;
 			}
+			/* this is a bugtrap, the BSC should be using the
+			 * virtual E1 line used by OML for this RSL link. */
+			if (sign_link->ts->line == line) {
+				LOGP(DINP, LOGL_ERROR,
+					"Fix your BSC, you should use the "
+					"E1 line used by the OML link for "
+					"your RSL link.\n");
+				return 0;
+			}
 			/* Finally, we know which OML link is associated with
 			 * this RSL link, attach it to this socket. */
 			bfd->data = new_line = sign_link->ts->line;
