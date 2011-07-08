@@ -62,8 +62,10 @@ sign_link_up(void *dev, struct e1inp_line *line, enum e1inp_sign_type type)
 static void sign_link_down(struct e1inp_line *line)
 {
 	LOGP(DBSCTEST, LOGL_NOTICE, "signal link has been closed\n");
-	e1inp_sign_link_destroy(oml_sign_link);
-	e1inp_sign_link_destroy(rsl_sign_link);
+	if (oml_sign_link)
+		e1inp_sign_link_destroy(oml_sign_link);
+	if (rsl_sign_link)
+		e1inp_sign_link_destroy(rsl_sign_link);
 }
 
 static void fill_om_hdr(struct abis_om_hdr *oh, uint8_t len)
