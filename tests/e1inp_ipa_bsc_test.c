@@ -24,6 +24,7 @@ static struct e1inp_sign_link *
 sign_link_up(void *dev, struct e1inp_line *line, enum e1inp_sign_type type)
 {
 	struct e1inp_sign_link *sign_link = NULL;
+	struct e1inp_line *oml_line;
 
 	switch(type) {
 	case E1INP_SIGN_OML:
@@ -34,11 +35,20 @@ sign_link_up(void *dev, struct e1inp_line *line, enum e1inp_sign_type type)
 					       E1INP_SIGN_OML, NULL, 255, 0);
 		break;
 	case E1INP_SIGN_RSL:
+		if (!oml_sign_link) {
+			LOGP(DBSCTEST, LOGL_ERROR, "OML link not yet set, "
+						   "giving up\n");
+			return NULL;
+		}
 		LOGP(DBSCTEST, LOGL_NOTICE, "RSL link up request received.\n");
-		e1inp_ts_config_sign(&line->ts[E1INP_SIGN_RSL - 1], line);
+
+		/* We have to use the same line that the OML link. */
+		oml_line = oml_sign_link->ts->line;
+		e1inp_ts_config_sign(&oml_line->ts[E1INP_SIGN_RSL - 1],
+				     oml_line);
 		sign_link = rsl_sign_link =
-			e1inp_sign_link_create(&line->ts[E1INP_SIGN_RSL - 1],
-					       E1INP_SIGN_OML, NULL, 0, 0);
+		     e1inp_sign_link_create(&oml_line->ts[E1INP_SIGN_RSL - 1],
+					    E1INP_SIGN_RSL, NULL, 0, 0);
 		break;
 	default:
 		break;
