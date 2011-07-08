@@ -109,6 +109,6 @@ struct hsl_unit {
 };
 
 /* quick solution to get openBSC's ipaccess tools working. */
-int ipaccess_fd_cb(struct osmo_fd *bfd, unsigned int what);
+extern int ipaccess_fd_cb(struct osmo_fd *bfd, unsigned int what);
 
 #endif /* _OSMO_PROTO_IPACCESS_H */
