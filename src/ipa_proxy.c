@@ -188,6 +188,7 @@ ipa_sock_src_accept_cb(struct ipa_server_link *link, int fd)
 	conn->dst = ipa_client_link_create(NULL, NULL, NULL, 0,
 					   route->shared->dst.inst->net.addr,
 					   route->shared->dst.inst->net.port,
+					   NULL,
 					   ipa_sock_dst_cb,
 					   ipa_client_write_default_cb,
 					   conn);

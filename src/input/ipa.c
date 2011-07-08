@@ -24,9 +24,26 @@
 
 #define IPA_ALLOC_SIZE 1200
 
-static struct msgb *ipa_msg_alloc(void)
+struct msgb *ipa_msg_alloc(int headroom)
 {
-	return msgb_alloc(IPA_ALLOC_SIZE, "Abis/IP");
+	struct msgb *nmsg;
+
+	headroom += sizeof(struct ipaccess_head);
+
+	nmsg = msgb_alloc_headroom(1200 + headroom, headroom, "Abis/IP");
+	if (!nmsg)
+		return NULL;
+	return nmsg;
+}
+
+void ipa_msg_push_header(struct msgb *msg, uint8_t proto)
+{
+	struct ipaccess_head *hh;
+
+	msg->l2h = msg->data;
+	hh = (struct ipaccess_head *) msgb_push(msg, sizeof(*hh));
+	hh->proto = proto;
+	hh->len = htons(msgb_l2len(msg));
 }
 
 int ipa_msg_recv(int fd, struct msgb **rmsg)
@@ -35,7 +52,7 @@ int ipa_msg_recv(int fd, struct msgb **rmsg)
 	struct ipaccess_head *hh;
 	int len, ret;
 
-	msg = ipa_msg_alloc();
+	msg = ipa_msg_alloc(0);
 	if (msg == NULL)
 		return -ENOMEM;
 
@@ -166,6 +183,8 @@ int ipa_client_fd_cb(struct osmo_fd *ofd, unsigned int what)
 		ofd->when &= ~BSC_FD_WRITE;
 		LOGP(DINP, LOGL_NOTICE, "connection done.\n");
 		link->state = IPA_CLIENT_LINK_STATE_CONNECTED;
+		if (link->connect_cb)
+			link->connect_cb(link);
 		break;
 	case IPA_CLIENT_LINK_STATE_CONNECTED:
 		if (what & BSC_FD_READ) {
@@ -188,6 +207,7 @@ static void ipa_link_timer_cb(void *data);
 struct ipa_client_link *
 ipa_client_link_create(void *ctx, struct e1inp_ts *ts, const char *driver_name,
 		       int priv_nr, const char *addr, uint16_t port,
+		       int (*connect_cb)(struct ipa_client_link *link),
 		       int (*read_cb)(struct ipa_client_link *link,
 				      struct msgb *msgb),
 		       int (*write_cb)(struct ipa_client_link *link),
@@ -226,6 +246,7 @@ ipa_client_link_create(void *ctx, struct e1inp_ts *ts, const char *driver_name,
 	ipa_link->timer.data = ipa_link;
 	ipa_link->addr = talloc_strdup(ipa_link, addr);
 	ipa_link->port = port;
+	ipa_link->connect_cb = connect_cb;
 	ipa_link->read_cb = read_cb;
 	ipa_link->write_cb = write_cb;
 	ipa_link->line = ts->line;

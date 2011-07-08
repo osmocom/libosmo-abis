@@ -104,7 +104,8 @@ struct ipaccess_unit {
 };
 
 struct hsl_unit {
-	unsigned long serno;
+	uint8_t swversion;
+	uint64_t serno;
 };
 
 #endif /* _OSMO_PROTO_IPACCESS_H */

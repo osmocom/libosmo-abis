@@ -528,7 +528,7 @@ static int __handle_ts1_write(struct osmo_fd *bfd, struct e1inp_line *line)
 	return ret;
 }
 
-int handle_ts1_write(struct osmo_fd *bfd)
+static int handle_ts1_write(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
 
@@ -655,28 +655,6 @@ static int ipaccess_bsc_rsl_cb(struct ipa_server_link *link, int fd)
 	return 0;
 }
 
-static struct msgb *abis_msgb_alloc(int headroom)
-{
-	struct msgb *nmsg;
-
-	headroom += sizeof(struct ipaccess_head);
-
-	nmsg = msgb_alloc_headroom(1200 + headroom, headroom, "dummy BTS");
-	if (!nmsg)
-		return NULL;
-	return nmsg;
-}
-
-static void abis_push_ipa(struct msgb *msg, uint8_t proto)
-{
-	struct ipaccess_head *nhh;
-
-	msg->l2h = msg->data;
-	nhh = (struct ipaccess_head *) msgb_push(msg, sizeof(*nhh));
-	nhh->proto = proto;
-	nhh->len = htons(msgb_l2len(msg));
-}
-
 static struct msgb *
 ipa_bts_id_resp(struct ipaccess_unit *dev, uint8_t *data, int len)
 {
@@ -684,7 +662,7 @@ ipa_bts_id_resp(struct ipaccess_unit *dev, uint8_t *data, int len)
 	char str[64];
 	uint8_t *tag;
 
-	nmsg = abis_msgb_alloc(0);
+	nmsg = ipa_msg_alloc(0);
 	if (!nmsg)
 		return NULL;
 
@@ -744,7 +722,7 @@ ipa_bts_id_resp(struct ipaccess_unit *dev, uint8_t *data, int len)
 		data += 2;
 		len -= 2;
 	}
-	abis_push_ipa(nmsg, IPAC_PROTO_IPACCESS);
+	ipa_msg_push_header(nmsg, IPAC_PROTO_IPACCESS);
 	return nmsg;
 }
 
@@ -752,12 +730,12 @@ static struct msgb *ipa_bts_id_ack(void)
 {
 	struct msgb *nmsg2;
 
-	nmsg2 = abis_msgb_alloc(0);
+	nmsg2 = ipa_msg_alloc(0);
 	if (!nmsg2)
 		return NULL;
 
 	*msgb_put(nmsg2, 1) = IPAC_MSGT_ID_ACK;
-	abis_push_ipa(nmsg2, IPAC_PROTO_IPACCESS);
+	ipa_msg_push_header(nmsg2, IPAC_PROTO_IPACCESS);
 
 	return nmsg2;
 }
@@ -893,6 +871,7 @@ static int ipaccess_line_update(struct e1inp_line *line,
 					      &line->ts[E1INP_SIGN_OML-1],
 					      "ipa", E1INP_SIGN_OML,
 					      addr, IPA_TCP_PORT_OML,
+					      NULL,
 					      ipaccess_bts_cb,
 					      ipaccess_bts_write_cb,
 					      NULL);
@@ -912,6 +891,7 @@ static int ipaccess_line_update(struct e1inp_line *line,
 						  &line->ts[E1INP_SIGN_RSL-1],
 						  "ipa", E1INP_SIGN_RSL,
 						  addr, IPA_TCP_PORT_RSL,
+						  NULL,
 						  ipaccess_bts_cb,
 						  ipaccess_bts_write_cb,
 						  NULL);

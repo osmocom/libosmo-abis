@@ -76,6 +76,15 @@ static struct hsl_e1_handle *e1h;
 static void hsl_drop(struct e1inp_line *line, struct osmo_fd *bfd)
 {
 	line->ops->sign_link_down(line);
+
+	if (bfd->fd != -1) {
+		osmo_fd_unregister(bfd);
+		close(bfd->fd);
+		bfd->fd = -1;
+	}
+	/* put the virtual E1 line that we cloned for this socket, if
+	 * it becomes unused, it gets released. */
+	e1inp_line_put(line);
 }
 
 static int process_hsl_rsl(struct msgb *msg, struct e1inp_line *line,
@@ -205,9 +214,8 @@ static void timeout_ts1_write(void *data)
 	ts_want_write(e1i_ts);
 }
 
-static int handle_ts1_write(struct osmo_fd *bfd)
+static int __handle_ts1_write(struct osmo_fd *bfd, struct e1inp_line *line)
 {
-	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
 	struct e1inp_sign_link *sign_link;
@@ -260,6 +268,20 @@ static int handle_ts1_write(struct osmo_fd *bfd)
 	return ret;
 }
 
+static int handle_ts1_write(struct osmo_fd *bfd)
+{
+	struct e1inp_line *line = bfd->data;
+
+	return __handle_ts1_write(bfd, line);
+}
+
+int hsl_bts_write(struct ipa_client_link *link)
+{
+	struct e1inp_line *line = link->line;
+
+	return __handle_ts1_write(link->ofd, line);
+}
+
 /* callback from select.c in case one of the fd's can be read/written */
 static int hsl_fd_cb(struct osmo_fd *bfd, unsigned int what)
 {
@@ -301,7 +323,7 @@ static int listen_fd_cb(struct osmo_fd *listen_bfd, unsigned int what)
 	int ret;
 	int idx = 0;
 	int i;
-	struct e1inp_line *line = listen_bfd->data;
+	struct e1inp_line *line;
 	struct e1inp_ts *e1i_ts;
 	struct osmo_fd *bfd;
 	struct sockaddr_in sa;
@@ -318,6 +340,12 @@ static int listen_fd_cb(struct osmo_fd *listen_bfd, unsigned int what)
 	LOGP(DINP, LOGL_NOTICE, "accept()ed new HSL link from %s\n",
 		inet_ntoa(sa.sin_addr));
 
+	/* clone virtual E1 line for this new signalling link. */
+	line = e1inp_line_clone(tall_hsl_ctx, listen_bfd->data);
+	if (line == NULL) {
+		LOGP(DINP, LOGL_ERROR, "could not clone E1 line\n");
+		return -1;
+	}
 	/* create virrtual E1 timeslots for signalling */
 	e1inp_ts_config_sign(&line->ts[1-1], line);
 
@@ -337,7 +365,7 @@ static int listen_fd_cb(struct osmo_fd *listen_bfd, unsigned int what)
 	if (ret < 0) {
 		LOGP(DINP, LOGL_ERROR, "could not register FD\n");
 		close(bfd->fd);
-		talloc_free(line);
+		e1inp_line_put(line);
 		return ret;
 	}
 
@@ -346,7 +374,74 @@ static int listen_fd_cb(struct osmo_fd *listen_bfd, unsigned int what)
 
 static int hsl_bts_process(struct ipa_client_link *link, struct msgb *msg)
 {
-	/* XXX: not implemented yet. */
+	struct ipaccess_head *hh;
+	struct e1inp_sign_link *sign_link;
+	struct e1inp_ts *e1i_ts = &link->line->ts[0];
+
+	hh = (struct ipaccess_head *) msg->data;
+	if (hh->proto == HSL_PROTO_DEBUG) {
+		LOGP(DINP, LOGL_NOTICE, "HSL debug: %s\n",
+						msg->data + sizeof(*hh));
+		msgb_free(msg);
+		return 0;
+	}
+	sign_link = e1inp_lookup_sign_link(e1i_ts, hh->proto, 0);
+	if (!sign_link) {
+		LOGP(DINP, LOGL_ERROR, "no matching signalling link for "
+			"hh->proto=0x%02x\n", hh->proto);
+		msgb_free(msg);
+		return -EIO;
+	}
+	msg->dst = sign_link;
+
+	/* XXX better use e1inp_ts_rx? */
+	if (!link->line->ops->sign_link) {
+		LOGP(DINP, LOGL_ERROR, "Fix your application, "
+			"no action set for signalling messages.\n");
+		return -ENOENT;
+	}
+	link->line->ops->sign_link(msg);
+	return 0;
+}
+
+static int hsl_bts_connect(struct ipa_client_link *link)
+{
+	struct msgb *msg;
+	uint8_t *serno;
+	char serno_buf[16];
+	struct hsl_unit *unit = link->line->ops->data;
+	struct e1inp_sign_link *sign_link;
+
+	/* send the minimal message to identify this BTS. */
+	msg = ipa_msg_alloc(0);
+	if (!msg)
+		return -ENOMEM;
+
+	*msgb_put(msg, 1) = 0x80;
+	*msgb_put(msg, 1) = 0x80;
+	*msgb_put(msg, 1) = unit->swversion;
+	snprintf(serno_buf, sizeof(serno_buf), "%llx", unit->serno);
+	serno = msgb_put(msg, strlen(serno_buf)+1);
+	memcpy(serno, serno_buf, strlen(serno_buf));
+	ipa_msg_push_header(msg, 0);
+	send(link->ofd->fd, msg->data, msg->len, 0);
+	msgb_free(msg);
+
+	/* ... and enable the signalling link. */
+	if (!link->line->ops->sign_link_up) {
+		LOGP(DINP, LOGL_ERROR,
+			"Unable to set signal link, closing socket.\n");
+		ipa_client_link_close(link);
+		return -EINVAL;
+	}
+	sign_link = link->line->ops->sign_link_up(&unit,
+						  link->line, E1INP_SIGN_NONE);
+	if (sign_link == NULL) {
+		LOGP(DINP, LOGL_ERROR,
+		     "Unable to set signal link, closing socket.\n");
+		ipa_client_link_close(link);
+		return -EINVAL;
+	}
 	return 0;
 }
 
@@ -380,10 +475,13 @@ static int hsl_line_update(struct e1inp_line *line,
 		LOGP(DINP, LOGL_NOTICE, "enabling hsl BTS mode\n");
 
 		link = ipa_client_link_create(tall_hsl_ctx,
-						&line->ts[0], "hsl", 0,
-						addr, HSL_TCP_PORT,
-						hsl_bts_process, NULL,
-						NULL);
+					      &line->ts[E1INP_SIGN_OML-1],
+					      "hsl", E1INP_SIGN_OML,
+					      addr, HSL_TCP_PORT,
+					      hsl_bts_connect,
+					      hsl_bts_process,
+					      hsl_bts_write,
+					      NULL);
 		if (link == NULL) {
 			LOGP(DINP, LOGL_ERROR, "cannot create BTS link: %s\n",
 				strerror(errno));
