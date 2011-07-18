@@ -18,7 +18,7 @@
 #include "internal.h"
 #include <osmocom/core/utils.h>
 #include <osmocom/core/logging.h>
-#include <talloc.h>
+#include <osmocom/core/talloc.h>
 
 void *libosmo_abis_ctx;
 

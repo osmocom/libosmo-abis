@@ -52,7 +52,7 @@
 #include <osmocom/abis/ipaccess.h>
 #include <osmocom/core/socket.h>
 #include <osmocom/abis/ipa.h>
-#include <talloc.h>
+#include <osmocom/core/talloc.h>
 
 #define HSL_TCP_PORT	2500
 #define HSL_PROTO_DEBUG	0xdd

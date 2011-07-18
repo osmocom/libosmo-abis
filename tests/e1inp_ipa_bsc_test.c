@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <talloc.h>
+#include <osmocom/core/talloc.h>
 #include <osmocom/abis/abis.h>
 #include <osmocom/abis/e1_input.h>
 #include <osmocom/core/application.h>

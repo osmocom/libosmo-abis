@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <talloc.h>
+#include <osmocom/core/talloc.h>
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>

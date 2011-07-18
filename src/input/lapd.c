@@ -40,7 +40,7 @@
 
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/logging.h>
-#include <talloc.h>
+#include <osmocom/core/talloc.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/timer.h>
 

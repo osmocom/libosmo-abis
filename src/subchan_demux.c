@@ -28,7 +28,7 @@
 
 #include <osmocom/abis/subchan_demux.h>
 #include <osmocom/abis/trau_frame.h>
-#include <talloc.h>
+#include <osmocom/core/talloc.h>
 
 void *tall_tqe_ctx;
 

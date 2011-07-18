@@ -47,7 +47,7 @@
 #include <osmocom/abis/e1_input.h>
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/abis/subchan_demux.h>
-#include <talloc.h>
+#include <osmocom/core/talloc.h>
 
 #define NUM_E1_TS	32
 

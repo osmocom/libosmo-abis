@@ -31,7 +31,7 @@
 #include <osmocom/abis/e1_input.h>
 #include <osmocom/core/utils.h>
 #include <osmocom/gsm/gsm_utils.h>
-#include <talloc.h>
+#include <osmocom/core/talloc.h>
 
 #define E1_DRIVER_NAMES		"(misdn|dahdi|ipa|hsl)"
 #define E1_DRIVER_HELP		"mISDN supported E1 Card\n" \
