@@ -94,9 +94,9 @@ void ipa_client_link_close(struct ipa_client_link *link);
 
 static void ipa_client_retry(struct ipa_client_link *link)
 {
-	LOGP(DINP, LOGL_NOTICE, "connection closed\n");
+	LOGP(DLINP, LOGL_NOTICE, "connection closed\n");
 	ipa_client_link_close(link);
-	LOGP(DINP, LOGL_NOTICE, "retrying in 5 seconds...\n");
+	LOGP(DLINP, LOGL_NOTICE, "retrying in 5 seconds...\n");
 	osmo_timer_schedule(&link->timer, 5, 0);
 	link->state = IPA_CLIENT_LINK_STATE_CONNECTING;
 }
@@ -113,19 +113,19 @@ static void ipa_client_read(struct ipa_client_link *link)
 	struct msgb *msg;
 	int ret;
 
-	LOGP(DINP, LOGL_NOTICE, "message received\n");
+	LOGP(DLINP, LOGL_NOTICE, "message received\n");
 
 	ret = ipa_msg_recv(ofd->fd, &msg);
 	if (ret < 0) {
 		if (errno == EPIPE || errno == ECONNRESET) {
-			LOGP(DINP, LOGL_ERROR, "lost connection with server\n");
+			LOGP(DLINP, LOGL_ERROR, "lost connection with server\n");
 		} else {
-			LOGP(DINP, LOGL_ERROR, "unknown error\n");
+			LOGP(DLINP, LOGL_ERROR, "unknown error\n");
 		}
 		ipa_client_retry(link);
 		return;
 	} else if (ret == 0) {
-		LOGP(DINP, LOGL_ERROR, "connection closed with server\n");
+		LOGP(DLINP, LOGL_ERROR, "connection closed with server\n");
 		ipa_client_retry(link);
 		return;
 	}
@@ -146,7 +146,7 @@ int ipa_client_write_default_cb(struct ipa_client_link *link)
 	struct llist_head *lh;
 	int ret;
 
-	LOGP(DINP, LOGL_NOTICE, "sending data\n");
+	LOGP(DLINP, LOGL_NOTICE, "sending data\n");
 
 	if (llist_empty(&link->tx_queue)) {
 		ofd->when &= ~BSC_FD_WRITE;
@@ -161,7 +161,7 @@ int ipa_client_write_default_cb(struct ipa_client_link *link)
 		if (errno == EPIPE || errno == ENOTCONN) {
 			ipa_client_retry(link);
 		}
-		LOGP(DINP, LOGL_ERROR, "error to send\n");
+		LOGP(DLINP, LOGL_ERROR, "error to send\n");
 	}
 	msgb_free(msg);
 	return 0;
@@ -181,18 +181,18 @@ int ipa_client_fd_cb(struct osmo_fd *ofd, unsigned int what)
 			return 0;
 		}
 		ofd->when &= ~BSC_FD_WRITE;
-		LOGP(DINP, LOGL_NOTICE, "connection done.\n");
+		LOGP(DLINP, LOGL_NOTICE, "connection done.\n");
 		link->state = IPA_CLIENT_LINK_STATE_CONNECTED;
 		if (link->connect_cb)
 			link->connect_cb(link);
 		break;
 	case IPA_CLIENT_LINK_STATE_CONNECTED:
 		if (what & BSC_FD_READ) {
-			LOGP(DINP, LOGL_NOTICE, "connected read\n");
+			LOGP(DLINP, LOGL_NOTICE, "connected read\n");
 			ipa_client_read(link);
 		}
 		if (what & BSC_FD_WRITE) {
-			LOGP(DINP, LOGL_NOTICE, "connected write\n");
+			LOGP(DLINP, LOGL_NOTICE, "connected write\n");
 			ipa_client_write(link);
 		}
 		break;
@@ -284,7 +284,7 @@ static void ipa_link_timer_cb(void *data)
 {
 	struct ipa_client_link *link = data;
 
-	LOGP(DINP, LOGL_NOTICE, "reconnecting.\n");
+	LOGP(DLINP, LOGL_NOTICE, "reconnecting.\n");
 
 	switch(link->state) {
 	case IPA_CLIENT_LINK_STATE_CONNECTING:
@@ -310,11 +310,11 @@ int ipa_server_fd_cb(struct osmo_fd *ofd, unsigned int what)
 
 	ret = accept(ofd->fd, (struct sockaddr *)&sa, &sa_len);
 	if (ret < 0) {
-		LOGP(DINP, LOGL_ERROR, "failed to accept from origin "
+		LOGP(DLINP, LOGL_ERROR, "failed to accept from origin "
 			"peer, reason=`%s'\n", strerror(errno));
 		return ret;
 	}
-	LOGP(DINP, LOGL_NOTICE, "accept()ed new link from %s to port %u\n",
+	LOGP(DLINP, LOGL_NOTICE, "accept()ed new link from %s to port %u\n",
 		inet_ntoa(sa.sin_addr), link->port);
 
 	if (link->accept_cb)
@@ -382,18 +382,18 @@ static void ipa_server_peer_read(struct ipa_server_peer *peer)
 	struct msgb *msg;
 	int ret;
 
-	LOGP(DINP, LOGL_NOTICE, "message received\n");
+	LOGP(DLINP, LOGL_NOTICE, "message received\n");
 
 	ret = ipa_msg_recv(ofd->fd, &msg);
 	if (ret < 0) {
 		if (errno == EPIPE || errno == ECONNRESET) {
-			LOGP(DINP, LOGL_ERROR, "lost connection with server\n");
+			LOGP(DLINP, LOGL_ERROR, "lost connection with server\n");
 		} else {
-			LOGP(DINP, LOGL_ERROR, "unknown error\n");
+			LOGP(DLINP, LOGL_ERROR, "unknown error\n");
 		}
 		return;
 	} else if (ret == 0) {
-		LOGP(DINP, LOGL_ERROR, "connection closed with server\n");
+		LOGP(DLINP, LOGL_ERROR, "connection closed with server\n");
 		ipa_server_peer_destroy(peer);
 		return;
 	}
@@ -410,7 +410,7 @@ static void ipa_server_peer_write(struct ipa_server_peer *peer)
 	struct llist_head *lh;
 	int ret;
 
-	LOGP(DINP, LOGL_NOTICE, "sending data\n");
+	LOGP(DLINP, LOGL_NOTICE, "sending data\n");
 
 	if (llist_empty(&peer->tx_queue)) {
 		ofd->when &= ~BSC_FD_WRITE;
@@ -422,7 +422,7 @@ static void ipa_server_peer_write(struct ipa_server_peer *peer)
 
 	ret = send(peer->ofd.fd, msg->data, msg->len, 0);
 	if (ret < 0) {
-		LOGP(DINP, LOGL_ERROR, "error to send\n");
+		LOGP(DLINP, LOGL_ERROR, "error to send\n");
 	}
 	msgb_free(msg);
 }
@@ -431,7 +431,7 @@ static int ipa_server_peer_cb(struct osmo_fd *ofd, unsigned int what)
 {
 	struct ipa_server_peer *peer = ofd->data;
 
-	LOGP(DINP, LOGL_NOTICE, "connected read/write\n");
+	LOGP(DLINP, LOGL_NOTICE, "connected read/write\n");
 	if (what & BSC_FD_READ)
 		ipa_server_peer_read(peer);
 	if (what & BSC_FD_WRITE)
@@ -449,7 +449,7 @@ ipa_server_peer_create(void *ctx, struct ipa_server_link *link, int fd,
 
 	peer = talloc_zero(ctx, struct ipa_server_peer);
 	if (peer == NULL) {
-		LOGP(DINP, LOGL_ERROR, "cannot allocate new peer in server, "
+		LOGP(DLINP, LOGL_ERROR, "cannot allocate new peer in server, "
 			"reason=`%s'\n", strerror(errno));
 		return NULL;
 	}
@@ -463,7 +463,7 @@ ipa_server_peer_create(void *ctx, struct ipa_server_link *link, int fd,
 	INIT_LLIST_HEAD(&peer->tx_queue);
 
 	if (osmo_fd_register(&peer->ofd) < 0) {
-		LOGP(DINP, LOGL_ERROR, "could not register FD\n");
+		LOGP(DLINP, LOGL_ERROR, "could not register FD\n");
 		talloc_free(peer);
 		return NULL;
 	}

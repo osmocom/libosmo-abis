@@ -114,21 +114,21 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 
 	msgb_put(msg, ret);
 
-	DEBUGP(DMI, "alen =%d, dev(%d) channel(%d) sapi(%d) tei(%d)\n",
+	DEBUGP(DLMI, "alen =%d, dev(%d) channel(%d) sapi(%d) tei(%d)\n",
 		alen, l2addr.dev, l2addr.channel, l2addr.sapi, l2addr.tei);
 
-	DEBUGP(DMI, "<= len = %d, prim(0x%x) id(0x%x): %s\n",
+	DEBUGP(DLMI, "<= len = %d, prim(0x%x) id(0x%x): %s\n",
 		ret, hh->prim, hh->id, get_prim_name(hh->prim));
 
 	switch (hh->prim) {
 	case DL_INFORMATION_IND:
 		/* mISDN tells us which channel number is allocated for this
 		 * tuple of (SAPI, TEI). */
-		DEBUGP(DMI, "DL_INFORMATION_IND: use channel(%d) sapi(%d) tei(%d) for now\n",
+		DEBUGP(DLMI, "DL_INFORMATION_IND: use channel(%d) sapi(%d) tei(%d) for now\n",
 			l2addr.channel, l2addr.sapi, l2addr.tei);
 		link = e1inp_lookup_sign_link(e1i_ts, l2addr.tei, l2addr.sapi);
 		if (!link) {
-			DEBUGPC(DMI, "mISDN message for unknown sign_link\n");
+			DEBUGPC(DLMI, "mISDN message for unknown sign_link\n");
 			msgb_free(msg);
 			return -EINVAL;
 		}
@@ -136,14 +136,14 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 		link->driver.misdn.channel = l2addr.channel;
 		break;
 	case DL_ESTABLISH_IND:
-		DEBUGP(DMI, "DL_ESTABLISH_IND: channel(%d) sapi(%d) tei(%d)\n",
+		DEBUGP(DLMI, "DL_ESTABLISH_IND: channel(%d) sapi(%d) tei(%d)\n",
 			l2addr.channel, l2addr.sapi, l2addr.tei);
 		/* For some strange reason, sometimes the DL_INFORMATION_IND tells
 		 * us the wrong channel, and we only get the real channel number
 		 * during the DL_ESTABLISH_IND */
 		link = e1inp_lookup_sign_link(e1i_ts, l2addr.tei, l2addr.sapi);
 		if (!link) {
-			DEBUGPC(DMI, "mISDN message for unknown sign_link\n");
+			DEBUGPC(DLMI, "mISDN message for unknown sign_link\n");
 			msgb_free(msg);
 			return -EINVAL;
 		}
@@ -152,22 +152,22 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 		ret = e1inp_event(e1i_ts, S_INP_TEI_UP, l2addr.tei, l2addr.sapi);
 		break;
 	case DL_RELEASE_IND:
-		DEBUGP(DMI, "DL_RELEASE_IND: channel(%d) sapi(%d) tei(%d)\n",
+		DEBUGP(DLMI, "DL_RELEASE_IND: channel(%d) sapi(%d) tei(%d)\n",
 		l2addr.channel, l2addr.sapi, l2addr.tei);
 		ret = e1inp_event(e1i_ts, S_INP_TEI_DN, l2addr.tei, l2addr.sapi);
 		break;
 	case DL_DATA_IND:
 	case DL_UNITDATA_IND:
 		msg->l2h = msg->data + MISDN_HEADER_LEN;
-		DEBUGP(DMI, "RX: %s\n", osmo_hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN));
+		DEBUGP(DLMI, "RX: %s\n", osmo_hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN));
 		ret = e1inp_rx_ts(e1i_ts, msg, l2addr.tei, l2addr.sapi);
 		break;
 	case PH_ACTIVATE_IND:
-		DEBUGP(DMI, "PH_ACTIVATE_IND: channel(%d) sapi(%d) tei(%d)\n",
+		DEBUGP(DLMI, "PH_ACTIVATE_IND: channel(%d) sapi(%d) tei(%d)\n",
 		l2addr.channel, l2addr.sapi, l2addr.tei);
 		break;
 	case PH_DEACTIVATE_IND:
-		DEBUGP(DMI, "PH_DEACTIVATE_IND: channel(%d) sapi(%d) tei(%d)\n",
+		DEBUGP(DLMI, "PH_DEACTIVATE_IND: channel(%d) sapi(%d) tei(%d)\n",
 		l2addr.channel, l2addr.sapi, l2addr.tei);
 		break;
 	default:
@@ -224,7 +224,7 @@ static int handle_ts1_write(struct osmo_fd *bfd)
 	hh = (struct mISDNhead *) msgb_push(msg, sizeof(*hh));
 	hh->prim = DL_DATA_REQ;
 
-	DEBUGP(DMI, "TX channel(%d) TEI(%d) SAPI(%d): %s\n",
+	DEBUGP(DLMI, "TX channel(%d) TEI(%d) SAPI(%d): %s\n",
 		sign_link->driver.misdn.channel, sign_link->tei,
 		sign_link->sapi, osmo_hexdump(l2_data, msg->len - MISDN_HEADER_LEN));
 
@@ -265,12 +265,12 @@ static int handle_tsX_write(struct osmo_fd *bfd)
 
 	subchan_mux_out(mx, tx_buf+sizeof(*hh), BCHAN_TX_GRAN);
 
-	DEBUGP(DMIB, "BCHAN TX: %s\n",
+	DEBUGP(DLMIB, "BCHAN TX: %s\n",
 		osmo_hexdump(tx_buf+sizeof(*hh), BCHAN_TX_GRAN));
 
 	ret = send(bfd->fd, tx_buf, sizeof(*hh) + BCHAN_TX_GRAN, 0);
 	if (ret < sizeof(*hh) + BCHAN_TX_GRAN)
-		DEBUGP(DMIB, "send returns %d instead of %zu\n", ret,
+		DEBUGP(DLMIB, "send returns %d instead of %zu\n", ret,
 			sizeof(*hh) + BCHAN_TX_GRAN);
 
 	return ret;
@@ -301,13 +301,13 @@ static int handle_tsX_read(struct osmo_fd *bfd)
 	msgb_put(msg, ret);
 
 	if (hh->prim != PH_CONTROL_IND)
-		DEBUGP(DMIB, "<= BCHAN len = %d, prim(0x%x) id(0x%x): %s\n",
+		DEBUGP(DLMIB, "<= BCHAN len = %d, prim(0x%x) id(0x%x): %s\n",
 			ret, hh->prim, hh->id, get_prim_name(hh->prim));
 
 	switch (hh->prim) {
 	case PH_DATA_IND:
 		msg->l2h = msg->data + MISDN_HEADER_LEN;
-		DEBUGP(DMIB, "BCHAN RX: %s\n",
+		DEBUGP(DLMIB, "BCHAN RX: %s\n",
 			osmo_hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN));
 		ret = e1inp_rx_ts(e1i_ts, msg, 0, 0);
 		break;
@@ -443,7 +443,7 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 			addr.channel = ts;
 			break;
 		default:
-			DEBUGP(DMI, "unsupported E1 TS type: %u\n",
+			DEBUGP(DLMI, "unsupported E1 TS type: %u\n",
 				e1i_ts->type);
 			break;
 		}
@@ -503,7 +503,7 @@ static int mi_e1_line_update(struct e1inp_line *line,
 		close(sk);
 		return -ENODEV;
 	}
-	//DEBUGP(DMI,"%d device%s found\n", cnt, (cnt==1)?"":"s");
+	//DEBUGP(DLMI,"%d device%s found\n", cnt, (cnt==1)?"":"s");
 	printf("%d device%s found\n", cnt, (cnt==1)?"":"s");
 #if 1
 	devinfo.id = line->num;

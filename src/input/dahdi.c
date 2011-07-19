@@ -67,7 +67,7 @@ static void handle_dahdi_exception(struct e1inp_ts *ts)
 	if (rc < 0)
 		return;
 
-	LOGP(DMI, LOGL_NOTICE, "Line %u(%s) / TS %u DAHDI EVENT %s\n",
+	LOGP(DLMI, LOGL_NOTICE, "Line %u(%s) / TS %u DAHDI EVENT %s\n",
 		ts->line->num, ts->line->name, ts->num,
 		get_value_string(dahdi_evt_names, evt));
 
@@ -76,11 +76,11 @@ static void handle_dahdi_exception(struct e1inp_ts *ts)
 	switch (evt) {
 	case DAHDI_EVENT_ALARM:
 		/* we should notify the code that the line is gone */
-		osmo_signal_dispatch(SS_INPUT, S_INP_LINE_ALARM, &isd);
+		osmo_signal_dispatch(SS_L_INPUT, S_INP_LINE_ALARM, &isd);
 		break;
 	case DAHDI_EVENT_NOALARM:
 		/* alarm has gone, we should re-start the SABM requests */
-		osmo_signal_dispatch(SS_INPUT, S_INP_LINE_NOALARM, &isd);
+		osmo_signal_dispatch(SS_L_INPUT, S_INP_LINE_NOALARM, &isd);
 		break;
 	}
 }
@@ -113,7 +113,7 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 	sapi = msg->data[0] >> 2;
 	tei = msg->data[1] >> 1;
 
-	DEBUGP(DMI, "<= len = %d, sapi(%d) tei(%d)", ret, sapi, tei);
+	DEBUGP(DLMI, "<= len = %d, sapi(%d) tei(%d)", ret, sapi, tei);
 
 	idata = lapd_receive(e1i_ts->driver.dahdi.lapd, msg->data, msg->len, &ilen, &prim);
 	if (!idata && prim == 0)
@@ -121,17 +121,17 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 
 	msgb_pull(msg, 2);
 
-	DEBUGP(DMI, "prim %08x\n", prim);
+	DEBUGP(DLMI, "prim %08x\n", prim);
 
 	switch (prim) {
 	case 0:
 		break;
 	case LAPD_MPH_ACTIVATE_IND:
-		DEBUGP(DMI, "MPH_ACTIVATE_IND: sapi(%d) tei(%d)\n", sapi, tei);
+		DEBUGP(DLMI, "MPH_ACTIVATE_IND: sapi(%d) tei(%d)\n", sapi, tei);
 		ret = e1inp_event(e1i_ts, S_INP_TEI_UP, tei, sapi);
 		break;
 	case LAPD_MPH_DEACTIVATE_IND:
-		DEBUGP(DMI, "MPH_DEACTIVATE_IND: sapi(%d) tei(%d)\n", sapi, tei);
+		DEBUGP(DLMI, "MPH_DEACTIVATE_IND: sapi(%d) tei(%d)\n", sapi, tei);
 		ret = e1inp_event(e1i_ts, S_INP_TEI_DN, tei, sapi);
 		break;
 	case LAPD_DL_DATA_IND:
@@ -140,7 +140,7 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 			msg->l2h = msg->data + 2;
 		else
 			msg->l2h = msg->data + 1;
-		DEBUGP(DMI, "RX: %s\n", osmo_hexdump(msgb_l2(msg), ret));
+		DEBUGP(DLMI, "RX: %s\n", osmo_hexdump(msgb_l2(msg), ret));
 		ret = e1inp_rx_ts(e1i_ts, msg, tei, sapi);
 		break;
 	default:
@@ -148,7 +148,7 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 		break;
 	}
 
-	DEBUGP(DMI, "Returned ok\n");
+	DEBUGP(DLMI, "Returned ok\n");
 	return ret;
 }
 
@@ -187,7 +187,7 @@ static void dahdi_write_msg(uint8_t *data, int len, void *cbdata)
 	if (ret == -1)
 		handle_dahdi_exception(e1i_ts);
 	else if (ret < 0)
-		LOGP(DMI, LOGL_NOTICE, "%s write failed %d\n", __func__, ret);
+		LOGP(DLMI, LOGL_NOTICE, "%s write failed %d\n", __func__, ret);
 }
 
 static int handle_ts1_write(struct osmo_fd *bfd)
@@ -207,7 +207,7 @@ static int handle_ts1_write(struct osmo_fd *bfd)
 		return 0;
 	}
 
-	DEBUGP(DMI, "TX: %s\n", osmo_hexdump(msg->data, msg->len));
+	DEBUGP(DLMI, "TX: %s\n", osmo_hexdump(msg->data, msg->len));
 	lapd_transmit(e1i_ts->driver.dahdi.lapd, sign_link->tei,
 		      sign_link->sapi, msg->data, msg->len);
 	msgb_free(msg);
@@ -269,7 +269,7 @@ static int handle_tsX_write(struct osmo_fd *bfd)
 			return ret;
 	}
 
-	DEBUGP(DMIB, "BCHAN TX: %s\n",
+	DEBUGP(DLMIB, "BCHAN TX: %s\n",
 		osmo_hexdump(tx_buf, D_BCHAN_TX_GRAN));
 
 	if (invertbits) {
@@ -310,7 +310,7 @@ static int handle_tsX_read(struct osmo_fd *bfd)
 	msgb_put(msg, ret);
 
 	msg->l2h = msg->data;
-	DEBUGP(DMIB, "BCHAN RX: %s\n",
+	DEBUGP(DLMIB, "BCHAN RX: %s\n",
 		osmo_hexdump(msgb_l2(msg), ret));
 	ret = e1inp_rx_ts(e1i_ts, msg, 0, 0);
 	/* physical layer indicates that data has been sent,

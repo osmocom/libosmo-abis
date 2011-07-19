@@ -17,7 +17,7 @@ static void *tall_test;
 
 struct log_info_cat ipa_proxy_test_cat[] = {
 	[DIPA_PROXY_TEST] = {
-		.name = "DINP_IPA_PROXY_TEST",
+		.name = "DLINP_IPA_PROXY_TEST",
 		.description = "IPA proxy test",
 		.color = "\033[1;35m",
 		.enabled = 1, .loglevel = LOGL_NOTICE,
@@ -33,7 +33,7 @@ const struct log_info ipa_proxy_test_log_info = {
 static int bsc_vty_is_config_node(struct vty *vty, int node)
 {
 	switch(node) {
-	case IPA_NODE:
+	case L_IPA_NODE:
 		return 1;
 		break;
 	}
@@ -43,7 +43,7 @@ static int bsc_vty_is_config_node(struct vty *vty, int node)
 static enum node_type bsc_vty_go_parent(struct vty *vty)
 {
 	switch (vty->node) {
-	case IPA_NODE:
+	case L_IPA_NODE:
 		vty->node = VIEW_NODE;
 		break;
 	}

@@ -117,14 +117,14 @@ static int ipa_sock_dst_cb(struct ipa_client_link *link, struct msgb *msg)
 	struct ipaccess_head *hh;
 	struct ipa_proxy_conn *conn = link->data;
 
-	LOGP(DINP, LOGL_NOTICE, "received message from client side\n");
+	LOGP(DLINP, LOGL_NOTICE, "received message from client side\n");
 
 	hh = (struct ipaccess_head *)msg->data;
 	/* check if we have a route for this message. */
 	if (bitvec_get_bit_pos(
 	     &conn->route->shared->dst.streamid_map,
 	     hh->proto) != ONE) {
-		LOGP(DINP, LOGL_NOTICE, "we don't have a "
+		LOGP(DLINP, LOGL_NOTICE, "we don't have a "
 			"route for streamid 0x%x\n", hh->proto);
 		msgb_free(msg);
 		return 0;
@@ -141,13 +141,13 @@ static int ipa_sock_src_cb(struct ipa_server_peer *peer, struct msgb *msg)
 	struct ipaccess_head *hh;
 	struct ipa_proxy_conn *conn = peer->data;
 
-	LOGP(DINP, LOGL_NOTICE, "received message from server side\n");
+	LOGP(DLINP, LOGL_NOTICE, "received message from server side\n");
 
 	hh = (struct ipaccess_head *)msg->data;
 	/* check if we have a route for this message. */
 	if (bitvec_get_bit_pos(&conn->route->shared->src.streamid_map,
 			hh->proto) != ONE) {
-		LOGP(DINP, LOGL_NOTICE, "we don't have a "
+		LOGP(DLINP, LOGL_NOTICE, "we don't have a "
 			"route for streamid 0x%x\n", hh->proto);
 		msgb_free(msg);
 		return 0;
@@ -168,7 +168,7 @@ ipa_sock_src_accept_cb(struct ipa_server_link *link, int fd)
 
 	conn = talloc_zero(tall_ipa_proxy_ctx, struct ipa_proxy_conn);
 	if (conn == NULL) {
-		LOGP(DINP, LOGL_ERROR, "cannot allocate memory for "
+		LOGP(DLINP, LOGL_ERROR, "cannot allocate memory for "
 				       "origin IPA\n");
 		close(fd);
 		return ret;
@@ -178,12 +178,12 @@ ipa_sock_src_accept_cb(struct ipa_server_link *link, int fd)
 	conn->src = ipa_server_peer_create(tall_ipa_proxy_ctx, link, fd,
 					   ipa_sock_src_cb, conn);
 	if (conn->src == NULL) {
-		LOGP(DINP, LOGL_ERROR, "could not create server peer: %s\n",
+		LOGP(DLINP, LOGL_ERROR, "could not create server peer: %s\n",
 			strerror(errno));
 		return -ENOMEM;
 	}
 
-	LOGP(DINP, LOGL_NOTICE, "now trying to connect to destination\n");
+	LOGP(DLINP, LOGL_NOTICE, "now trying to connect to destination\n");
 
 	conn->dst = ipa_client_link_create(NULL, NULL, NULL, 0,
 					   route->shared->dst.inst->net.addr,
@@ -193,12 +193,12 @@ ipa_sock_src_accept_cb(struct ipa_server_link *link, int fd)
 					   ipa_client_write_default_cb,
 					   conn);
 	if (conn->dst == NULL) {
-		LOGP(DINP, LOGL_ERROR, "could not create client: %s\n",
+		LOGP(DLINP, LOGL_ERROR, "could not create client: %s\n",
 			strerror(errno));
 		return -ENOMEM;
 	}
 	if (ipa_client_link_open(conn->dst) < 0) {
-		LOGP(DINP, LOGL_ERROR, "could not start client: %s\n",
+		LOGP(DLINP, LOGL_ERROR, "could not start client: %s\n",
 			strerror(errno));
 		return -ENOMEM;
 	}
@@ -212,7 +212,7 @@ ipa_sock_src_accept_cb(struct ipa_server_link *link, int fd)
 DEFUN(ipa_proxy, ipa_cmd, "ipa", "Configure the ipaccess proxy")
 {
 	vty->index = NULL;
-	vty->node = IPA_NODE;
+	vty->node = L_IPA_NODE;
 	return CMD_SUCCESS;
 }
 
@@ -592,7 +592,7 @@ DEFUN(ipa_route_show, ipa_route_show_cmd,
 DEFUN(ipa_cfg, ipa_cfg_cmd, "ipa", "Configure the ipaccess proxy")
 {
 	vty->index = NULL;
-	vty->node = IPA_NODE;
+	vty->node = L_IPA_NODE;
 	return CMD_SUCCESS;
 }
 
@@ -612,7 +612,7 @@ DEFUN(ipa_instance_cfg_add, ipa_instance_cfg_add_cmd,
 }
 
 struct cmd_node ipa_node = {
-	IPA_NODE,
+	L_IPA_NODE,
 	"%s(ipa)#",
 	1,
 };
@@ -649,7 +649,7 @@ DEFUN(ournode_exit,
       ournode_exit_cmd, "exit", "Exit current mode and down to previous mode\n")
 {
         switch (vty->node) {
-        case IPA_NODE:
+        case L_IPA_NODE:
                 vty->node = CONFIG_NODE;
                 vty->index = NULL;
                 break;
@@ -661,7 +661,7 @@ DEFUN(ournode_end,
       ournode_end_cmd, "end", "End current mode and change to enable mode.\n")
 {
 	switch (vty->node) {
-	case IPA_NODE:
+	case L_IPA_NODE:
 		break;
 	}
 	return CMD_SUCCESS;
@@ -682,9 +682,9 @@ void ipa_proxy_vty_init(void)
 
 	install_element(CONFIG_NODE, &ipa_cfg_cmd);
 	install_node(&ipa_node, ipa_cfg_write);
-	install_default(IPA_NODE);
-	install_element(IPA_NODE, &ournode_exit_cmd);
-	install_element(IPA_NODE, &ournode_end_cmd);
-	install_element(IPA_NODE, &ipa_instance_cfg_add_cmd);
-	install_element(IPA_NODE, &ipa_route_cfg_add_cmd);
+	install_default(L_IPA_NODE);
+	install_element(L_IPA_NODE, &ournode_exit_cmd);
+	install_element(L_IPA_NODE, &ournode_end_cmd);
+	install_element(L_IPA_NODE, &ipa_instance_cfg_add_cmd);
+	install_element(L_IPA_NODE, &ipa_route_cfg_add_cmd);
 }

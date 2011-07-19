@@ -211,7 +211,7 @@ int abis_sendmsg(struct msgb *msg)
 
 	/* don't know how to route this message. */
 	if (sign_link == NULL) {
-		LOGP(DRSL, LOGL_ERROR, "abis_sendmsg: msg->dst == NULL: %s\n",
+		LOGP(DLRSL, LOGL_ERROR, "abis_sendmsg: msg->dst == NULL: %s\n",
 			osmo_hexdump(msg->data, msg->len));
 		talloc_free(msg);
 		return -EINVAL;
@@ -290,14 +290,14 @@ e1inp_line_create(uint8_t e1_nr, const char *driver_name)
 
 	line = e1inp_line_find(e1_nr);
 	if (line) {
-		LOGP(DINP, LOGL_ERROR, "E1 Line %u already exists\n",
+		LOGP(DLINP, LOGL_ERROR, "E1 Line %u already exists\n",
 		     e1_nr);
 		return NULL;
 	}
 
 	driver = e1inp_driver_find(driver_name);
 	if (!driver) {
-		LOGP(DINP, LOGL_ERROR, "No such E1 driver '%s'\n",
+		LOGP(DLINP, LOGL_ERROR, "No such E1 driver '%s'\n",
 		     driver_name);
 		return NULL;
 	}
@@ -474,12 +474,12 @@ int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
 		write_pcap_packet(PCAP_INPUT, sapi, tei, msg);
 		link = e1inp_lookup_sign_link(ts, tei, sapi);
 		if (!link) {
-			LOGP(DMI, LOGL_ERROR, "didn't find signalling link for "
+			LOGP(DLMI, LOGL_ERROR, "didn't find signalling link for "
 				"tei %d, sapi %d\n", tei, sapi);
 			return -EINVAL;
 		}
 		if (!ts->line->ops->sign_link) {
-	                LOGP(DINP, LOGL_ERROR, "Fix your application, "
+	                LOGP(DLINP, LOGL_ERROR, "Fix your application, "
 				"no action set for signalling messages.\n");
 			return -ENOENT;
 		}
@@ -491,7 +491,7 @@ int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
 		break;
 	default:
 		ret = -EINVAL;
-		LOGP(DMI, LOGL_ERROR, "unknown TS type %u\n", ts->type);
+		LOGP(DLMI, LOGL_ERROR, "unknown TS type %u\n", ts->type);
 		break;
 	}
 
@@ -528,7 +528,7 @@ struct msgb *e1inp_tx_ts(struct e1inp_ts *e1i_ts,
 		msgb_put(msg, 40);
 		break;
 	default:
-		LOGP(DMI, LOGL_ERROR, "unsupported E1 TS type %u\n", e1i_ts->type);
+		LOGP(DLMI, LOGL_ERROR, "unsupported E1 TS type %u\n", e1i_ts->type);
 		return NULL;
 	}
 	return msg;
@@ -550,7 +550,7 @@ int e1inp_event(struct e1inp_ts *ts, int evt, uint8_t tei, uint8_t sapi)
 	isd.sapi = sapi;
 
 	/* report further upwards */
-	osmo_signal_dispatch(SS_INPUT, evt, &isd);
+	osmo_signal_dispatch(SS_L_INPUT, evt, &isd);
 	return 0;
 }
 
@@ -593,7 +593,7 @@ int e1inp_line_update(struct e1inp_line *line)
 	 * configured */
 	memset(&isd, 0, sizeof(isd));
 	isd.line = line;
-	osmo_signal_dispatch(SS_INPUT, S_INP_LINE_INIT, &isd);
+	osmo_signal_dispatch(SS_L_INPUT, S_INP_LINE_INIT, &isd);
 
 	return rc;
 }
@@ -601,8 +601,8 @@ int e1inp_line_update(struct e1inp_line *line)
 static int e1i_sig_cb(unsigned int subsys, unsigned int signal,
 		      void *handler_data, void *signal_data)
 {
-	if (subsys != SS_GLOBAL ||
-	    signal != S_GLOBAL_SHUTDOWN)
+	if (subsys != SS_L_GLOBAL ||
+	    signal != S_L_GLOBAL_SHUTDOWN)
 		return 0;
 
 	if (pcap_fd) {
@@ -623,7 +623,7 @@ void e1inp_init(void)
 	tall_e1inp_ctx = talloc_named_const(libosmo_abis_ctx, 1, "e1inp");
 	tall_sigl_ctx = talloc_named_const(tall_e1inp_ctx, 1,
 					   "e1inp_sign_link");
-	osmo_signal_register_handler(SS_GLOBAL, e1i_sig_cb, NULL);
+	osmo_signal_register_handler(SS_L_GLOBAL, e1i_sig_cb, NULL);
 
 	e1inp_misdn_init();
 #ifdef HAVE_DAHDI_USER_H

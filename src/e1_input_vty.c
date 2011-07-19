@@ -65,7 +65,7 @@ DEFUN(cfg_e1inp, cfg_e1inp_cmd,
 	"e1_input",
 	"Configure E1/T1/J1 TDM input\n")
 {
-	vty->node = E1INP_NODE;
+	vty->node = L_E1INP_NODE;
 
 	return CMD_SUCCESS;
 }
@@ -87,7 +87,7 @@ static int e1inp_config_write(struct vty *vty)
 }
 
 struct cmd_node e1inp_node = {
-	E1INP_NODE,
+	L_E1INP_NODE,
 	"%s(e1_input)#",
 	1,
 };
@@ -96,7 +96,7 @@ int e1inp_vty_init(void)
 {
 	install_element(CONFIG_NODE, &cfg_e1inp_cmd);
 	install_node(&e1inp_node, e1inp_config_write);
-	install_element(E1INP_NODE, &cfg_e1_line_driver_cmd);
+	install_element(L_E1INP_NODE, &cfg_e1_line_driver_cmd);
 
 	return 0;
 }

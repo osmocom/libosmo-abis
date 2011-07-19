@@ -108,7 +108,7 @@ static int process_hsl_rsl(struct msgb *msg, struct e1inp_line *line,
 		unit_data.serno = strtoul(serno_buf, NULL, 10);
 
 		if (!line->ops->sign_link_up) {
-			LOGP(DINP, LOGL_ERROR,
+			LOGP(DLINP, LOGL_ERROR,
 			     "Unable to set signal link, closing socket.\n");
 			osmo_fd_unregister(bfd);
 			close(bfd->fd);
@@ -118,7 +118,7 @@ static int process_hsl_rsl(struct msgb *msg, struct e1inp_line *line,
 		sign_link = line->ops->sign_link_up(&unit_data,
 						    line, E1INP_SIGN_NONE);
 		if (sign_link == NULL) {
-			LOGP(DINP, LOGL_ERROR,
+			LOGP(DLINP, LOGL_ERROR,
 			     "Unable to set signal link, closing socket.\n");
 			osmo_fd_unregister(bfd);
 			close(bfd->fd);
@@ -151,14 +151,14 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 		return error;
 	else if (error == 0) {
 		hsl_drop(e1i_ts->line, bfd);
-		LOGP(DINP, LOGL_NOTICE, "Sign link vanished, dead socket\n");
+		LOGP(DLINP, LOGL_NOTICE, "Sign link vanished, dead socket\n");
 		return error;
 	}
-	DEBUGP(DMI, "RX %u: %s\n", ts_nr, osmo_hexdump(msgb_l2(msg), msgb_l2len(msg)));
+	DEBUGP(DLMI, "RX %u: %s\n", ts_nr, osmo_hexdump(msgb_l2(msg), msgb_l2len(msg)));
 
 	hh = (struct ipaccess_head *) msg->data;
 	if (hh->proto == HSL_PROTO_DEBUG) {
-		LOGP(DINP, LOGL_NOTICE, "HSL debug: %s\n", msg->data + sizeof(*hh));
+		LOGP(DLINP, LOGL_NOTICE, "HSL debug: %s\n", msg->data + sizeof(*hh));
 		msgb_free(msg);
 		return ret;
 	}
@@ -181,7 +181,7 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 #endif
 	link = e1inp_lookup_sign_link(e1i_ts, hh->proto, 0);
 	if (!link) {
-		LOGP(DINP, LOGL_ERROR, "no matching signalling link for "
+		LOGP(DLINP, LOGL_ERROR, "no matching signalling link for "
 			"hh->proto=0x%02x\n", hh->proto);
 		msgb_free(msg);
 		return -EIO;
@@ -190,7 +190,7 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 
 	/* XXX: better use e1inp_ts_rx? */
 	if (!e1i_ts->line->ops->sign_link) {
-		LOGP(DINP, LOGL_ERROR, "Fix your application, "
+		LOGP(DLINP, LOGL_ERROR, "Fix your application, "
 			"no action set for signalling messages.\n");
 		return -ENOENT;
 	}
@@ -253,7 +253,7 @@ static int __handle_ts1_write(struct osmo_fd *bfd, struct e1inp_line *line)
 	msg->l2h = msg->data;
 	ipaccess_prepend_header(msg, sign_link->tei);
 
-	DEBUGP(DMI, "TX %u: %s\n", ts_nr, osmo_hexdump(msg->l2h, msgb_l2len(msg)));
+	DEBUGP(DLMI, "TX %u: %s\n", ts_nr, osmo_hexdump(msg->l2h, msgb_l2len(msg)));
 
 	ret = send(bfd->fd, msg->data, msg->len, 0);
 	msgb_free(msg);
@@ -302,7 +302,7 @@ static int hsl_fd_cb(struct osmo_fd *bfd, unsigned int what)
 		if (what & BSC_FD_WRITE)
 			rc = handle_ts1_write(bfd);
 	} else
-		LOGP(DINP, LOGL_ERROR, "unknown E1 TS type %u\n", e1i_ts->type);
+		LOGP(DLINP, LOGL_ERROR, "unknown E1 TS type %u\n", e1i_ts->type);
 
 	return rc;
 }
@@ -351,13 +351,13 @@ static int listen_fd_cb(struct osmo_fd *listen_bfd, unsigned int what)
 		perror("accept");
 		return ret;
 	}
-	LOGP(DINP, LOGL_NOTICE, "accept()ed new HSL link from %s\n",
+	LOGP(DLINP, LOGL_NOTICE, "accept()ed new HSL link from %s\n",
 		inet_ntoa(sa.sin_addr));
 
 	/* clone virtual E1 line for this new signalling link. */
 	line = e1inp_line_clone(tall_hsl_ctx, listen_bfd->data);
 	if (line == NULL) {
-		LOGP(DINP, LOGL_ERROR, "could not clone E1 line\n");
+		LOGP(DLINP, LOGL_ERROR, "could not clone E1 line\n");
 		return -1;
 	}
 	/* create virrtual E1 timeslots for signalling */
@@ -377,7 +377,7 @@ static int listen_fd_cb(struct osmo_fd *listen_bfd, unsigned int what)
 	bfd->when = BSC_FD_READ;
 	ret = osmo_fd_register(bfd);
 	if (ret < 0) {
-		LOGP(DINP, LOGL_ERROR, "could not register FD\n");
+		LOGP(DLINP, LOGL_ERROR, "could not register FD\n");
 		close(bfd->fd);
 		e1inp_line_put(line);
 		return ret;
@@ -394,14 +394,14 @@ static int hsl_bts_process(struct ipa_client_link *link, struct msgb *msg)
 
 	hh = (struct ipaccess_head *) msg->data;
 	if (hh->proto == HSL_PROTO_DEBUG) {
-		LOGP(DINP, LOGL_NOTICE, "HSL debug: %s\n",
+		LOGP(DLINP, LOGL_NOTICE, "HSL debug: %s\n",
 						msg->data + sizeof(*hh));
 		msgb_free(msg);
 		return 0;
 	}
 	sign_link = e1inp_lookup_sign_link(e1i_ts, hh->proto, 0);
 	if (!sign_link) {
-		LOGP(DINP, LOGL_ERROR, "no matching signalling link for "
+		LOGP(DLINP, LOGL_ERROR, "no matching signalling link for "
 			"hh->proto=0x%02x\n", hh->proto);
 		msgb_free(msg);
 		return -EIO;
@@ -410,7 +410,7 @@ static int hsl_bts_process(struct ipa_client_link *link, struct msgb *msg)
 
 	/* XXX better use e1inp_ts_rx? */
 	if (!link->line->ops->sign_link) {
-		LOGP(DINP, LOGL_ERROR, "Fix your application, "
+		LOGP(DLINP, LOGL_ERROR, "Fix your application, "
 			"no action set for signalling messages.\n");
 		return -ENOENT;
 	}
@@ -443,7 +443,7 @@ static int hsl_bts_connect(struct ipa_client_link *link)
 
 	/* ... and enable the signalling link. */
 	if (!link->line->ops->sign_link_up) {
-		LOGP(DINP, LOGL_ERROR,
+		LOGP(DLINP, LOGL_ERROR,
 			"Unable to set signal link, closing socket.\n");
 		ipa_client_link_close(link);
 		return -EINVAL;
@@ -451,7 +451,7 @@ static int hsl_bts_connect(struct ipa_client_link *link)
 	sign_link = link->line->ops->sign_link_up(&unit,
 						  link->line, E1INP_SIGN_NONE);
 	if (sign_link == NULL) {
-		LOGP(DINP, LOGL_ERROR,
+		LOGP(DLINP, LOGL_ERROR,
 		     "Unable to set signal link, closing socket.\n");
 		ipa_client_link_close(link);
 		return -EINVAL;
@@ -466,7 +466,7 @@ static int hsl_line_update(struct e1inp_line *line,
 
 	switch(role) {
 	case E1INP_LINE_R_BSC:
-		LOGP(DINP, LOGL_NOTICE, "enabling hsl BSC mode\n");
+		LOGP(DLINP, LOGL_NOTICE, "enabling hsl BSC mode\n");
 
 		ret = osmo_sock_init(AF_INET, SOCK_STREAM, IPPROTO_TCP,
 				     addr, HSL_TCP_PORT, OSMO_SOCK_F_BIND);
@@ -486,7 +486,7 @@ static int hsl_line_update(struct e1inp_line *line,
 	case E1INP_LINE_R_BTS: {
 		struct ipa_client_link *link;
 
-		LOGP(DINP, LOGL_NOTICE, "enabling hsl BTS mode\n");
+		LOGP(DLINP, LOGL_NOTICE, "enabling hsl BTS mode\n");
 
 		link = ipa_client_link_create(tall_hsl_ctx,
 					      &line->ts[E1INP_SIGN_OML-1],
@@ -497,12 +497,12 @@ static int hsl_line_update(struct e1inp_line *line,
 					      hsl_bts_write,
 					      NULL);
 		if (link == NULL) {
-			LOGP(DINP, LOGL_ERROR, "cannot create BTS link: %s\n",
+			LOGP(DLINP, LOGL_ERROR, "cannot create BTS link: %s\n",
 				strerror(errno));
 			return -ENOMEM;
 		}
 		if (ipa_client_link_open(link) < 0) {
-			LOGP(DINP, LOGL_ERROR, "cannot open BTS link: %s\n",
+			LOGP(DLINP, LOGL_ERROR, "cannot open BTS link: %s\n",
 				strerror(errno));
 			ipa_client_link_close(link);
 			ipa_client_link_destroy(link);

@@ -146,7 +146,7 @@ struct e1inp_line {
 	void *driver_data;
 };
 
-/* SS_INPUT signals */
+/* SS_L_INPUT signals */
 enum signal_input {
 	S_INP_NONE,
 	S_INP_TEI_UP,

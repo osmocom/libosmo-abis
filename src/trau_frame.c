@@ -107,12 +107,12 @@ int decode_trau_frame(struct decoded_trau_frame *fr, const uint8_t *trau_bits)
 	case TRAU_FT_DATA_DOWN:
 	case TRAU_FT_D145_SYNC:
 	case TRAU_FT_EDATA:
-		LOGP(DMUX, LOGL_NOTICE, "can't decode unimplemented TRAU "
+		LOGP(DLMUX, LOGL_NOTICE, "can't decode unimplemented TRAU "
 			"Frame Type 0x%02x\n", cbits5);
 		return -1;
 		break;
 	default:
-		LOGP(DMUX, LOGL_NOTICE, "can't decode unknown TRAU "
+		LOGP(DLMUX, LOGL_NOTICE, "can't decode unknown TRAU "
 			"Frame Type 0x%02x\n", cbits5);
 		return -1;
 		break;
@@ -164,12 +164,12 @@ int trau_frame_up2down(struct decoded_trau_frame *fr)
 	case TRAU_FT_DATA_UP:
 	case TRAU_FT_D145_SYNC:
 	case TRAU_FT_EDATA:
-		LOGP(DMUX, LOGL_NOTICE, "unimplemented TRAU Frame Type "
+		LOGP(DLMUX, LOGL_NOTICE, "unimplemented TRAU Frame Type "
 			"0x%02x\n", cbits5);
 		return -1;
 		break;
 	default:
-		LOGP(DMUX, LOGL_NOTICE, "unknown TRAU Frame Type "
+		LOGP(DLMUX, LOGL_NOTICE, "unknown TRAU Frame Type "
 			"0x%02x\n", cbits5);
 		return -1;
 		break;
@@ -227,12 +227,12 @@ int encode_trau_frame(uint8_t *trau_bits, const struct decoded_trau_frame *fr)
 	case TRAU_FT_DATA_DOWN:
 	case TRAU_FT_D145_SYNC:
 	case TRAU_FT_EDATA:
-		LOGP(DMUX, LOGL_NOTICE, "unimplemented TRAU Frame Type "
+		LOGP(DLMUX, LOGL_NOTICE, "unimplemented TRAU Frame Type "
 			"0x%02x\n", cbits5);
 		return -1;
 		break;
 	default:
-		LOGP(DMUX, LOGL_NOTICE, "unknown TRAU Frame Type "
+		LOGP(DLMUX, LOGL_NOTICE, "unknown TRAU Frame Type "
 			"0x%02x\n", cbits5);
 		return -1;
 		break;
