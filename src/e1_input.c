@@ -211,7 +211,7 @@ int abis_sendmsg(struct msgb *msg)
 
 	/* don't know how to route this message. */
 	if (sign_link == NULL) {
-		LOGP(DLRSL, LOGL_ERROR, "abis_sendmsg: msg->dst == NULL: %s\n",
+		LOGP(DLINP, LOGL_ERROR, "abis_sendmsg: msg->dst == NULL: %s\n",
 			osmo_hexdump(msg->data, msg->len));
 		talloc_free(msg);
 		return -EINVAL;
