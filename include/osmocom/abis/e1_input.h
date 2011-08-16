@@ -156,7 +156,7 @@ struct e1inp_line {
 };
 
 /* SS_L_INPUT signals */
-enum signal_input {
+enum e1inp_signal_input {
 	S_L_INP_NONE,
 	S_L_INP_TEI_UP,
 	S_L_INP_TEI_DN,
