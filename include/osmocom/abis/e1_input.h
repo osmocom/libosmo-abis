@@ -19,6 +19,14 @@ enum e1inp_sign_type {
 };
 const char *e1inp_signtype_name(enum e1inp_sign_type tp);
 
+enum e1inp_ctr {
+	E1I_CTR_HDLC_ABORT,
+	E1I_CTR_HDLC_BADFCS,
+	E1I_CTR_HDLC_OVERR,
+	E1I_CTR_ALARM,
+	E1I_CTR_REMOVED,
+};
+
 struct e1inp_ts;
 
 struct e1inp_sign_link {
@@ -136,6 +144,7 @@ struct e1inp_line {
 
 	unsigned int num;
 	const char *name;
+	struct rate_ctr_group *rate_ctr;
 
 	/* array of timestlots */
 	struct e1inp_ts ts[NUM_E1_TS];
