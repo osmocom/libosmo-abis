@@ -311,7 +311,7 @@ static void hsl_close(struct e1inp_sign_link *sign_link)
 {
 	struct e1inp_ts *ts = sign_link->ts;
 	struct osmo_fd *bfd = &ts->driver.ipaccess.fd;
-	e1inp_event(ts, S_INP_TEI_DN, sign_link->tei, sign_link->sapi);
+	e1inp_event(ts, S_L_INP_TEI_DN, sign_link->tei, sign_link->sapi);
 	/* the first e1inp_sign_link_destroy call closes the socket. */
 	if (bfd->fd != -1) {
 		osmo_fd_unregister(bfd);

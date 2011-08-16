@@ -157,13 +157,13 @@ struct e1inp_line {
 
 /* SS_L_INPUT signals */
 enum signal_input {
-	S_INP_NONE,
-	S_INP_TEI_UP,
-	S_INP_TEI_DN,
-	S_INP_TEI_UNKNOWN,
-	S_INP_LINE_INIT,
-	S_INP_LINE_ALARM,
-	S_INP_LINE_NOALARM,
+	S_L_INP_NONE,
+	S_L_INP_TEI_UP,
+	S_L_INP_TEI_DN,
+	S_L_INP_TEI_UNKNOWN,
+	S_L_INP_LINE_INIT,
+	S_L_INP_LINE_ALARM,
+	S_L_INP_LINE_NOALARM,
 };
 
 /* register a driver with the E1 core */

@@ -149,12 +149,12 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 		}
 		/* save the channel number in the driver private struct */
 		link->driver.misdn.channel = l2addr.channel;
-		ret = e1inp_event(e1i_ts, S_INP_TEI_UP, l2addr.tei, l2addr.sapi);
+		ret = e1inp_event(e1i_ts, S_L_INP_TEI_UP, l2addr.tei, l2addr.sapi);
 		break;
 	case DL_RELEASE_IND:
 		DEBUGP(DLMI, "DL_RELEASE_IND: channel(%d) sapi(%d) tei(%d)\n",
 		l2addr.channel, l2addr.sapi, l2addr.tei);
-		ret = e1inp_event(e1i_ts, S_INP_TEI_DN, l2addr.tei, l2addr.sapi);
+		ret = e1inp_event(e1i_ts, S_L_INP_TEI_DN, l2addr.tei, l2addr.sapi);
 		break;
 	case DL_DATA_IND:
 	case DL_UNITDATA_IND:

@@ -78,12 +78,12 @@ static void handle_dahdi_exception(struct e1inp_ts *ts)
 	switch (evt) {
 	case DAHDI_EVENT_ALARM:
 		/* we should notify the code that the line is gone */
-		osmo_signal_dispatch(SS_L_INPUT, S_INP_LINE_ALARM, &isd);
+		osmo_signal_dispatch(SS_L_INPUT, S_L_INP_LINE_ALARM, &isd);
 		rate_ctr_inc(&line->rate_ctr->ctr[E1I_CTR_ALARM]);
 		break;
 	case DAHDI_EVENT_NOALARM:
 		/* alarm has gone, we should re-start the SABM requests */
-		osmo_signal_dispatch(SS_L_INPUT, S_INP_LINE_NOALARM, &isd);
+		osmo_signal_dispatch(SS_L_INPUT, S_L_INP_LINE_NOALARM, &isd);
 		break;
 	case DAHDI_EVENT_ABORT:
 		rate_ctr_inc(&line->rate_ctr->ctr[E1I_CTR_HDLC_ABORT]);
@@ -139,7 +139,7 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 			 * notify the driver to see if it can do anything to
 			 * recover the existing signalling links with the BTS.
 			 */
-			e1inp_event(e1i_ts, S_INP_TEI_UNKNOWN, tei, sapi);
+			e1inp_event(e1i_ts, S_L_INP_TEI_UNKNOWN, tei, sapi);
 			return -EIO;
 		}
 		if (prim == 0)
@@ -155,11 +155,11 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 		break;
 	case LAPD_MPH_ACTIVATE_IND:
 		DEBUGP(DLMI, "MPH_ACTIVATE_IND: sapi(%d) tei(%d)\n", sapi, tei);
-		ret = e1inp_event(e1i_ts, S_INP_TEI_UP, tei, sapi);
+		ret = e1inp_event(e1i_ts, S_L_INP_TEI_UP, tei, sapi);
 		break;
 	case LAPD_MPH_DEACTIVATE_IND:
 		DEBUGP(DLMI, "MPH_DEACTIVATE_IND: sapi(%d) tei(%d)\n", sapi, tei);
-		ret = e1inp_event(e1i_ts, S_INP_TEI_DN, tei, sapi);
+		ret = e1inp_event(e1i_ts, S_L_INP_TEI_DN, tei, sapi);
 		break;
 	case LAPD_DL_DATA_IND:
 	case LAPD_DL_UNITDATA_IND:

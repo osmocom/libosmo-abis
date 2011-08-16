@@ -619,7 +619,7 @@ int e1inp_line_update(struct e1inp_line *line)
 	 * configured */
 	memset(&isd, 0, sizeof(isd));
 	isd.line = line;
-	osmo_signal_dispatch(SS_L_INPUT, S_INP_LINE_INIT, &isd);
+	osmo_signal_dispatch(SS_L_INPUT, S_L_INP_LINE_INIT, &isd);
 
 	return rc;
 }
