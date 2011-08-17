@@ -840,7 +840,6 @@ static int ipaccess_line_update(struct e1inp_line *line,
 		if (ipa_server_link_open(oml_link) < 0) {
 			LOGP(DLINP, LOGL_ERROR, "cannot open OML BSC link: %s\n",
 				strerror(errno));
-			ipa_server_link_close(oml_link);
 			ipa_server_link_destroy(oml_link);
 			return -EIO;
 		}
@@ -855,7 +854,6 @@ static int ipaccess_line_update(struct e1inp_line *line,
 		if (ipa_server_link_open(rsl_link) < 0) {
 			LOGP(DLINP, LOGL_ERROR, "cannot open RSL BSC link: %s\n",
 				strerror(errno));
-			ipa_server_link_close(rsl_link);
 			ipa_server_link_destroy(rsl_link);
 			return -EIO;
 		}
