@@ -233,7 +233,7 @@ static int test_bts_gsm_12_21_cb(struct osmo_fd *ofd, unsigned int what)
 int main(void)
 {
 	struct ipaccess_unit bts_dev_info = {
-		.site_id	= 0,
+		.site_id	= 1801,
 		.bts_id		= 0,
 		.trx_id		= 0,
 		.unit_name	= "testBTS",
