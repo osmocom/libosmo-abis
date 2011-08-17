@@ -652,9 +652,7 @@ void e1inp_init(void)
 	osmo_signal_register_handler(SS_L_GLOBAL, e1i_sig_cb, NULL);
 
 	e1inp_misdn_init();
-#ifdef HAVE_DAHDI_USER_H
 	e1inp_dahdi_init();
-#endif
 	e1inp_ipaccess_init();
 	e1inp_hsl_init();
 }
