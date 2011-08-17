@@ -424,7 +424,6 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 		LOGP(DLINP, LOGL_ERROR, "Bad signalling message,"
 				       "closing socket.\n");
 		ret = -EINVAL;
-		goto err;
 	}
 	return ret;
 err:
