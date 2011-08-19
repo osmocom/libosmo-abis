@@ -531,7 +531,7 @@ static int handle_ts1_write(struct osmo_fd *bfd)
 	return __handle_ts1_write(bfd, line);
 }
 
-int ipaccess_bts_write_cb(struct ipa_client_link *link)
+static int ipaccess_bts_write_cb(struct ipa_client_link *link)
 {
 	struct e1inp_line *line = link->line;
 

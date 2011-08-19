@@ -167,7 +167,7 @@ int ipa_client_write_default_cb(struct ipa_client_link *link)
 	return 0;
 }
 
-int ipa_client_fd_cb(struct osmo_fd *ofd, unsigned int what)
+static int ipa_client_fd_cb(struct osmo_fd *ofd, unsigned int what)
 {
 	struct ipa_client_link *link = ofd->data;
 	int error, ret;
@@ -301,7 +301,7 @@ void ipa_client_link_send(struct ipa_client_link *link, struct msgb *msg)
 	link->ofd->when |= BSC_FD_WRITE;
 }
 
-int ipa_server_fd_cb(struct osmo_fd *ofd, unsigned int what)
+static int ipa_server_fd_cb(struct osmo_fd *ofd, unsigned int what)
 {
 	int ret;
 	struct sockaddr_in sa;
