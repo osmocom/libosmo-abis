@@ -20,6 +20,7 @@
 
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/talloc.h>
