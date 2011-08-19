@@ -171,7 +171,7 @@ int ipa_client_fd_cb(struct osmo_fd *ofd, unsigned int what)
 {
 	struct ipa_client_link *link = ofd->data;
 	int error, ret;
-	size_t len = sizeof(error);
+	socklen_t len = sizeof(error);
 
 	switch(link->state) {
 	case IPA_CLIENT_LINK_STATE_CONNECTING:
