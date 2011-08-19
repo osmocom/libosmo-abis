@@ -66,4 +66,6 @@ void ipa_client_link_send(struct ipa_client_link *link, struct msgb *msg);
 
 int ipa_msg_recv(int fd, struct msgb **rmsg);
 
+int ipaccess_rcvmsg_base(struct msgb *msg, struct osmo_fd *bfd);
+
 #endif
