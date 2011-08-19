@@ -484,7 +484,6 @@ static int __handle_ts1_write(struct osmo_fd *bfd, struct e1inp_line *line)
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
 	struct e1inp_sign_link *sign_link;
 	struct msgb *msg;
-	uint8_t proto;
 	int ret;
 
 	bfd->when &= ~BSC_FD_WRITE;
@@ -498,10 +497,8 @@ static int __handle_ts1_write(struct osmo_fd *bfd, struct e1inp_line *line)
 
 	switch (sign_link->type) {
 	case E1INP_SIGN_OML:
-		proto = IPAC_PROTO_OML;
 		break;
 	case E1INP_SIGN_RSL:
-		proto = IPAC_PROTO_RSL;
 		break;
 	default:
 		msgb_free(msg);
