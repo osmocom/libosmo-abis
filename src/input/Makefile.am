@@ -9,4 +9,5 @@ libosmoabis_input_la_SOURCES  = dahdi.c		\
 				ipa.c		\
 				ipaccess.c	\
 				lapd.c		\
-				misdn.c
+				misdn.c		\
+				rs232.c

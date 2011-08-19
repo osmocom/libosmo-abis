@@ -100,6 +100,9 @@ struct e1inp_ts {
 			struct osmo_fd fd;
 			struct lapd_instance *lapd;
 		} dahdi;
+		struct {
+			struct osmo_fd fd;
+		} rs232;
 	} driver;
 };
 
