@@ -610,8 +610,7 @@ int e1inp_line_update(struct e1inp_line *line)
 		return 0;
 
 	if (line->driver && line->ops && line->driver->line_update) {
-		rc = line->driver->line_update(line, line->ops->role,
-						line->ops->addr);
+		rc = line->driver->line_update(line);
 	} else
 		rc = 0;
 

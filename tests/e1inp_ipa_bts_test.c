@@ -252,9 +252,13 @@ int main(void)
 	osmo_init_logging(&bts_test_log_info);
 
 	struct e1inp_line_ops ops = {
-		.role		= E1INP_LINE_R_BTS,
-		.addr		= "127.0.0.1",
-		.data		= &bts_dev_info,
+		.cfg = {
+			.ipa = {
+				.role	= E1INP_LINE_R_BTS,
+				.addr	= "127.0.0.1",
+				.dev	= &bts_dev_info,
+			},
+		},
 		.sign_link_up	= sign_link_up,
 		.sign_link_down	= sign_link_down,
 		.sign_link	= sign_link,

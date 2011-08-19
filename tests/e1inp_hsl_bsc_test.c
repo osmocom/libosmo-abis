@@ -190,8 +190,12 @@ int main(void)
 	osmo_init_logging(&bsc_test_log_info);
 
 	struct e1inp_line_ops ops = {
-		.addr		= "0.0.0.0",
-		.role		= E1INP_LINE_R_BSC,
+		.cfg = {
+			.ipa = {
+				.addr	= "0.0.0.0",
+				.role	= E1INP_LINE_R_BSC,
+			},
+		},
 		.sign_link_up	= sign_link_up,
 		.sign_link_down	= sign_link_down,
 		.sign_link	= sign_link,

@@ -551,8 +551,7 @@ int ipaccess_fd_cb(struct osmo_fd *bfd, unsigned int what)
 	return rc;
 }
 
-static int ipaccess_line_update(struct e1inp_line *line,
-				enum e1inp_line_role role, const char *addr);
+static int ipaccess_line_update(struct e1inp_line *line);
 
 struct e1inp_driver ipaccess_driver = {
 	.name = "ipa",
@@ -778,7 +777,7 @@ static int ipaccess_bts_cb(struct ipa_client_link *link, struct msgb *msg)
 				link->ofd->fd = -1;
 				return -EINVAL;
 			}
-			rmsg = ipa_bts_id_resp(link->line->ops->data,
+			rmsg = ipa_bts_id_resp(link->line->ops->cfg.ipa.dev,
 						data + 1, len - 1);
 			ipaccess_send(link->ofd->fd, rmsg->data, rmsg->len);
 			msgb_free(rmsg);
@@ -814,12 +813,11 @@ static int ipaccess_bts_cb(struct ipa_client_link *link, struct msgb *msg)
 	return 0;
 }
 
-static int ipaccess_line_update(struct e1inp_line *line,
-				enum e1inp_line_role role, const char *addr)
+static int ipaccess_line_update(struct e1inp_line *line)
 {
 	int ret = -ENOENT;
 
-	switch(role) {
+	switch(line->ops->cfg.ipa.role) {
 	case E1INP_LINE_R_BSC: {
 		struct ipa_server_link *oml_link, *rsl_link;
 
@@ -864,7 +862,8 @@ static int ipaccess_line_update(struct e1inp_line *line,
 		link = ipa_client_link_create(tall_ipa_ctx,
 					      &line->ts[E1INP_SIGN_OML-1],
 					      "ipa", E1INP_SIGN_OML,
-					      addr, IPA_TCP_PORT_OML,
+					      line->ops->cfg.ipa.addr,
+					      IPA_TCP_PORT_OML,
 					      NULL,
 					      ipaccess_bts_cb,
 					      ipaccess_bts_write_cb,
@@ -884,7 +883,8 @@ static int ipaccess_line_update(struct e1inp_line *line,
 		rsl_link = ipa_client_link_create(tall_ipa_ctx,
 						  &line->ts[E1INP_SIGN_RSL-1],
 						  "ipa", E1INP_SIGN_RSL,
-						  addr, IPA_TCP_PORT_RSL,
+						  line->ops->cfg.ipa.addr,
+						  IPA_TCP_PORT_RSL,
 						  NULL,
 						  ipaccess_bts_cb,
 						  ipaccess_bts_write_cb,

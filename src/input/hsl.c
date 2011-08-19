@@ -318,8 +318,7 @@ static void hsl_close(struct e1inp_sign_link *sign_link)
 	}
 }
 
-static int hsl_line_update(struct e1inp_line *line,
-			   enum e1inp_line_role role, const char *addr);
+static int hsl_line_update(struct e1inp_line *line);
 
 struct e1inp_driver hsl_driver = {
 	.name = "hsl",
@@ -421,7 +420,7 @@ static int hsl_bts_connect(struct ipa_client_link *link)
 	struct msgb *msg;
 	uint8_t *serno;
 	char serno_buf[16];
-	struct hsl_unit *unit = link->line->ops->data;
+	struct hsl_unit *unit = link->line->ops->cfg.ipa.dev;
 	struct e1inp_sign_link *sign_link;
 
 	/* send the minimal message to identify this BTS. */
@@ -457,17 +456,17 @@ static int hsl_bts_connect(struct ipa_client_link *link)
 	return 0;
 }
 
-static int hsl_line_update(struct e1inp_line *line,
-			   enum e1inp_line_role role, const char *addr)
+static int hsl_line_update(struct e1inp_line *line)
 {
 	int ret = -ENOENT;
 
-	switch(role) {
+	switch(line->ops->cfg.ipa.role) {
 	case E1INP_LINE_R_BSC:
 		LOGP(DLINP, LOGL_NOTICE, "enabling hsl BSC mode\n");
 
 		ret = osmo_sock_init(AF_INET, SOCK_STREAM, IPPROTO_TCP,
-				     addr, HSL_TCP_PORT, OSMO_SOCK_F_BIND);
+				     line->ops->cfg.ipa.addr,
+				     HSL_TCP_PORT, OSMO_SOCK_F_BIND);
 		if (ret < 0)
 			return ret;
 
@@ -489,7 +488,8 @@ static int hsl_line_update(struct e1inp_line *line,
 		link = ipa_client_link_create(tall_hsl_ctx,
 					      &line->ts[E1INP_SIGN_OML-1],
 					      "hsl", E1INP_SIGN_OML,
-					      addr, HSL_TCP_PORT,
+					      line->ops->cfg.ipa.addr,
+					      HSL_TCP_PORT,
 					      hsl_bts_connect,
 					      hsl_bts_process,
 					      hsl_bts_write,

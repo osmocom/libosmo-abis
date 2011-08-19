@@ -277,8 +277,7 @@ rs232_setup(struct e1inp_line *line, const char *serial_port, unsigned int delay
 	return 0;
 }
 
-static int rs232_line_update(struct e1inp_line *line,
-			     enum e1inp_line_role role, const char *addr);
+static int rs232_line_update(struct e1inp_line *line);
 
 static struct e1inp_driver rs232_driver = {
 	.name		= "rs232",
@@ -286,13 +285,13 @@ static struct e1inp_driver rs232_driver = {
 	.line_update	= rs232_line_update,
 };
 
-static int rs232_line_update(struct e1inp_line *line,
-			     enum e1inp_line_role role, const char *addr)
+static int rs232_line_update(struct e1inp_line *line)
 {
 	if (line->driver != &rs232_driver)
 		return -EINVAL;
 
-	return rs232_setup(line, addr, 0);
+	return rs232_setup(line, line->ops->cfg.rs232.port,
+				 line->ops->cfg.rs232.delay);
 }
 
 int e1inp_rs232_init(void)

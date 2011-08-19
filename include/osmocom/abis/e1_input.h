@@ -126,15 +126,23 @@ struct e1inp_driver {
 	struct llist_head list;
 	const char *name;
 	int (*want_write)(struct e1inp_ts *ts);
-	int (*line_update)(struct e1inp_line *line, enum e1inp_line_role role, const char *addr);
+	int (*line_update)(struct e1inp_line *line);
 	void (*close)(struct e1inp_sign_link *link);
 	int default_delay;
 };
 
 struct e1inp_line_ops {
-	enum e1inp_line_role	role;
-	char			*addr;
-	void			*data;
+	union {
+		struct {
+			enum e1inp_line_role role;	/* BSC or BTS mode. */
+			const char *addr;		/* IP address .*/
+			void *dev;			/* device parameters. */
+		} ipa;
+		struct {
+			const char *port;		/* e.g. /dev/ttyUSB0 */
+			unsigned int delay;
+		} rs232;
+	} cfg;
 
 	struct e1inp_sign_link *	(*sign_link_up)(void *unit_info, struct e1inp_line *line, enum e1inp_sign_type type);
 	void	(*sign_link_down)(struct e1inp_line *line);
