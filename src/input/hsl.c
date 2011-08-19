@@ -39,6 +39,7 @@
 #include <errno.h>
 #include <string.h>
 #include <time.h>
+#include <inttypes.h>
 #include <sys/fcntl.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
@@ -431,7 +432,7 @@ static int hsl_bts_connect(struct ipa_client_link *link)
 	*msgb_put(msg, 1) = 0x80;
 	*msgb_put(msg, 1) = 0x80;
 	*msgb_put(msg, 1) = unit->swversion;
-	snprintf(serno_buf, sizeof(serno_buf), "%llx", unit->serno);
+	snprintf(serno_buf, sizeof(serno_buf), "%"PRIx64, unit->serno);
 	serno = msgb_put(msg, strlen(serno_buf)+1);
 	memcpy(serno, serno_buf, strlen(serno_buf));
 	ipa_msg_push_header(msg, 0);
