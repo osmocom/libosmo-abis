@@ -42,6 +42,7 @@
 #endif
 
 #include <osmocom/core/select.h>
+#include <osmocom/core/utils.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/logging.h>
 #include <osmocom/abis/e1_input.h>
@@ -49,12 +50,7 @@
 
 #define TS1_ALLOC_SIZE	300
 
-struct prim_name {
-	unsigned int prim;
-	const char *name;
-};
-
-const struct prim_name prim_names[] = {
+const struct value_string prim_names[] = {
 	{ PH_CONTROL_IND, "PH_CONTROL_IND" },
 	{ PH_DATA_IND, "PH_DATA_IND" },
 	{ PH_DATA_CNF, "PH_DATA_CNF" },
@@ -68,19 +64,8 @@ const struct prim_name prim_names[] = {
 	{ DL_INFORMATION_IND, "DL_INFORMATION_IND" },
 	{ MPH_ACTIVATE_IND, "MPH_ACTIVATE_IND" },
 	{ MPH_DEACTIVATE_IND, "MPH_DEACTIVATE_IND" },
+	{ 0, NULL }
 };
-
-const char *get_prim_name(unsigned int prim)
-{
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(prim_names); i++) {
-		if (prim_names[i].prim == prim)
-			return prim_names[i].name;
-	}
-
-	return "UNKNOWN";
-}
 
 static int handle_ts1_read(struct osmo_fd *bfd)
 {
@@ -118,7 +103,7 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 		alen, l2addr.dev, l2addr.channel, l2addr.sapi, l2addr.tei);
 
 	DEBUGP(DLMI, "<= len = %d, prim(0x%x) id(0x%x): %s\n",
-		ret, hh->prim, hh->id, get_prim_name(hh->prim));
+		ret, hh->prim, hh->id, get_value_string(prim_names, hh->prim));
 
 	switch (hh->prim) {
 	case DL_INFORMATION_IND:
@@ -302,7 +287,8 @@ static int handle_tsX_read(struct osmo_fd *bfd)
 
 	if (hh->prim != PH_CONTROL_IND)
 		DEBUGP(DLMIB, "<= BCHAN len = %d, prim(0x%x) id(0x%x): %s\n",
-			ret, hh->prim, hh->id, get_prim_name(hh->prim));
+			ret, hh->prim, hh->id,
+			get_value_string(prim_names, hh->prim));
 
 	switch (hh->prim) {
 	case PH_DATA_IND:
