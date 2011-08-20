@@ -33,6 +33,8 @@
 #include <arpa/inet.h>
 #include <mISDNif.h>
 
+#include <osmocom/abis/lapd.h>
+
 //#define AF_COMPATIBILITY_FUNC
 //#include <compat_af_isdn.h>
 #ifndef AF_ISDN
@@ -520,6 +522,74 @@ int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
 		break;
 	}
 
+	return ret;
+}
+
+/*! \brief Receive some data from the L1/HDLC into LAPD of a timeslot
+ *  \param[in] e1i_ts E1 Timeslot data structure
+ *  \param[in] msg Message buffer containing full LAPD message
+ *
+ * This is a wrapper around e1inp_rx_ts(), but feeding the incoming
+ * message first into our LAPD code.  This allows a driver to read raw
+ * (HDLC decoded) data from the timeslot, instead of a LAPD stack
+ * present in any underlying driver.
+ */
+int e1inp_rx_ts_lapd(struct e1inp_ts *e1i_ts, struct msgb *msg)
+{
+	lapd_mph_type prim;
+	unsigned int sapi, tei;
+	int ilen, ret = 0, error = 0;
+	uint8_t *idata;
+
+	sapi = msg->data[0] >> 2;
+	tei = msg->data[1] >> 1;
+
+	DEBUGP(DLMI, "<= len = %d, sapi(%d) tei(%d)", msg->len, sapi, tei);
+
+	idata = lapd_receive(e1i_ts->lapd, msg->data, msg->len, &ilen, &prim, &error);
+	if (!idata) {
+		switch(error) {
+		case LAPD_ERR_UNKNOWN_TEI:
+			/* We don't know about this TEI, probably the BSC
+			 * lost local states (it crashed or it was stopped),
+			 * notify the driver to see if it can do anything to
+			 * recover the existing signalling links with the BTS.
+			 */
+			e1inp_event(e1i_ts, S_L_INP_TEI_UNKNOWN, tei, sapi);
+			return -EIO;
+		}
+		if (prim == 0)
+			return -EIO;
+	}
+
+	msgb_pull(msg, 2);
+
+	DEBUGP(DLMI, "prim %08x\n", prim);
+
+	switch (prim) {
+	case 0:
+		break;
+	case LAPD_MPH_ACTIVATE_IND:
+		DEBUGP(DLMI, "MPH_ACTIVATE_IND: sapi(%d) tei(%d)\n", sapi, tei);
+		ret = e1inp_event(e1i_ts, S_L_INP_TEI_UP, tei, sapi);
+		break;
+	case LAPD_MPH_DEACTIVATE_IND:
+		DEBUGP(DLMI, "MPH_DEACTIVATE_IND: sapi(%d) tei(%d)\n", sapi, tei);
+		ret = e1inp_event(e1i_ts, S_L_INP_TEI_DN, tei, sapi);
+		break;
+	case LAPD_DL_DATA_IND:
+	case LAPD_DL_UNITDATA_IND:
+		if (prim == LAPD_DL_DATA_IND)
+			msg->l2h = msg->data + 2;
+		else
+			msg->l2h = msg->data + 1;
+		DEBUGP(DLMI, "RX: %s\n", osmo_hexdump(msgb_l2(msg), msgb_l2len(msg)));
+		ret = e1inp_rx_ts(e1i_ts, msg, tei, sapi);
+		break;
+	default:
+		printf("ERROR: unknown prim\n");
+		break;
+	}
 	return ret;
 }
 

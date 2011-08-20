@@ -106,10 +106,7 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 	unsigned int ts_nr = bfd->priv_nr;
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
 	struct msgb *msg = msgb_alloc(TS1_ALLOC_SIZE, "DAHDI TS1");
-	lapd_mph_type prim;
-	unsigned int sapi, tei;
-	int ilen, ret, error = 0;
-	uint8_t *idata;
+	int ret;
 
 	if (!msg)
 		return -ENOMEM;
@@ -125,58 +122,7 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 		perror("read ");
 	}
 
-	sapi = msg->data[0] >> 2;
-	tei = msg->data[1] >> 1;
-
-	DEBUGP(DLMI, "<= len = %d, sapi(%d) tei(%d)", ret, sapi, tei);
-
-	idata = lapd_receive(e1i_ts->driver.dahdi.lapd, msg->data, msg->len, &ilen, &prim, &error);
-	if (!idata) {
-		switch(error) {
-		case LAPD_ERR_UNKNOWN_TEI:
-			/* We don't know about this TEI, probably the BSC
-			 * lost local states (it crashed or it was stopped),
-			 * notify the driver to see if it can do anything to
-			 * recover the existing signalling links with the BTS.
-			 */
-			e1inp_event(e1i_ts, S_L_INP_TEI_UNKNOWN, tei, sapi);
-			return -EIO;
-		}
-		if (prim == 0)
-			return -EIO;
-	}
-
-	msgb_pull(msg, 2);
-
-	DEBUGP(DLMI, "prim %08x\n", prim);
-
-	switch (prim) {
-	case 0:
-		break;
-	case LAPD_MPH_ACTIVATE_IND:
-		DEBUGP(DLMI, "MPH_ACTIVATE_IND: sapi(%d) tei(%d)\n", sapi, tei);
-		ret = e1inp_event(e1i_ts, S_L_INP_TEI_UP, tei, sapi);
-		break;
-	case LAPD_MPH_DEACTIVATE_IND:
-		DEBUGP(DLMI, "MPH_DEACTIVATE_IND: sapi(%d) tei(%d)\n", sapi, tei);
-		ret = e1inp_event(e1i_ts, S_L_INP_TEI_DN, tei, sapi);
-		break;
-	case LAPD_DL_DATA_IND:
-	case LAPD_DL_UNITDATA_IND:
-		if (prim == LAPD_DL_DATA_IND)
-			msg->l2h = msg->data + 2;
-		else
-			msg->l2h = msg->data + 1;
-		DEBUGP(DLMI, "RX: %s\n", osmo_hexdump(msgb_l2(msg), ret));
-		ret = e1inp_rx_ts(e1i_ts, msg, tei, sapi);
-		break;
-	default:
-		printf("ERROR: unknown prim\n");
-		break;
-	}
-
-	DEBUGP(DLMI, "Returned ok\n");
-	return ret;
+	return e1inp_rx_ts_lapd(e1i_ts, msg);
 }
 
 static int ts_want_write(struct e1inp_ts *e1i_ts)
@@ -235,7 +181,7 @@ static int handle_ts1_write(struct osmo_fd *bfd)
 	}
 
 	DEBUGP(DLMI, "TX: %s\n", osmo_hexdump(msg->data, msg->len));
-	lapd_transmit(e1i_ts->driver.dahdi.lapd, sign_link->tei,
+	lapd_transmit(e1i_ts->lapd, sign_link->tei,
 		      sign_link->sapi, msg->data, msg->len);
 	msgb_free(msg);
 
@@ -466,7 +412,7 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 			}
 			bfd->when = BSC_FD_READ | BSC_FD_EXCEPT;
 			dahdi_set_bufinfo(bfd->fd, 1);
-			e1i_ts->driver.dahdi.lapd = lapd_instance_alloc(1, dahdi_write_msg, bfd);
+			e1i_ts->lapd = lapd_instance_alloc(1, dahdi_write_msg, bfd);
 			break;
 		case E1INP_TS_TYPE_TRAU:
 			bfd->fd = open(openstr, O_RDWR | O_NONBLOCK);

@@ -70,6 +70,9 @@ struct e1inp_ts {
 	/* to which line do we belong ? */
 	struct e1inp_line *line;
 
+	/* LAPD instance, if any */
+	struct lapd_instance *lapd;
+
 	union {
 		struct {
 			/* list of all signalling links on this TS */
@@ -98,7 +101,6 @@ struct e1inp_ts {
 		struct {
 			/* DAHDI driver has one fd for each ts */
 			struct osmo_fd fd;
-			struct lapd_instance *lapd;
 		} dahdi;
 		struct {
 			struct osmo_fd fd;
@@ -229,6 +231,7 @@ int e1inp_update_ts(struct e1inp_ts *ts);
 /* Receive a packet from the E1 driver */
 int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
 		uint8_t tei, uint8_t sapi);
+int e1inp_rx_ts_lapd(struct e1inp_ts *e1i_ts, struct msgb *msg);
 
 /* called by driver if it wants to transmit on a given TS */
 struct msgb *e1inp_tx_ts(struct e1inp_ts *e1i_ts,
