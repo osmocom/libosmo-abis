@@ -30,6 +30,12 @@
 #include <osmocom/abis/trau_frame.h>
 #include <osmocom/core/talloc.h>
 
+/*! \addtogroup subchan_demux
+ *  @{
+ *
+ *  \file subchan_demux.c
+ */
+
 void *tall_tqe_ctx;
 
 static inline void append_bit(struct demux_subch *sch, uint8_t bit)
@@ -68,6 +74,9 @@ static void resync_to_here(struct demux_subch *sch)
 	sch->in_sync = 1;
 }
 
+/*! \brief initialize subchannel demuxer structure
+ *  \param[in,out] dmx subchannel demuxer
+ */
 int subch_demux_init(struct subch_demux *dmx)
 {
 	int i;
@@ -81,7 +90,13 @@ int subch_demux_init(struct subch_demux *dmx)
 	return 0;
 }
 
-/* input some arbitrary (modulo 4) number of bytes of a 64k E1 channel,
+/*! \brief Input some data from the 64k full-slot into subchannel demux
+ *  \param[in] dmx subchannel demuxer
+ *  \param[in] data pointer to buffer containing input data
+ *  \param[in] len length of \a data in bytes
+ *  \returns 0 in case of success, <0 otherwise.
+ *
+ * Input some arbitrary (modulo 4) number of bytes of a 64k E1 channel,
  * split it into the 16k subchannels */
 int subch_demux_in(struct subch_demux *dmx, uint8_t *data, int len)
 {
@@ -142,6 +157,14 @@ int subch_demux_in(struct subch_demux *dmx, uint8_t *data, int len)
 	return i;
 }
 
+/*! \brief activate a given sub-channel
+ *  \param[in] dmx subchannel demuxer
+ *  \param[in] subch sub-channel number
+ *  \returns 0 in case of success, <0 otherwise
+ *
+ * Activating a sub-channel will casuse the \ref subch_demux::out_cb
+ * callback to be called for any incoming data from the full slot
+ */
 int subch_demux_activate(struct subch_demux *dmx, int subch)
 {
 	if (subch >= NR_SUBCH)
@@ -151,6 +174,14 @@ int subch_demux_activate(struct subch_demux *dmx, int subch)
 	return 0;
 }
 
+/*! \brief deactivate a given sub-channel
+ *  \param[in] dmx subchannel demuxer
+ *  \param[in] subch sub-channel number
+ *  \returns 0 in case of success, <0 otherwise
+ *
+ * Deactivating a sub-channel will casuse the \ref subch_demux::out_cb
+ * callback no longer to be called.
+ */
 int subch_demux_deactivate(struct subch_demux *dmx, int subch)
 {
 	if (subch >= NR_SUBCH)
@@ -243,7 +274,12 @@ static int mux_output_byte(struct subch_mux *mx, uint8_t *byte)
 	return rc;
 }
 
-/* Request the output of some muxed bytes from the subchan muxer */
+/*! \brief Request the output of some muxed bytes from the subchan muxer
+ *  \param[in] mx subchannel muxer
+ *  \param[out] data caller-allocated buffer for data
+ *  \param[in] len number of bytes to be filled into \a data
+ *  \returns actual number of bytes filled into \a data
+ */
 int subchan_mux_out(struct subch_mux *mx, uint8_t *data, int len)
 {
 	int i;
@@ -284,7 +320,13 @@ static void tx_queue_evict(struct mux_subch *sch, int num_evict)
 	}
 }
 
-/* enqueue some data into the tx_queue of a given subchannel */
+/*! \brief enqueue some data into the tx_queue of a given subchannel
+ *  \param[in] mx subchannel muxer instance
+ *  \param[in] s_nr subchannel number
+ *  \param[in] data pointer to buffer with data
+ *  \param[in] len length of \a data
+ *  \returns 0 in case of success, <0 in case of error
+ */
 int subchan_mux_enqueue(struct subch_mux *mx, int s_nr, const uint8_t *data,
 			int len)
 {
@@ -306,7 +348,10 @@ int subchan_mux_enqueue(struct subch_mux *mx, int s_nr, const uint8_t *data,
 	return 0;
 }
 
-/* initialize one subchannel muxer instance */
+/*! \brief initialize one subchannel muxer instance
+ *  \param[in,out] mx subchannel muxer instance, caller-allocated
+ *  \returns 0 in success, < 0 in case of error
+ */
 int subchan_mux_init(struct subch_mux *mx)
 {
 	int i;
@@ -319,3 +364,5 @@ int subchan_mux_init(struct subch_mux *mx)
 
 	return 0;
 }
+
+/* }@ */

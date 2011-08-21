@@ -23,79 +23,87 @@
 #include <stdint.h>
 #include <osmocom/core/linuxlist.h>
 
+/*! \defgroup subchan_demux
+ *  \brief E1 sub-channel multiplexer/demultiplexer
+ *  @{
+ *
+ *  \file subchan_demux.h
+ */
+
+/*! \brief number of 16k sub-channels inside one 64k E1 timeslot */
 #define NR_SUBCH	4
+/*! \brief size of TRAU frames in bytes */
 #define TRAU_FRAME_SIZE	40
+/*! \brief size of TRAU farmes in bits */
 #define TRAU_FRAME_BITS	(TRAU_FRAME_SIZE*8)
 
 /***********************************************************************/
 /* DEMULTIPLEXER */
 /***********************************************************************/
 
+/*! \brief one subchannel inside the demultplexer */
 struct demux_subch {
+	/*! \brief bit-buffer for output bits */
 	uint8_t out_bitbuf[TRAU_FRAME_BITS];
-	uint16_t out_idx; /* next bit to be written in out_bitbuf */
-	/* number of consecutive zeros that we have received (for sync) */
+	/*! \brief next bit to be written in out_bitbuf */
+	uint16_t out_idx;
+	/*! \brief number of consecutive zeros that we have received (for sync) */
 	unsigned int consecutive_zeros;
-	/* are we in TRAU frame sync or not? */
+	/*! \brief  are we in TRAU frame sync or not? */
 	unsigned int in_sync;
 };
 
+/*! \brief one instance of a subchannel demultiplexer */
 struct subch_demux {
-	/* bitmask of currently active subchannels */
+	/*! \brief bitmask of currently active subchannels */
 	uint8_t chan_activ;
-	/* one demux_subch struct for every subchannel */
+	/*! \brief one demux_subch struct for every subchannel */
 	struct demux_subch subch[NR_SUBCH];
-	/* callback to be called once we have received a complete
-	 * frame on a given subchannel */
+	/*! \brief callback to be called once we have received a
+	 *  complete frame on a given subchannel */
 	int (*out_cb)(struct subch_demux *dmx, int ch, uint8_t *data, int len,
 		      void *);
-	/* user-provided data, transparently passed to out_cb() */
+	/*! \brief user-provided data, transparently passed to out_cb() */
 	void *data;
 };
 
-/* initialize one demultiplexer instance */
 int subch_demux_init(struct subch_demux *dmx);
-
-/* feed 'len' number of muxed bytes into the demultiplexer */
 int subch_demux_in(struct subch_demux *dmx, uint8_t *data, int len);
-
-/* activate decoding/processing for one subchannel */
 int subch_demux_activate(struct subch_demux *dmx, int subch);
-
-/* deactivate decoding/processing for one subchannel */
 int subch_demux_deactivate(struct subch_demux *dmx, int subch);
 
 /***********************************************************************/
 /* MULTIPLEXER */
 /***********************************************************************/
 
-/* one element in the tx_queue of a muxer sub-channel */
+/*! \brief one element in the tx_queue of a muxer sub-channel */
 struct subch_txq_entry {
+	/*! \brief internal linked list header */
 	struct llist_head list;
 
-	unsigned int bit_len;	/* total number of bits in 'bits' */
-	unsigned int next_bit;	/* next bit to be transmitted */
+	unsigned int bit_len;	/*!< \brief total number of bits in 'bits' */
+	unsigned int next_bit;	/*!< \brief next bit to be transmitted */
 
-	uint8_t bits[0];	/* one bit per byte */
+	uint8_t bits[0];	/*!< \brief one bit per byte */
 };
 
+/*! \brief one sub-channel inside a multiplexer */
 struct mux_subch {
+	/*! \brief linked list of \ref subch_txq_entry */
 	struct llist_head tx_queue;
 };
 
-/* structure representing one instance of the subchannel muxer */
+/*! \brief one instance of the subchannel multiplexer */
 struct subch_mux {
+	/*! \brief array of sub-channels inside the multiplexer */
 	struct mux_subch subch[NR_SUBCH];
 };
 
-/* initialize a subchannel muxer instance */
 int subchan_mux_init(struct subch_mux *mx);
-
-/* request the output of 'len' multiplexed bytes */
 int subchan_mux_out(struct subch_mux *mx, uint8_t *data, int len);
-
-/* enqueue some data into one sub-channel of the muxer */
 int subchan_mux_enqueue(struct subch_mux *mx, int s_nr, const uint8_t *data,
 			int len);
+
+/* }@ */
 
 #endif /* _SUBCH_DEMUX_H */
