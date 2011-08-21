@@ -22,17 +22,26 @@
 
 #include <stdint.h>
 
-/* 21 for FR/EFR, 25 for AMR, 15 for OM, 15 for data, 13 for E-data, 21 idle */
+/*! \defgroup trau_frame TRAU frame handling
+ *  @{
+ *
+ *  \file trau_frame.h
+ */
+
+/*! \brief Maximum number of C-bits in a TRAU frame:
+ * 21 for FR/EFR, 25 for AMR, 15 for OM, 15 for data, 13 for E-data, 21 idle */
 #define MAX_C_BITS	25
-/* 260 for FR/EFR, 256 for AMR, 264 for OM, 288 for E-data */
+/*! \brief Maximum number of D-bits in a TRAU frame:
+ * 260 for FR/EFR, 256 for AMR, 264 for OM, 288 for E-data */
 #define MAX_D_BITS	288
-/* for all speech frames */
+/*! \brief Maximum number of T-bits in a TRAU frame for all speech frames */
 #define MAX_T_BITS	4
-/* for OM */
+/*! \brief Maximum number of S-bits in a TRAU frame for OM */
 #define MAX_S_BITS	6
-/* for E-data */
+/*! \brief Maximum number of M-bits in a TRAU frame  for E-data */
 #define MAX_M_BITS	2
 
+/*! \brief a decoded TRAU frame, extracted C/D/T/S/M bits */
 struct decoded_trau_frame {
 	uint8_t c_bits[MAX_C_BITS];
 	uint8_t d_bits[MAX_D_BITS];
@@ -60,5 +69,7 @@ int encode_trau_frame(uint8_t *trau_bits, const struct decoded_trau_frame *fr);
 int trau_frame_up2down(struct decoded_trau_frame *fr);
 
 uint8_t *trau_idle_frame(void);
+
+/* }@ */
 
 #endif /* _TRAU_FRAME_H */

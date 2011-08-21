@@ -29,6 +29,12 @@
 #include <osmocom/abis/subchan_demux.h>
 #include <osmocom/core/logging.h>
 
+/*! \addtogroup trau_frame
+ *  @{
+ *
+ *  \file trau_frame.c
+ */
+
 static uint32_t get_bits(const uint8_t *bitbuf, int offset, int num)
 {
 	int i;
@@ -124,7 +130,10 @@ int decode_trau_frame(struct decoded_trau_frame *fr, const uint8_t *trau_bits)
 const uint8_t ft_fr_down_bits[] = { 1, 1, 1, 0, 0 };
 const uint8_t ft_idle_down_bits[] = { 0, 1, 1, 1, 0 };
 
-/* modify an uplink TRAU frame so we can send it downlink */
+/*! \brief modify an uplink TRAU frame so we can send it downlink
+ *  \param[in,out] fr the uplink TRAU frame that is to be converted
+ *  \returns 0 in case of success, < 0 in caes of error
+ */
 int trau_frame_up2down(struct decoded_trau_frame *fr)
 {
 	uint8_t cbits5 = get_bits(fr->c_bits, 0, 5);
@@ -211,6 +220,11 @@ static void encode_fr(uint8_t *trau_bits, const struct decoded_trau_frame *fr)
 	memcpy(trau_bits+316, fr->t_bits+0, 4);
 }
 
+/*! \brief encode a TRAU frame from the decoded bits
+ *  \param[out] trau_bits output buffer, will contain encoded bits
+ *  \param[in] fr decoded trau frame structure
+ *  \returns 0 in case of success, < 0 in case of error
+ */
 int encode_trau_frame(uint8_t *trau_bits, const struct decoded_trau_frame *fr)
 {
 	uint8_t cbits5 = get_bits(fr->c_bits, 0, 5);
@@ -254,6 +268,8 @@ static struct decoded_trau_frame fr_idle_frame = {
 static uint8_t encoded_idle_frame[TRAU_FRAME_BITS];
 static int dbits_initted = 0;
 
+/*! \brief return pointer to global buffer containing a TRAU idle frame
+ */
 uint8_t *trau_idle_frame(void)
 {
 	/* only initialize during the first call */
@@ -284,3 +300,5 @@ uint8_t *trau_idle_frame(void)
 	}
 	return encoded_idle_frame;
 }
+
+/* }@ */
