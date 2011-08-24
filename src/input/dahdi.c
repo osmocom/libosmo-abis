@@ -393,6 +393,10 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 		struct osmo_fd *bfd = &e1i_ts->driver.dahdi.fd;
 		int dev_nr;
 
+		/* unregister FD if it was already registered */
+		if (bfd->list.next && bfd->list.next != LLIST_POISON1)
+			osmo_fd_unregister(bfd);
+
 		/* DAHDI device names/numbers just keep incrementing
 		 * even over multiple boards.  So TS1 of the second
 		 * board will be 32 */
@@ -405,10 +409,20 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 
 		switch (e1i_ts->type) {
 		case E1INP_TS_TYPE_NONE:
+			/* close/release LAPD instance, if any */
+			if (e1i_ts->lapd) {
+				lapd_instance_free(e1i_ts->lapd);
+				e1i_ts->lapd = NULL;
+			}
+			if (bfd->fd) {
+				close(bfd->fd);
+				bfd->fd = 0;
+			}
 			continue;
 			break;
 		case E1INP_TS_TYPE_SIGN:
-			bfd->fd = open(openstr, O_RDWR | O_NONBLOCK);
+			if (!bfd->fd)
+				bfd->fd = open(openstr, O_RDWR | O_NONBLOCK);
 			if (bfd->fd == -1) {
 				fprintf(stderr, "%s could not open %s %s\n",
 					__func__, openstr, strerror(errno));
@@ -416,10 +430,17 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 			}
 			bfd->when = BSC_FD_READ | BSC_FD_EXCEPT;
 			dahdi_set_bufinfo(bfd->fd, 1);
-			e1i_ts->lapd = lapd_instance_alloc(1, dahdi_write_msg, bfd);
+			if (!e1i_ts->lapd)
+				e1i_ts->lapd = lapd_instance_alloc(1, dahdi_write_msg, bfd);
 			break;
 		case E1INP_TS_TYPE_TRAU:
-			bfd->fd = open(openstr, O_RDWR | O_NONBLOCK);
+			/* close/release LAPD instance, if any */
+			if (e1i_ts->lapd) {
+				lapd_instance_free(e1i_ts->lapd);
+				e1i_ts->lapd = NULL;
+			}
+			if (!bfd->fd)
+				bfd->fd = open(openstr, O_RDWR | O_NONBLOCK);
 			if (bfd->fd == -1) {
 				fprintf(stderr, "%s could not open %s %s\n",
 					__func__, openstr, strerror(errno));
