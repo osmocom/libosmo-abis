@@ -730,3 +730,10 @@ struct lapd_instance *lapd_instance_alloc(int network_side,
 
 	return li;
 }
+
+void lapd_instance_free(struct lapd_instance *li)
+{
+	/* tei and sapis are allocated hierarchically of the lapd
+	 * instance, so one free is sufficient here */
+	talloc_free(li);
+}

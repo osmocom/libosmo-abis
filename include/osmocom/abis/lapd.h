@@ -48,6 +48,7 @@ struct lapd_instance *lapd_instance_alloc(int network_side,
 					  void (*tx_cb)(uint8_t *data, int len,
 							void *cbdata), void *cbdata);
 
+void lapd_instance_free(struct lapd_instance *li);
 
 /* Start a (user-side) SAP for the specified TEI/SAPI on the LAPD instance */
 int lapd_sap_start(struct lapd_instance *li, uint8_t tei, uint8_t sapi);
