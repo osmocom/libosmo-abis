@@ -733,6 +733,17 @@ struct lapd_instance *lapd_instance_alloc(int network_side,
 
 void lapd_instance_free(struct lapd_instance *li)
 {
+	struct lapd_tei *lt;
+
+	/* make sure to terminate any pending timers */
+	llist_for_each_entry(lt, &li->tei_list, list) {
+		struct lapd_sap *sap;
+		llist_for_each_entry(sap, &lt->sap_list, list) {
+			if (osmo_timer_pending(&sap->sabme_timer))
+				osmo_timer_del(&sap->sabme_timer);
+		}
+	}
+
 	/* tei and sapis are allocated hierarchically of the lapd
 	 * instance, so one free is sufficient here */
 	talloc_free(li);
