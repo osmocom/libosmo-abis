@@ -676,10 +676,6 @@ int e1inp_line_update(struct e1inp_line *line)
 
 	e1inp_line_get(line);
 
-	/* This line has been already initialized, skip this. */
-	if (line->refcnt > 2)
-		return 0;
-
 	if (line->driver && line->ops && line->driver->line_update) {
 		rc = line->driver->line_update(line);
 	} else

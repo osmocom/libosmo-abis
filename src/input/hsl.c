@@ -456,9 +456,29 @@ static int hsl_bts_connect(struct ipa_client_link *link)
 	return 0;
 }
 
+struct hsl_line {
+	int line_already_initialized;
+};
+
 static int hsl_line_update(struct e1inp_line *line)
 {
 	int ret = -ENOENT;
+	struct hsl_line *hl;
+
+	if (!line->driver_data)
+		line->driver_data = talloc_zero(line, struct hsl_line);
+
+	if (!line->driver_data) {
+		LOGP(DLINP, LOGL_NOTICE, "hsl: OOM in line update\n");
+		return -ENOMEM;
+	}
+	hl = line->driver_data;
+
+	/* We only initialize this line once. */
+	if (hl->line_already_initialized)
+		return 0;
+
+	hl->line_already_initialized = 1;
 
 	switch(line->ops->cfg.ipa.role) {
 	case E1INP_LINE_R_BSC:
