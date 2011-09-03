@@ -37,15 +37,19 @@ AM_CONFIG_HEADER(config.h)
 PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 0.3.0)
 PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 0.3.0)
 PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 0.3.0)
+PKG_CHECK_MODULES(ORTP, ortp)
 
 AC_CHECK_HEADERS(dahdi/user.h,,AC_MSG_WARN(DAHDI input driver will not be built))
 
 AC_OUTPUT(
 	libosmoabis.pc
+	libosmotrau.pc
 	include/Makefile
 	include/osmocom/Makefile
 	include/osmocom/abis/Makefile
+	include/osmocom/trau/Makefile
 	src/Makefile
 	src/input/Makefile
+	src/trau/Makefile
 	tests/Makefile
 	Makefile)

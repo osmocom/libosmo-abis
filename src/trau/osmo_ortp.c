@@ -1,0 +1,383 @@
+/* (C) 2011 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2011 by On-Waves e.h.f
+ * All Rights Reserved
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ */
+
+/*! \file osmo_ortp.c
+ *  \brief Integration of libortp into osmocom framework (select, logging)
+ */
+
+#include <stdint.h>
+#include <netdb.h>
+
+#include <osmocom/core/logging.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/core/utils.h>
+#include <osmocom/core/select.h>
+#include <osmocom/trau/osmo_ortp.h>
+
+#include <ortp/ortp.h>
+
+
+static PayloadType *payload_type_efr;
+static PayloadType *payload_type_hr;
+static RtpProfile *osmo_pt_profile;
+
+static void *tall_rtp_ctx;
+
+/* malloc integration */
+
+static void *osmo_ortp_malloc(size_t sz)
+{
+	return talloc_size(tall_rtp_ctx, sz);
+}
+
+static void *osmo_ortp_realloc(void *ptr, size_t sz)
+{
+	return talloc_realloc_size(tall_rtp_ctx, ptr, sz);
+}
+
+static void osmo_ortp_free(void *ptr)
+{
+	talloc_free(ptr);
+}
+
+static OrtpMemoryFunctions osmo_ortp_memfn = {
+	.malloc_fun = osmo_ortp_malloc,
+	.realloc_fun = osmo_ortp_realloc,
+	.free_fun = osmo_ortp_free
+};
+
+/* logging */
+
+struct level_map {
+	OrtpLogLevel ortp;
+	int osmo_level;
+};
+static const struct level_map level_map[] = {
+	{ ORTP_DEBUG,	LOGL_DEBUG },
+	{ ORTP_MESSAGE, LOGL_INFO },
+	{ ORTP_WARNING, LOGL_NOTICE },
+	{ ORTP_ERROR,	LOGL_ERROR },
+	{ ORTP_FATAL,	LOGL_FATAL },
+};
+static int ortp_to_osmo_lvl(OrtpLogLevel lev)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(level_map); i++) {
+		if (level_map[i].ortp == lev)
+			return level_map[i].osmo_level;
+	}
+	/* default */
+	return LOGL_ERROR;
+}
+
+static void my_ortp_logfn(OrtpLogLevel lev, const char *fmt,
+			  va_list args)
+{
+	osmo_vlogp(DLMIB, ortp_to_osmo_lvl(lev), __FILE__, 0,
+		   0, fmt, args);
+}
+
+/* ORTP signal callbacks */
+
+static void ortp_sig_cb_ssrc(RtpSession *rs, void *data)
+{
+	fprintf(stderr, "ssrc_changed\n");
+}
+
+static void ortp_sig_cb_pt(RtpSession *rs, void *data)
+{
+	fprintf(stderr, "payload_type_changed\n");
+}
+
+static void ortp_sig_cb_net(RtpSession *rs, void *data)
+{
+	fprintf(stderr, "network_error\n");
+}
+
+static void ortp_sig_cb_ts(RtpSession *rs, void *data)
+{
+	fprintf(stderr, "timestamp_jump\n");
+}
+
+
+/* Osmo FD callbacks */
+
+static int osmo_rtp_fd_cb(struct osmo_fd *fd, unsigned int what)
+{
+	struct osmo_rtp_socket *rs = fd->data;
+	mblk_t *mblk;
+
+	if (what & BSC_FD_READ) {
+		mblk = rtp_session_recvm_with_ts(rs->sess, rs->rx_user_ts);
+		if (mblk) {
+			rtp_get_payload(mblk, &mblk->b_rptr);
+			/* hand into receiver */
+			if (rs->rx_cb)
+				rs->rx_cb(rs, mblk->b_rptr,
+					  mblk->b_wptr - mblk->b_rptr);
+			freemsg(mblk);
+		}
+		rs->rx_user_ts += 160;
+	}
+	/* writing is not queued at the moment, so BSC_FD_WRITE
+	 * shouldn't occur */
+	return 0;
+}
+
+static int osmo_rtcp_fd_cb(struct osmo_fd *fd, unsigned int what)
+{
+	struct osmo_rtp_socket *rs = fd->data;
+
+	/* We probably don't need this at all, as
+	 * rtp_session_recvm_with_ts() will alway also poll the RTCP
+	 * file descriptor for new data */
+	return rtp_session_rtcp_recv(rs->sess);
+}
+
+static int osmo_rtp_socket_fdreg(struct osmo_rtp_socket *rs)
+{
+	rs->rtp_bfd.fd = rtp_session_get_rtp_socket(rs->sess);
+	rs->rtcp_bfd.fd = rtp_session_get_rtcp_socket(rs->sess);
+	rs->rtp_bfd.when = rs->rtcp_bfd.when = BSC_FD_READ;
+	rs->rtp_bfd.data = rs->rtcp_bfd.data = rs;
+	rs->rtp_bfd.cb = osmo_rtp_fd_cb;
+	rs->rtcp_bfd.cb = osmo_rtcp_fd_cb;
+
+	osmo_fd_register(&rs->rtp_bfd);
+	osmo_fd_register(&rs->rtcp_bfd);
+
+	return 0;
+}
+
+static void create_payload_types()
+{
+	PayloadType *pt;
+
+	/* EFR */
+	pt = payload_type_new();
+	pt->type = PAYLOAD_AUDIO_PACKETIZED;
+	pt->clock_rate = 8000;
+	pt->mime_type = "EFR";
+	pt->normal_bitrate = 12200;
+	pt->channels = 1;
+	payload_type_efr = pt;
+
+	/* HR */
+	pt = payload_type_new();
+	pt->type = PAYLOAD_AUDIO_PACKETIZED;
+	pt->clock_rate = 8000;
+	pt->mime_type = "HR";
+	pt->normal_bitrate = 6750; /* FIXME */
+	pt->channels = 1;
+	payload_type_hr = pt;
+
+	/* create a new RTP profile as clone of AV profile */
+	osmo_pt_profile = rtp_profile_clone(&av_profile);
+
+	/* add the GSM specific payload types. They are all dynamically
+	 * assigned, but in the Osmocom GSM system we have allocated
+	 * them as follows: */
+	rtp_profile_set_payload(osmo_pt_profile, RTP_PT_GSM_EFR, payload_type_efr);
+	rtp_profile_set_payload(osmo_pt_profile, RTP_PT_GSM_HALF, payload_type_hr);
+	rtp_profile_set_payload(osmo_pt_profile, RTP_PT_AMR, &payload_type_amr);
+}
+
+/* public functions */
+
+/*! \brief initialize Osmocom RTP code
+ *  \param[in] ctx talloc context
+ */
+void osmo_rtp_init(void *ctx)
+{
+	tall_rtp_ctx = ctx;
+	ortp_set_memory_functions(&osmo_ortp_memfn);
+	ortp_init();
+	ortp_set_log_level_mask(0xffff);
+	ortp_set_log_handler(my_ortp_logfn);
+	create_payload_types();
+}
+
+/*! \brief create a new RTP socket */
+struct osmo_rtp_socket *osmo_rtp_socket_create(void *talloc_ctx)
+{
+	struct osmo_rtp_socket *rs;
+
+	if (!talloc_ctx)
+		talloc_ctx = tall_rtp_ctx;
+
+	rs = talloc_zero(talloc_ctx, struct osmo_rtp_socket);
+	if (!rs)
+		return NULL;
+
+	rs->sess = rtp_session_new(RTP_SESSION_SENDRECV);
+	if (!rs->sess) {
+		talloc_free(rs);
+		return NULL;
+	}
+	rtp_session_set_data(rs->sess, rs);
+	rtp_session_set_profile(rs->sess, osmo_pt_profile);
+
+	rtp_session_signal_connect(rs->sess, "ssrc_changed",
+				   (RtpCallback) ortp_sig_cb_ssrc,
+				   (unsigned long) rs);
+	rtp_session_signal_connect(rs->sess, "payload_type_changed",
+				   (RtpCallback) ortp_sig_cb_pt,
+				   (unsigned long) rs);
+	rtp_session_signal_connect(rs->sess, "network_error",
+				   (RtpCallback) ortp_sig_cb_net,
+				   (unsigned long) rs);
+	rtp_session_signal_connect(rs->sess, "timestamp_jump",
+				   (RtpCallback) ortp_sig_cb_ts,
+				   (unsigned long) rs);
+
+	return rs;
+}
+
+/*! \brief bind a RTP socket to a local port */
+int osmo_rtp_socket_bind(struct osmo_rtp_socket *rs, const char *ip, int port)
+{
+	int rc;
+
+	rc = rtp_session_set_local_addr(rs->sess, ip, port);
+	if (rc < 0)
+		return rc;
+
+	rs->rtp_bfd.fd = rtp_session_get_rtp_socket(rs->sess);
+	rs->rtcp_bfd.fd = rtp_session_get_rtcp_socket(rs->sess);
+
+	return 0;
+}
+
+/*! \brief connect a RTP socket to a remote port */
+int osmo_rtp_socket_connect(struct osmo_rtp_socket *rs, const char *ip, uint16_t port)
+{
+	int rc;
+
+	rc = rtp_session_set_remote_addr(rs->sess, ip, port);
+	if (rc < 0)
+		return rc;
+
+	return osmo_rtp_socket_fdreg(rs);
+}
+
+/*! \brief Send one RTP frame via a RTP socket */
+int osmo_rtp_send_frame(struct osmo_rtp_socket *rs, const uint8_t *payload,
+			unsigned int payload_len, unsigned int duration)
+{
+	mblk_t *mblk;
+	int rc;
+
+	mblk = rtp_session_create_packet(rs->sess, RTP_FIXED_HEADER_SIZE,
+					 payload, payload_len);
+	if (!mblk)
+		return -ENOMEM;
+
+	rc = rtp_session_sendm_with_ts(rs->sess, mblk,
+				       rs->tx_timestamp);
+	rs->tx_timestamp += duration;
+	if (rc < 0) {
+		/* no need to free() the mblk, as rtp_session_rtp_send()
+		 * unconditionally free()s the mblk even in case of
+		 * error */
+		return rc;
+	}
+
+	return rc;
+}
+
+/*! \brief Set the payload type of a RTP socket */
+int osmo_rtp_socket_set_pt(struct osmo_rtp_socket *rs, int payload_type)
+{
+	int rc;
+
+	rc = rtp_session_set_payload_type(rs->sess, payload_type);
+	//rtp_session_set_rtcp_report_interval(rs->sess, 5*1000);
+
+	return rc;
+}
+
+/*! \brief completely close the RTP socket and release all resources */
+int osmo_rtp_socket_free(struct osmo_rtp_socket *rs)
+{
+	if (rs->rtp_bfd.list.next && rs->rtp_bfd.list.next != LLIST_POISON1)
+		osmo_fd_unregister(&rs->rtp_bfd);
+
+	if (rs->rtcp_bfd.list.next && rs->rtcp_bfd.list.next != LLIST_POISON1)
+		osmo_fd_unregister(&rs->rtcp_bfd);
+
+	if (rs->sess) {
+		rtp_session_release_sockets(rs->sess);
+		rtp_session_destroy(rs->sess);
+		rs->sess = NULL;
+	}
+
+	talloc_free(rs);
+
+	return 0;
+}
+
+
+int osmo_rtp_get_bound_ip_port(struct osmo_rtp_socket *rs,
+			       uint32_t *ip, int *port)
+{
+	int rc;
+	struct sockaddr_storage ss;
+	struct sockaddr_in *sin = (struct sockaddr_in *) &ss;
+	socklen_t alen = sizeof(ss);
+
+	rc = getsockname(rs->rtp_bfd.fd, (struct sockaddr *)&ss, &alen);
+	if (rc < 0)
+		return rc;
+
+	if (ss.ss_family != AF_INET)
+		return -EIO;
+
+	*ip = ntohl(sin->sin_addr.s_addr);
+	*port = rtp_session_get_local_port(rs->sess);
+
+	return 0;
+}
+
+int osmo_rtp_get_bound_addr(struct osmo_rtp_socket *rs,
+			    const char **addr, int *port)
+{
+	int rc;
+	struct sockaddr_storage ss;
+	socklen_t alen = sizeof(ss);
+	static char hostbuf[256];
+
+	memset(hostbuf, 0, sizeof(hostbuf));
+
+	rc = getsockname(rs->rtp_bfd.fd, (struct sockaddr *)&ss, &alen);
+	if (rc < 0)
+		return rc;
+
+	rc = getnameinfo((struct sockaddr *)&ss, alen,
+			 hostbuf, sizeof(hostbuf), NULL, 0,
+			 NI_NUMERICHOST);
+	if (rc < 0)
+		return rc;
+
+	*port = rtp_session_get_local_port(rs->sess);
+	*addr = hostbuf;
+
+	return 0;
+}
