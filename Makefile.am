@@ -5,7 +5,7 @@ INCLUDES = $(all_includes) -I$(top_srcdir)/include
 SUBDIRS = include src tests
 
 pkgconfigdir = $(libdir)/pkgconfig
-pkgconfig_DATA = libosmoabis.pc
+pkgconfig_DATA = libosmoabis.pc libosmotrau.pc
 
 BUILT_SOURCES = $(top_srcdir)/.version
 $(top_srcdir)/.version:
