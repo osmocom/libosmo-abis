@@ -118,6 +118,31 @@ static void ortp_sig_cb_ts(RtpSession *rs, void *data)
 }
 
 
+/*! \brief poll the socket for incoming data
+ *  \param[in] rs the socket to be polled
+ *  \returns number of packets received + handed to the rx_cb
+ */
+int osmo_rtp_socket_poll(struct osmo_rtp_socket *rs)
+{
+	mblk_t *mblk;
+
+	mblk = rtp_session_recvm_with_ts(rs->sess, rs->rx_user_ts);
+	if (mblk) {
+		rtp_get_payload(mblk, &mblk->b_rptr);
+		/* hand into receiver */
+		if (rs->rx_cb)
+			rs->rx_cb(rs, mblk->b_rptr,
+				  mblk->b_wptr - mblk->b_rptr);
+		//rs->rx_user_ts += 160;
+		freemsg(mblk);
+		return 1;
+	} else {
+		LOGP(DLMIB, LOGL_INFO, "osmo_rtp_poll(%u): ERROR!\n",
+		     rs->rx_user_ts);
+		return 0;
+	}
+}
+
 /* Osmo FD callbacks */
 
 static int osmo_rtp_fd_cb(struct osmo_fd *fd, unsigned int what)
@@ -126,6 +151,11 @@ static int osmo_rtp_fd_cb(struct osmo_fd *fd, unsigned int what)
 	mblk_t *mblk;
 
 	if (what & BSC_FD_READ) {
+		/* in polling mode, we don't want to be called here */
+		if (rs->flags & OSMO_RTP_F_POLL) {
+			fd->when &= ~BSC_FD_READ;
+			return 0;
+		}
 		mblk = rtp_session_recvm_with_ts(rs->sess, rs->rx_user_ts);
 		if (mblk) {
 			rtp_get_payload(mblk, &mblk->b_rptr);
@@ -134,7 +164,9 @@ static int osmo_rtp_fd_cb(struct osmo_fd *fd, unsigned int what)
 				rs->rx_cb(rs, mblk->b_rptr,
 					  mblk->b_wptr - mblk->b_rptr);
 			freemsg(mblk);
-		}
+		} else
+			LOGP(DLMIB, LOGL_INFO, "recvm_with_ts(%u): ERROR!\n",
+			     rs->rx_user_ts);
 		rs->rx_user_ts += 160;
 	}
 	/* writing is not queued at the moment, so BSC_FD_WRITE
@@ -157,6 +189,7 @@ static int osmo_rtp_socket_fdreg(struct osmo_rtp_socket *rs)
 	rs->rtp_bfd.fd = rtp_session_get_rtp_socket(rs->sess);
 	rs->rtcp_bfd.fd = rtp_session_get_rtcp_socket(rs->sess);
 	rs->rtp_bfd.when = rs->rtcp_bfd.when = BSC_FD_READ;
+	rs->rtp_bfd.when = rs->rtcp_bfd.when = 0;
 	rs->rtp_bfd.data = rs->rtcp_bfd.data = rs;
 	rs->rtp_bfd.cb = osmo_rtp_fd_cb;
 	rs->rtcp_bfd.cb = osmo_rtcp_fd_cb;
@@ -216,7 +249,7 @@ void osmo_rtp_init(void *ctx)
 }
 
 /*! \brief create a new RTP socket */
-struct osmo_rtp_socket *osmo_rtp_socket_create(void *talloc_ctx)
+struct osmo_rtp_socket *osmo_rtp_socket_create(void *talloc_ctx, unsigned int flags)
 {
 	struct osmo_rtp_socket *rs;
 
@@ -227,6 +260,7 @@ struct osmo_rtp_socket *osmo_rtp_socket_create(void *talloc_ctx)
 	if (!rs)
 		return NULL;
 
+	rs->flags = flags;
 	rs->sess = rtp_session_new(RTP_SESSION_SENDRECV);
 	if (!rs->sess) {
 		talloc_free(rs);
@@ -234,6 +268,8 @@ struct osmo_rtp_socket *osmo_rtp_socket_create(void *talloc_ctx)
 	}
 	rtp_session_set_data(rs->sess, rs);
 	rtp_session_set_profile(rs->sess, osmo_pt_profile);
+	rtp_session_set_jitter_compensation(rs->sess, 100);
+	//jitter_control_enable_adaptive(rs->sess, 0);
 
 	rtp_session_signal_connect(rs->sess, "ssrc_changed",
 				   (RtpCallback) ortp_sig_cb_ssrc,
@@ -275,7 +311,10 @@ int osmo_rtp_socket_connect(struct osmo_rtp_socket *rs, const char *ip, uint16_t
 	if (rc < 0)
 		return rc;
 
-	return osmo_rtp_socket_fdreg(rs);
+	if (rs->flags & OSMO_RTP_F_POLL)
+		return rc;
+	else
+		return osmo_rtp_socket_fdreg(rs);
 }
 
 /*! \brief Send one RTP frame via a RTP socket */
