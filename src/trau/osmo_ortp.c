@@ -236,7 +236,7 @@ static void create_payload_types()
 /* public functions */
 
 /*! \brief initialize Osmocom RTP code
- *  \param[in] ctx talloc context
+ *  \param[in] ctx default talloc context for library-internal allocations
  */
 void osmo_rtp_init(void *ctx)
 {
@@ -248,7 +248,12 @@ void osmo_rtp_init(void *ctx)
 	create_payload_types();
 }
 
-/*! \brief create a new RTP socket */
+/*! \brief Create a new RTP socket
+ *  \param[in] talloc_cxt talloc context for this allocation. NULL for
+ *  			  dafault context
+ *  \param[in] flags Flags like OSMO_RTP_F_POLL
+ *  \returns pointer to library-allocated \a struct osmo_rtp_socket
+ */
 struct osmo_rtp_socket *osmo_rtp_socket_create(void *talloc_ctx, unsigned int flags)
 {
 	struct osmo_rtp_socket *rs;
@@ -287,7 +292,12 @@ struct osmo_rtp_socket *osmo_rtp_socket_create(void *talloc_ctx, unsigned int fl
 	return rs;
 }
 
-/*! \brief bind a RTP socket to a local port */
+/*! \brief bind a RTP socket to a local port
+ *  \param[in] rs OsmoRTP socket
+ *  \param[in] ip hostname/ip as string
+ *  \param[in] port UDP port number, -1 for random selection
+ *  \returns 0 on success, <0 on error
+ */
 int osmo_rtp_socket_bind(struct osmo_rtp_socket *rs, const char *ip, int port)
 {
 	int rc;
@@ -302,7 +312,17 @@ int osmo_rtp_socket_bind(struct osmo_rtp_socket *rs, const char *ip, int port)
 	return 0;
 }
 
-/*! \brief connect a RTP socket to a remote port */
+/*! \brief connect a OsmoRTP socket to a remote port
+ *  \param[in] rs OsmoRTP socket
+ *  \param[in] ip String representation of remote hostname or IP address
+ *  \param[in] port UDP port number to connect to
+ *
+ *  If the OsmoRTP socket is not in POLL mode, this function will also
+ *  cause the RTP and RTCP file descriptors to be registred with the
+ *  libosmocore select() loop integration.
+ *
+ *  \returns 0 on success, <0 in case of error
+ */
 int osmo_rtp_socket_connect(struct osmo_rtp_socket *rs, const char *ip, uint16_t port)
 {
 	int rc;
@@ -317,7 +337,13 @@ int osmo_rtp_socket_connect(struct osmo_rtp_socket *rs, const char *ip, uint16_t
 		return osmo_rtp_socket_fdreg(rs);
 }
 
-/*! \brief Send one RTP frame via a RTP socket */
+/*! \brief Send one RTP frame via a RTP socket
+ *  \param[in] rs OsmoRTP socket
+ *  \param[in] payload pointer to buffer with RTP payload data
+ *  \param[in] payload_len length of \a payload in bytes
+ *  \param[in] duration duration in number of RTP clock ticks
+ *  \returns 0 on success, <0 in case of error.
+ */
 int osmo_rtp_send_frame(struct osmo_rtp_socket *rs, const uint8_t *payload,
 			unsigned int payload_len, unsigned int duration)
 {
@@ -342,7 +368,11 @@ int osmo_rtp_send_frame(struct osmo_rtp_socket *rs, const uint8_t *payload,
 	return rc;
 }
 
-/*! \brief Set the payload type of a RTP socket */
+/*! \brief Set the payload type of a RTP socket
+ *  \param[in] rs OsmoRTP socket
+ *  \param[in] payload_type RTP payload type
+ *  \returns 0 on success, < 0 otherwise
+ */
 int osmo_rtp_socket_set_pt(struct osmo_rtp_socket *rs, int payload_type)
 {
 	int rc;
@@ -353,7 +383,10 @@ int osmo_rtp_socket_set_pt(struct osmo_rtp_socket *rs, int payload_type)
 	return rc;
 }
 
-/*! \brief completely close the RTP socket and release all resources */
+/*! \brief completely close the RTP socket and release all resources
+ *  \param[in] rs OsmoRTP socket to be released
+ *  \returns 0 on success
+ */
 int osmo_rtp_socket_free(struct osmo_rtp_socket *rs)
 {
 	if (rs->rtp_bfd.list.next && rs->rtp_bfd.list.next != LLIST_POISON1)
@@ -373,7 +406,12 @@ int osmo_rtp_socket_free(struct osmo_rtp_socket *rs)
 	return 0;
 }
 
-
+/*! \brief obtain the locally bound IPv4 address and UDP port
+ *  \param[in] rs OsmoRTP socket
+ *  \param[out] ip Pointer to caller-allocated uint32_t for IPv4 address
+ *  \oaram[out] port Pointer to caller-allocated int for UDP port number
+ *  \returns 0 on success, <0 on error, -EIO in case of IPv6 socket
+ */
 int osmo_rtp_get_bound_ip_port(struct osmo_rtp_socket *rs,
 			       uint32_t *ip, int *port)
 {
@@ -395,6 +433,14 @@ int osmo_rtp_get_bound_ip_port(struct osmo_rtp_socket *rs,
 	return 0;
 }
 
+/*! \brief obtain the locally bound address and port
+ *  \param[in] rs OsmoRTP socket
+ *  \param[out] addr caller-allocated char ** to which the string pointer for
+ *  		     the address is stored
+ *  \param[out] port caller-allocated int * to which the port number is
+ *  		     stored
+ *  \returns 0 on success, <0 in case of error
+ */
 int osmo_rtp_get_bound_addr(struct osmo_rtp_socket *rs,
 			    const char **addr, int *port)
 {

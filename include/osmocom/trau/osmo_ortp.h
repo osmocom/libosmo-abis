@@ -6,17 +6,23 @@
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/select.h>
 
-//#include <ortp/ortp.h>
+/* we cannot include ortp/ortp.h here, as they also use 'struct msgb' */
 struct _RtpSession;
 
-
+/*! \brief standard payload type for GSM Full Rate (FR) */
 #define RTP_PT_GSM_FULL 3
+
+/*! \brief Osmocom pseudo-static paylaod type for Half Rate (HR) */
 #define RTP_PT_GSM_HALF 96
+/*! \brief Osmocom pseudo-static paylaod type for Enhanced Full Rate (EFR) */
 #define RTP_PT_GSM_EFR 97
+/*! \brief Osmocom pseudo-static paylaod type for Adaptive Multi Rate (AMR) */
 #define RTP_PT_AMR 98
 
+/*! \brief Flag to indicate the socket is in polling-only mode */
 #define OSMO_RTP_F_POLL		0x0001
 
+/*! \brief A structure representing one RTP socket */
 struct osmo_rtp_socket {
 	/*! \biref list header for global list of sockets */
 	struct llist_head list;
@@ -32,12 +38,13 @@ struct osmo_rtp_socket {
 	void (*rx_cb)(struct osmo_rtp_socket *rs, const uint8_t *payload,
 		      unsigned int payload_len);
 
-	/* Rx related */
+	/*! \brief Receive user timestamp, to be incremented by user */
 	uint32_t rx_user_ts;
 
-	/* Tx related */
+	/*! \brief Transmit timestamp, incremented by library */
 	uint32_t tx_timestamp;
 
+	/*! \brief Flags like OSMO_RTP_F_POLL */
 	unsigned int flags;
 
 	void *priv;
