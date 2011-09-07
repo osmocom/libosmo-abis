@@ -9,15 +9,18 @@
 /* we cannot include ortp/ortp.h here, as they also use 'struct msgb' */
 struct _RtpSession;
 
+/*! \brief default duration of a 20ms GSM codec frame */
+#define GSM_RTP_DURATION 160
+
 /*! \brief standard payload type for GSM Full Rate (FR) */
 #define RTP_PT_GSM_FULL 3
-
 /*! \brief Osmocom pseudo-static paylaod type for Half Rate (HR) */
 #define RTP_PT_GSM_HALF 96
 /*! \brief Osmocom pseudo-static paylaod type for Enhanced Full Rate (EFR) */
 #define RTP_PT_GSM_EFR 97
 /*! \brief Osmocom pseudo-static paylaod type for Adaptive Multi Rate (AMR) */
 #define RTP_PT_AMR 98
+
 
 /*! \brief Flag to indicate the socket is in polling-only mode */
 #define OSMO_RTP_F_POLL		0x0001
