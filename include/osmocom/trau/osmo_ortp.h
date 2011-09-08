@@ -21,6 +21,11 @@ struct _RtpSession;
 /*! \brief Osmocom pseudo-static paylaod type for Adaptive Multi Rate (AMR) */
 #define RTP_PT_AMR 98
 
+/*! \brief Parameter to osmo_rtp_socket_param_set() */
+enum osmo_rtp_param {
+	OSMO_RTP_P_JITBUF = 1,
+	OSMO_RTP_P_JIT_ADAP,
+};
 
 /*! \brief Flag to indicate the socket is in polling-only mode */
 #define OSMO_RTP_F_POLL		0x0001
@@ -67,5 +72,11 @@ int osmo_rtp_get_bound_ip_port(struct osmo_rtp_socket *rs,
 			       uint32_t *ip, int *port);
 int osmo_rtp_get_bound_addr(struct osmo_rtp_socket *rs,
 			    const char **addr, int *port);
+int osmo_rtp_socket_set_param(struct osmo_rtp_socket *rs,
+			      enum osmo_rtp_param param, int val);
+
+void osmo_rtp_socket_log_stats(struct osmo_rtp_socket *rs,
+				int subsys, int level,
+				const char *pfx);
 
 #endif /* _OSMO_ORTP_H */

@@ -23,6 +23,7 @@
  */
 
 #include <stdint.h>
+#include <inttypes.h>
 #include <netdb.h>
 
 #include <osmocom/core/logging.h>
@@ -32,6 +33,7 @@
 #include <osmocom/trau/osmo_ortp.h>
 
 #include <ortp/ortp.h>
+#include <ortp/rtp.h>
 
 
 static PayloadType *payload_type_efr;
@@ -246,6 +248,27 @@ void osmo_rtp_init(void *ctx)
 	ortp_set_log_level_mask(0xffff);
 	ortp_set_log_handler(my_ortp_logfn);
 	create_payload_types();
+}
+
+int osmo_rtp_socket_set_param(struct osmo_rtp_socket *rs,
+			      enum osmo_rtp_param param, int val)
+{
+	int rc = 0;
+
+	switch (param) {
+	case OSMO_RTP_P_JITBUF:
+		rtp_session_set_jitter_compensation(rs->sess, val);
+		break;
+#if 0
+	case OSMO_RTP_P_JIT_ADAP:
+		rc = jitter_control_enable_adaptive(rs->sess, val);
+		break;
+#endif
+	default:
+		return -EINVAL;
+	}
+
+	return rc;
 }
 
 /*! \brief Create a new RTP socket
@@ -465,4 +488,23 @@ int osmo_rtp_get_bound_addr(struct osmo_rtp_socket *rs,
 	*addr = hostbuf;
 
 	return 0;
+}
+
+
+void osmo_rtp_socket_log_stats(struct osmo_rtp_socket *rs,
+				int subsys, int level,
+				const char *pfx)
+{
+	const rtp_stats_t *stats;
+
+	stats = rtp_session_get_stats(rs->sess);
+	if (!stats)
+		return;
+
+	LOGP(subsys, level, "%sRTP Tx(%"PRIu64" pkts, %"PRIu64" bytes) "
+		"Rx(%"PRIu64" pkts, %"PRIu64" bytes, %"PRIu64" late, "
+		"%"PRIu64" loss, %"PRIu64" qmax)\n",
+		pfx, stats->packet_sent, stats->sent,
+		stats->packet_recv, stats->hw_recv, stats->outoftime,
+		stats->cum_packet_loss, stats->discarded);
 }
