@@ -63,6 +63,7 @@ int ipa_msg_recv(int fd, struct msgb **rmsg)
 		msgb_free(msg);
 		return ret;
 	} else if (ret != sizeof(*hh)) {
+		LOGP(DLINP, LOGL_ERROR, "too small message received\n");
 		msgb_free(msg);
 		return -EIO;
 	}
@@ -73,6 +74,8 @@ int ipa_msg_recv(int fd, struct msgb **rmsg)
 	len = ntohs(hh->len);
 
 	if (len < 0 || IPA_ALLOC_SIZE < len + sizeof(*hh)) {
+		LOGP(DLINP, LOGL_ERROR, "bad message length of %d bytes, "
+					"received %d bytes\n", len, ret);
 		msgb_free(msg);
 		return -EIO;
 	}
@@ -82,6 +85,7 @@ int ipa_msg_recv(int fd, struct msgb **rmsg)
 		msgb_free(msg);
 		return ret;
 	} else if (ret < len) {
+		LOGP(DLINP, LOGL_ERROR, "trunked message received\n");
 		msgb_free(msg);
 		return -EIO;
 	}
@@ -119,8 +123,6 @@ static void ipa_client_read(struct ipa_client_conn *link)
 	if (ret < 0) {
 		if (errno == EPIPE || errno == ECONNRESET) {
 			LOGP(DLINP, LOGL_ERROR, "lost connection with server\n");
-		} else {
-			LOGP(DLINP, LOGL_ERROR, "unknown error\n");
 		}
 		ipa_client_retry(link);
 		return;
@@ -387,8 +389,6 @@ static void ipa_server_conn_read(struct ipa_server_conn *conn)
 	if (ret < 0) {
 		if (errno == EPIPE || errno == ECONNRESET) {
 			LOGP(DLINP, LOGL_ERROR, "lost connection with server\n");
-		} else {
-			LOGP(DLINP, LOGL_ERROR, "unknown error\n");
 		}
 		return;
 	} else if (ret == 0) {
