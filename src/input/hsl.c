@@ -273,7 +273,7 @@ static int handle_ts1_write(struct osmo_fd *bfd)
 	return __handle_ts1_write(bfd, line);
 }
 
-int hsl_bts_write(struct ipa_client_link *link)
+int hsl_bts_write(struct ipa_client_conn *link)
 {
 	struct e1inp_line *line = link->line;
 
@@ -383,7 +383,7 @@ static int listen_fd_cb(struct osmo_fd *listen_bfd, unsigned int what)
         return ret;
 }
 
-static int hsl_bts_process(struct ipa_client_link *link, struct msgb *msg)
+static int hsl_bts_process(struct ipa_client_conn *link, struct msgb *msg)
 {
 	struct ipaccess_head *hh;
 	struct e1inp_sign_link *sign_link;
@@ -415,7 +415,7 @@ static int hsl_bts_process(struct ipa_client_link *link, struct msgb *msg)
 	return 0;
 }
 
-static int hsl_bts_connect(struct ipa_client_link *link)
+static int hsl_bts_connect(struct ipa_client_conn *link)
 {
 	struct msgb *msg;
 	uint8_t *serno;
@@ -442,7 +442,7 @@ static int hsl_bts_connect(struct ipa_client_link *link)
 	if (!link->line->ops->sign_link_up) {
 		LOGP(DLINP, LOGL_ERROR,
 			"Unable to set signal link, closing socket.\n");
-		ipa_client_link_close(link);
+		ipa_client_conn_close(link);
 		return -EINVAL;
 	}
 	sign_link = link->line->ops->sign_link_up(&unit,
@@ -450,7 +450,7 @@ static int hsl_bts_connect(struct ipa_client_link *link)
 	if (sign_link == NULL) {
 		LOGP(DLINP, LOGL_ERROR,
 		     "Unable to set signal link, closing socket.\n");
-		ipa_client_link_close(link);
+		ipa_client_conn_close(link);
 		return -EINVAL;
 	}
 	return 0;
@@ -501,11 +501,11 @@ static int hsl_line_update(struct e1inp_line *line)
 		}
 		break;
 	case E1INP_LINE_R_BTS: {
-		struct ipa_client_link *link;
+		struct ipa_client_conn *link;
 
 		LOGP(DLINP, LOGL_NOTICE, "enabling hsl BTS mode\n");
 
-		link = ipa_client_link_create(tall_hsl_ctx,
+		link = ipa_client_conn_create(tall_hsl_ctx,
 					      &line->ts[E1INP_SIGN_OML-1],
 					      E1INP_SIGN_OML,
 					      line->ops->cfg.ipa.addr,
@@ -519,11 +519,11 @@ static int hsl_line_update(struct e1inp_line *line)
 				strerror(errno));
 			return -ENOMEM;
 		}
-		if (ipa_client_link_open(link) < 0) {
+		if (ipa_client_conn_open(link) < 0) {
 			LOGP(DLINP, LOGL_ERROR, "cannot open BTS link: %s\n",
 				strerror(errno));
-			ipa_client_link_close(link);
-			ipa_client_link_destroy(link);
+			ipa_client_conn_close(link);
+			ipa_client_conn_destroy(link);
 			return -EIO;
 		}
 		ret = 0;

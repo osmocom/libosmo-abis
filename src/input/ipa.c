@@ -90,24 +90,24 @@ int ipa_msg_recv(int fd, struct msgb **rmsg)
 	return ret;
 }
 
-void ipa_client_link_close(struct ipa_client_link *link);
+void ipa_client_conn_close(struct ipa_client_conn *link);
 
-static void ipa_client_retry(struct ipa_client_link *link)
+static void ipa_client_retry(struct ipa_client_conn *link)
 {
 	LOGP(DLINP, LOGL_NOTICE, "connection closed\n");
-	ipa_client_link_close(link);
+	ipa_client_conn_close(link);
 	LOGP(DLINP, LOGL_NOTICE, "retrying in 5 seconds...\n");
 	osmo_timer_schedule(&link->timer, 5, 0);
 	link->state = IPA_CLIENT_LINK_STATE_CONNECTING;
 }
 
-void ipa_client_link_close(struct ipa_client_link *link)
+void ipa_client_conn_close(struct ipa_client_conn *link)
 {
 	osmo_fd_unregister(link->ofd);
 	close(link->ofd->fd);
 }
 
-static void ipa_client_read(struct ipa_client_link *link)
+static void ipa_client_read(struct ipa_client_conn *link)
 {
 	struct osmo_fd *ofd = link->ofd;
 	struct msgb *msg;
@@ -133,13 +133,13 @@ static void ipa_client_read(struct ipa_client_link *link)
 		link->read_cb(link, msg);
 }
 
-static void ipa_client_write(struct ipa_client_link *link)
+static void ipa_client_write(struct ipa_client_conn *link)
 {
 	if (link->write_cb)
 		link->write_cb(link);
 }
 
-int ipa_client_write_default_cb(struct ipa_client_link *link)
+int ipa_client_write_default_cb(struct ipa_client_conn *link)
 {
 	struct osmo_fd *ofd = link->ofd;
 	struct msgb *msg;
@@ -169,7 +169,7 @@ int ipa_client_write_default_cb(struct ipa_client_link *link)
 
 static int ipa_client_fd_cb(struct osmo_fd *ofd, unsigned int what)
 {
-	struct ipa_client_link *link = ofd->data;
+	struct ipa_client_conn *link = ofd->data;
 	int error, ret;
 	socklen_t len = sizeof(error);
 
@@ -204,18 +204,18 @@ static int ipa_client_fd_cb(struct osmo_fd *ofd, unsigned int what)
 
 static void ipa_link_timer_cb(void *data);
 
-struct ipa_client_link *
-ipa_client_link_create(void *ctx, struct e1inp_ts *ts,
+struct ipa_client_conn *
+ipa_client_conn_create(void *ctx, struct e1inp_ts *ts,
 		       int priv_nr, const char *addr, uint16_t port,
-		       int (*connect_cb)(struct ipa_client_link *link),
-		       int (*read_cb)(struct ipa_client_link *link,
+		       int (*connect_cb)(struct ipa_client_conn *link),
+		       int (*read_cb)(struct ipa_client_conn *link,
 				      struct msgb *msgb),
-		       int (*write_cb)(struct ipa_client_link *link),
+		       int (*write_cb)(struct ipa_client_conn *link),
 		       void *data)
 {
-	struct ipa_client_link *ipa_link;
+	struct ipa_client_conn *ipa_link;
 
-	ipa_link = talloc_zero(ctx, struct ipa_client_link);
+	ipa_link = talloc_zero(ctx, struct ipa_client_conn);
 	if (!ipa_link)
 		return NULL;
 
@@ -252,12 +252,12 @@ ipa_client_link_create(void *ctx, struct e1inp_ts *ts,
 	return ipa_link;
 }
 
-void ipa_client_link_destroy(struct ipa_client_link *link)
+void ipa_client_conn_destroy(struct ipa_client_conn *link)
 {
 	talloc_free(link);
 }
 
-int ipa_client_link_open(struct ipa_client_link *link)
+int ipa_client_conn_open(struct ipa_client_conn *link)
 {
 	int ret;
 
@@ -278,20 +278,20 @@ int ipa_client_link_open(struct ipa_client_link *link)
 
 static void ipa_link_timer_cb(void *data)
 {
-	struct ipa_client_link *link = data;
+	struct ipa_client_conn *link = data;
 
 	LOGP(DLINP, LOGL_NOTICE, "reconnecting.\n");
 
 	switch(link->state) {
 	case IPA_CLIENT_LINK_STATE_CONNECTING:
-		ipa_client_link_open(link);
+		ipa_client_conn_open(link);
 	        break;
 	default:
 		break;
 	}
 }
 
-void ipa_client_link_send(struct ipa_client_link *link, struct msgb *msg)
+void ipa_client_conn_send(struct ipa_client_conn *link, struct msgb *msg)
 {
 	msgb_enqueue(&link->tx_queue, msg);
 	link->ofd->when |= BSC_FD_WRITE;
@@ -372,9 +372,9 @@ void ipa_server_link_close(struct ipa_server_link *link)
 	close(link->ofd.fd);
 }
 
-static void ipa_server_peer_read(struct ipa_server_peer *peer)
+static void ipa_server_conn_read(struct ipa_server_conn *conn)
 {
-	struct osmo_fd *ofd = &peer->ofd;
+	struct osmo_fd *ofd = &conn->ofd;
 	struct msgb *msg;
 	int ret;
 
@@ -390,91 +390,91 @@ static void ipa_server_peer_read(struct ipa_server_peer *peer)
 		return;
 	} else if (ret == 0) {
 		LOGP(DLINP, LOGL_ERROR, "connection closed with server\n");
-		ipa_server_peer_destroy(peer);
+		ipa_server_conn_destroy(conn);
 		return;
 	}
-	if (peer->cb)
-		peer->cb(peer, msg);
+	if (conn->cb)
+		conn->cb(conn, msg);
 
 	return;
 }
 
-static void ipa_server_peer_write(struct ipa_server_peer *peer)
+static void ipa_server_conn_write(struct ipa_server_conn *conn)
 {
-	struct osmo_fd *ofd = &peer->ofd;
+	struct osmo_fd *ofd = &conn->ofd;
 	struct msgb *msg;
 	struct llist_head *lh;
 	int ret;
 
 	LOGP(DLINP, LOGL_NOTICE, "sending data\n");
 
-	if (llist_empty(&peer->tx_queue)) {
+	if (llist_empty(&conn->tx_queue)) {
 		ofd->when &= ~BSC_FD_WRITE;
 		return;
 	}
-	lh = peer->tx_queue.next;
+	lh = conn->tx_queue.next;
 	llist_del(lh);
 	msg = llist_entry(lh, struct msgb, list);
 
-	ret = send(peer->ofd.fd, msg->data, msg->len, 0);
+	ret = send(conn->ofd.fd, msg->data, msg->len, 0);
 	if (ret < 0) {
 		LOGP(DLINP, LOGL_ERROR, "error to send\n");
 	}
 	msgb_free(msg);
 }
 
-static int ipa_server_peer_cb(struct osmo_fd *ofd, unsigned int what)
+static int ipa_server_conn_cb(struct osmo_fd *ofd, unsigned int what)
 {
-	struct ipa_server_peer *peer = ofd->data;
+	struct ipa_server_conn *conn = ofd->data;
 
 	LOGP(DLINP, LOGL_NOTICE, "connected read/write\n");
 	if (what & BSC_FD_READ)
-		ipa_server_peer_read(peer);
+		ipa_server_conn_read(conn);
 	if (what & BSC_FD_WRITE)
-		ipa_server_peer_write(peer);
+		ipa_server_conn_write(conn);
 
 	return 0;
 }
 
-struct ipa_server_peer *
-ipa_server_peer_create(void *ctx, struct ipa_server_link *link, int fd,
-		int (*cb)(struct ipa_server_peer *peer, struct msgb *msg),
+struct ipa_server_conn *
+ipa_server_conn_create(void *ctx, struct ipa_server_link *link, int fd,
+		int (*cb)(struct ipa_server_conn *conn, struct msgb *msg),
 		void *data)
 {
-	struct ipa_server_peer *peer;
+	struct ipa_server_conn *conn;
 
-	peer = talloc_zero(ctx, struct ipa_server_peer);
-	if (peer == NULL) {
+	conn = talloc_zero(ctx, struct ipa_server_conn);
+	if (conn == NULL) {
 		LOGP(DLINP, LOGL_ERROR, "cannot allocate new peer in server, "
 			"reason=`%s'\n", strerror(errno));
 		return NULL;
 	}
-	peer->server = link;
-	peer->ofd.fd = fd;
-	peer->ofd.data = peer;
-	peer->ofd.cb = ipa_server_peer_cb;
-	peer->ofd.when = BSC_FD_READ;
-	peer->cb = cb;
-	peer->data = data;
-	INIT_LLIST_HEAD(&peer->tx_queue);
+	conn->server = link;
+	conn->ofd.fd = fd;
+	conn->ofd.data = conn;
+	conn->ofd.cb = ipa_server_conn_cb;
+	conn->ofd.when = BSC_FD_READ;
+	conn->cb = cb;
+	conn->data = data;
+	INIT_LLIST_HEAD(&conn->tx_queue);
 
-	if (osmo_fd_register(&peer->ofd) < 0) {
+	if (osmo_fd_register(&conn->ofd) < 0) {
 		LOGP(DLINP, LOGL_ERROR, "could not register FD\n");
-		talloc_free(peer);
+		talloc_free(conn);
 		return NULL;
 	}
-	return peer;
+	return conn;
 }
 
-void ipa_server_peer_destroy(struct ipa_server_peer *peer)
+void ipa_server_conn_destroy(struct ipa_server_conn *conn)
 {
-	close(peer->ofd.fd);
-	osmo_fd_unregister(&peer->ofd);
-	talloc_free(peer);
+	close(conn->ofd.fd);
+	osmo_fd_unregister(&conn->ofd);
+	talloc_free(conn);
 }
 
-void ipa_server_peer_send(struct ipa_server_peer *peer, struct msgb *msg)
+void ipa_server_conn_send(struct ipa_server_conn *conn, struct msgb *msg)
 {
-	msgb_enqueue(&peer->tx_queue, msg);
-	peer->ofd.when |= BSC_FD_WRITE;
+	msgb_enqueue(&conn->tx_queue, msg);
+	conn->ofd.when |= BSC_FD_WRITE;
 }

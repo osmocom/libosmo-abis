@@ -20,49 +20,49 @@ void ipa_server_link_destroy(struct ipa_server_link *link);
 int ipa_server_link_open(struct ipa_server_link *link);
 void ipa_server_link_close(struct ipa_server_link *link);
 
-struct ipa_server_peer {
+struct ipa_server_conn {
 	struct ipa_server_link		*server;
 	struct osmo_fd			ofd;
 	struct llist_head		tx_queue;
-	int (*cb)(struct ipa_server_peer *peer, struct msgb *msg);
+	int (*cb)(struct ipa_server_conn *peer, struct msgb *msg);
 	void				*data;
 };
 
-struct ipa_server_peer *ipa_server_peer_create(void *ctx, struct ipa_server_link *link, int fd, int (*cb)(struct ipa_server_peer *peer, struct msgb *msg), void *data);
-void ipa_server_peer_destroy(struct ipa_server_peer *peer);
+struct ipa_server_conn *ipa_server_conn_create(void *ctx, struct ipa_server_link *link, int fd, int (*cb)(struct ipa_server_conn *peer, struct msgb *msg), void *data);
+void ipa_server_conn_destroy(struct ipa_server_conn *peer);
 
-void ipa_server_peer_send(struct ipa_server_peer *peer, struct msgb *msg);
+void ipa_server_conn_send(struct ipa_server_conn *peer, struct msgb *msg);
 
-enum ipa_client_link_state {
+enum ipa_client_conn_state {
 	IPA_CLIENT_LINK_STATE_NONE         = 0,
 	IPA_CLIENT_LINK_STATE_CONNECTING   = 1,
 	IPA_CLIENT_LINK_STATE_CONNECTED    = 2,
 	IPA_CLIENT_LINK_STATE_MAX
 };
 
-struct ipa_client_link {
+struct ipa_client_conn {
 	struct e1inp_line		*line;
 	struct osmo_fd			*ofd;
 	struct llist_head		tx_queue;
 	struct osmo_timer_list		timer;
-	enum ipa_client_link_state	state;
+	enum ipa_client_conn_state	state;
 	const char			*addr;
 	uint16_t			port;
-	int (*connect_cb)(struct ipa_client_link *link);
-	int (*read_cb)(struct ipa_client_link *link, struct msgb *msg);
-	int (*write_cb)(struct ipa_client_link *link);
+	int (*connect_cb)(struct ipa_client_conn *link);
+	int (*read_cb)(struct ipa_client_conn *link, struct msgb *msg);
+	int (*write_cb)(struct ipa_client_conn *link);
 	void				*data;
 };
 
-struct ipa_client_link *ipa_client_link_create(void *ctx, struct e1inp_ts *ts, int priv_nr, const char *addr, uint16_t port, int (*connect)(struct ipa_client_link *link), int (*read_cb)(struct ipa_client_link *link, struct msgb *msgb), int (*write_cb)(struct ipa_client_link *link), void *data);
-void ipa_client_link_destroy(struct ipa_client_link *link);
+struct ipa_client_conn *ipa_client_conn_create(void *ctx, struct e1inp_ts *ts, int priv_nr, const char *addr, uint16_t port, int (*connect)(struct ipa_client_conn *link), int (*read_cb)(struct ipa_client_conn *link, struct msgb *msgb), int (*write_cb)(struct ipa_client_conn *link), void *data);
+void ipa_client_conn_destroy(struct ipa_client_conn *link);
 
-int ipa_client_write_default_cb(struct ipa_client_link *link);
+int ipa_client_write_default_cb(struct ipa_client_conn *link);
 
-int ipa_client_link_open(struct ipa_client_link *link);
-void ipa_client_link_close(struct ipa_client_link *link);
+int ipa_client_conn_open(struct ipa_client_conn *link);
+void ipa_client_conn_close(struct ipa_client_conn *link);
 
-void ipa_client_link_send(struct ipa_client_link *link, struct msgb *msg);
+void ipa_client_conn_send(struct ipa_client_conn *link, struct msgb *msg);
 
 int ipa_msg_recv(int fd, struct msgb **rmsg);
 
