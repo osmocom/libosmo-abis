@@ -117,7 +117,7 @@ static void ipa_client_read(struct ipa_client_conn *link)
 	struct msgb *msg;
 	int ret;
 
-	LOGP(DLINP, LOGL_NOTICE, "message received\n");
+	LOGP(DLINP, LOGL_DEBUG, "message received\n");
 
 	ret = ipa_msg_recv(ofd->fd, &msg);
 	if (ret < 0) {
@@ -148,7 +148,7 @@ static int ipa_client_write_default_cb(struct ipa_client_conn *link)
 	struct llist_head *lh;
 	int ret;
 
-	LOGP(DLINP, LOGL_NOTICE, "sending data\n");
+	LOGP(DLINP, LOGL_DEBUG, "sending data\n");
 
 	if (llist_empty(&link->tx_queue)) {
 		ofd->when &= ~BSC_FD_WRITE;
@@ -190,11 +190,11 @@ static int ipa_client_fd_cb(struct osmo_fd *ofd, unsigned int what)
 		break;
 	case IPA_CLIENT_LINK_STATE_CONNECTED:
 		if (what & BSC_FD_READ) {
-			LOGP(DLINP, LOGL_NOTICE, "connected read\n");
+			LOGP(DLINP, LOGL_DEBUG, "connected read\n");
 			ipa_client_read(link);
 		}
 		if (what & BSC_FD_WRITE) {
-			LOGP(DLINP, LOGL_NOTICE, "connected write\n");
+			LOGP(DLINP, LOGL_DEBUG, "connected write\n");
 			ipa_client_write(link);
 		}
 		break;
@@ -383,7 +383,7 @@ static void ipa_server_conn_read(struct ipa_server_conn *conn)
 	struct msgb *msg;
 	int ret;
 
-	LOGP(DLINP, LOGL_NOTICE, "message received\n");
+	LOGP(DLINP, LOGL_DEBUG, "message received\n");
 
 	ret = ipa_msg_recv(ofd->fd, &msg);
 	if (ret < 0) {
@@ -409,7 +409,7 @@ static void ipa_server_conn_write(struct ipa_server_conn *conn)
 	struct llist_head *lh;
 	int ret;
 
-	LOGP(DLINP, LOGL_NOTICE, "sending data\n");
+	LOGP(DLINP, LOGL_DEBUG, "sending data\n");
 
 	if (llist_empty(&conn->tx_queue)) {
 		ofd->when &= ~BSC_FD_WRITE;
@@ -430,7 +430,7 @@ static int ipa_server_conn_cb(struct osmo_fd *ofd, unsigned int what)
 {
 	struct ipa_server_conn *conn = ofd->data;
 
-	LOGP(DLINP, LOGL_NOTICE, "connected read/write\n");
+	LOGP(DLINP, LOGL_DEBUG, "connected read/write\n");
 	if (what & BSC_FD_READ)
 		ipa_server_conn_read(conn);
 	if (what & BSC_FD_WRITE)
