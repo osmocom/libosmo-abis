@@ -54,7 +54,7 @@ struct ipa_client_link {
 	void				*data;
 };
 
-struct ipa_client_link *ipa_client_link_create(void *ctx, struct e1inp_ts *ts, const char *driver_name, int priv_nr, const char *addr, uint16_t port, int (*connect)(struct ipa_client_link *link), int (*read_cb)(struct ipa_client_link *link, struct msgb *msgb), int (*write_cb)(struct ipa_client_link *link), void *data);
+struct ipa_client_link *ipa_client_link_create(void *ctx, struct e1inp_ts *ts, int priv_nr, const char *addr, uint16_t port, int (*connect)(struct ipa_client_link *link), int (*read_cb)(struct ipa_client_link *link, struct msgb *msgb), int (*write_cb)(struct ipa_client_link *link), void *data);
 void ipa_client_link_destroy(struct ipa_client_link *link);
 
 int ipa_client_write_default_cb(struct ipa_client_link *link);

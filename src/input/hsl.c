@@ -507,7 +507,7 @@ static int hsl_line_update(struct e1inp_line *line)
 
 		link = ipa_client_link_create(tall_hsl_ctx,
 					      &line->ts[E1INP_SIGN_OML-1],
-					      "hsl", E1INP_SIGN_OML,
+					      E1INP_SIGN_OML,
 					      line->ops->cfg.ipa.addr,
 					      HSL_TCP_PORT,
 					      hsl_bts_connect,

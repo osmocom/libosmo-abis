@@ -185,7 +185,7 @@ ipa_sock_src_accept_cb(struct ipa_server_link *link, int fd)
 
 	LOGP(DLINP, LOGL_NOTICE, "now trying to connect to destination\n");
 
-	conn->dst = ipa_client_link_create(NULL, NULL, NULL, 0,
+	conn->dst = ipa_client_link_create(NULL, NULL, 0,
 					   route->shared->dst.inst->net.addr,
 					   route->shared->dst.inst->net.port,
 					   NULL,

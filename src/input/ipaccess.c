@@ -881,7 +881,7 @@ static int ipaccess_line_update(struct e1inp_line *line)
 
 		link = ipa_client_link_create(tall_ipa_ctx,
 					      &line->ts[E1INP_SIGN_OML-1],
-					      "ipa", E1INP_SIGN_OML,
+					      E1INP_SIGN_OML,
 					      line->ops->cfg.ipa.addr,
 					      IPA_TCP_PORT_OML,
 					      NULL,
@@ -902,7 +902,7 @@ static int ipaccess_line_update(struct e1inp_line *line)
 		}
 		rsl_link = ipa_client_link_create(tall_ipa_ctx,
 						  &line->ts[E1INP_SIGN_RSL-1],
-						  "ipa", E1INP_SIGN_RSL,
+						  E1INP_SIGN_RSL,
 						  line->ops->cfg.ipa.addr,
 						  IPA_TCP_PORT_RSL,
 						  NULL,

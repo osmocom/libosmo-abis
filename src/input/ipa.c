@@ -205,7 +205,7 @@ static int ipa_client_fd_cb(struct osmo_fd *ofd, unsigned int what)
 static void ipa_link_timer_cb(void *data);
 
 struct ipa_client_link *
-ipa_client_link_create(void *ctx, struct e1inp_ts *ts, const char *driver_name,
+ipa_client_link_create(void *ctx, struct e1inp_ts *ts,
 		       int priv_nr, const char *addr, uint16_t port,
 		       int (*connect_cb)(struct ipa_client_link *link),
 		       int (*read_cb)(struct ipa_client_link *link,
@@ -220,14 +220,10 @@ ipa_client_link_create(void *ctx, struct e1inp_ts *ts, const char *driver_name,
 		return NULL;
 
 	if (ts) {
-		struct e1inp_driver *driver;
-
-		driver = e1inp_driver_find(driver_name);
-		if (driver == NULL) {
+		if (ts->line->driver == NULL) {
 			talloc_free(ipa_link);
 			return NULL;
 		}
-		ts->line->driver = driver;
 		ipa_link->ofd = &ts->driver.ipaccess.fd;
 	} else {
 		ipa_link->ofd = talloc_zero(ctx, struct osmo_fd);
