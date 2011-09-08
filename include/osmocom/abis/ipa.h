@@ -57,8 +57,6 @@ struct ipa_client_conn {
 struct ipa_client_conn *ipa_client_conn_create(void *ctx, struct e1inp_ts *ts, int priv_nr, const char *addr, uint16_t port, int (*connect)(struct ipa_client_conn *link), int (*read_cb)(struct ipa_client_conn *link, struct msgb *msgb), int (*write_cb)(struct ipa_client_conn *link), void *data);
 void ipa_client_conn_destroy(struct ipa_client_conn *link);
 
-int ipa_client_write_default_cb(struct ipa_client_conn *link);
-
 int ipa_client_conn_open(struct ipa_client_conn *link);
 void ipa_client_conn_close(struct ipa_client_conn *link);
 

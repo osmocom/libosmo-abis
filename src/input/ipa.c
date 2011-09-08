@@ -139,7 +139,7 @@ static void ipa_client_write(struct ipa_client_conn *link)
 		link->write_cb(link);
 }
 
-int ipa_client_write_default_cb(struct ipa_client_conn *link)
+static int ipa_client_write_default_cb(struct ipa_client_conn *link)
 {
 	struct osmo_fd *ofd = link->ofd;
 	struct msgb *msg;
@@ -244,7 +244,9 @@ ipa_client_conn_create(void *ctx, struct e1inp_ts *ts,
 	ipa_link->port = port;
 	ipa_link->connect_cb = connect_cb;
 	ipa_link->read_cb = read_cb;
-	ipa_link->write_cb = write_cb;
+	/* default to generic write callback if not set. */
+	if (write_cb == NULL)
+		ipa_link->write_cb = ipa_client_write_default_cb;
 	ipa_link->line = ts->line;
 	ipa_link->data = data;
 	INIT_LLIST_HEAD(&ipa_link->tx_queue);
