@@ -247,7 +247,8 @@ ipa_client_conn_create(void *ctx, struct e1inp_ts *ts,
 	/* default to generic write callback if not set. */
 	if (write_cb == NULL)
 		ipa_link->write_cb = ipa_client_write_default_cb;
-	ipa_link->line = ts->line;
+	if (ts)
+		ipa_link->line = ts->line;
 	ipa_link->data = data;
 	INIT_LLIST_HEAD(&ipa_link->tx_queue);
 
