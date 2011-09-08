@@ -8,8 +8,6 @@
 #include <osmocom/vty/vty.h>
 #include <osmocom/vty/command.h>
 #include <osmocom/vty/telnet_interface.h>
-#include "internal.h"
-#include "config.h"
 
 static void *tall_test;
 
@@ -52,7 +50,7 @@ static enum node_type bsc_vty_go_parent(struct vty *vty)
 
 static struct vty_app_info vty_info = {
 	.name		= "ipa-proxy-test",
-	.version	= PACKAGE_VERSION,
+	.version	= "1.0",
 	.go_parent_cb	= bsc_vty_go_parent,
 	.is_config_node	= bsc_vty_is_config_node,
 };
