@@ -104,15 +104,15 @@ enum ipa_conn_state {
 struct ipa_proxy_conn {
 	struct llist_head		head;
 
-	struct ipa_server_peer		*src;
-	struct ipa_client_link		*dst;
+	struct ipa_server_conn		*src;
+	struct ipa_client_conn		*dst;
 	struct ipa_proxy_route		*route;
 };
 
 /*
  * socket callbacks used by IPA VTY commands
  */
-static int ipa_sock_dst_cb(struct ipa_client_link *link, struct msgb *msg)
+static int ipa_sock_dst_cb(struct ipa_client_conn *link, struct msgb *msg)
 {
 	struct ipaccess_head *hh;
 	struct ipa_proxy_conn *conn = link->data;
@@ -132,11 +132,11 @@ static int ipa_sock_dst_cb(struct ipa_client_link *link, struct msgb *msg)
 	/* mangle message, if required. */
 	hh->proto = conn->route->shared->src.streamid[hh->proto];
 
-	ipa_server_peer_send(conn->src, msg);
+	ipa_server_conn_send(conn->src, msg);
 	return 0;
 }
 
-static int ipa_sock_src_cb(struct ipa_server_peer *peer, struct msgb *msg)
+static int ipa_sock_src_cb(struct ipa_server_conn *peer, struct msgb *msg)
 {
 	struct ipaccess_head *hh;
 	struct ipa_proxy_conn *conn = peer->data;
@@ -155,7 +155,7 @@ static int ipa_sock_src_cb(struct ipa_server_peer *peer, struct msgb *msg)
 	/* mangle message, if required. */
 	hh->proto = conn->route->shared->dst.streamid[hh->proto];
 
-	ipa_client_link_send(conn->dst, msg);
+	ipa_client_conn_send(conn->dst, msg);
 	return 0;
 }
 
@@ -175,7 +175,7 @@ ipa_sock_src_accept_cb(struct ipa_server_link *link, int fd)
 	}
 	conn->route = route;
 
-	conn->src = ipa_server_peer_create(tall_ipa_proxy_ctx, link, fd,
+	conn->src = ipa_server_conn_create(tall_ipa_proxy_ctx, link, fd,
 					   ipa_sock_src_cb, conn);
 	if (conn->src == NULL) {
 		LOGP(DLINP, LOGL_ERROR, "could not create server peer: %s\n",
@@ -185,19 +185,19 @@ ipa_sock_src_accept_cb(struct ipa_server_link *link, int fd)
 
 	LOGP(DLINP, LOGL_NOTICE, "now trying to connect to destination\n");
 
-	conn->dst = ipa_client_link_create(NULL, NULL, NULL, 0,
+	conn->dst = ipa_client_conn_create(NULL, NULL, 0,
 					   route->shared->dst.inst->net.addr,
 					   route->shared->dst.inst->net.port,
 					   NULL,
 					   ipa_sock_dst_cb,
-					   ipa_client_write_default_cb,
+					   NULL,
 					   conn);
 	if (conn->dst == NULL) {
 		LOGP(DLINP, LOGL_ERROR, "could not create client: %s\n",
 			strerror(errno));
 		return -ENOMEM;
 	}
-	if (ipa_client_link_open(conn->dst) < 0) {
+	if (ipa_client_conn_open(conn->dst) < 0) {
 		LOGP(DLINP, LOGL_ERROR, "could not start client: %s\n",
 			strerror(errno));
 		return -ENOMEM;
@@ -546,7 +546,7 @@ DEFUN(ipa_route_del, ipa_route_del_cmd,
 		/* nobody else using this route, release all resources. */
 		llist_for_each_entry_safe(conn, tmp,
 				&matching_route->shared->conn_list, head) {
-			ipa_server_peer_destroy(conn->src);
+			ipa_server_conn_destroy(conn->src);
 			llist_del(&conn->head);
 			talloc_free(conn);
 		}

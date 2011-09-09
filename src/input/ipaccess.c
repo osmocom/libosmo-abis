@@ -531,7 +531,7 @@ static int handle_ts1_write(struct osmo_fd *bfd)
 	return __handle_ts1_write(bfd, line);
 }
 
-static int ipaccess_bts_write_cb(struct ipa_client_link *link)
+static int ipaccess_bts_write_cb(struct ipa_client_conn *link)
 {
 	struct e1inp_line *line = link->line;
 
@@ -735,7 +735,7 @@ static struct msgb *ipa_bts_id_ack(void)
 	return nmsg2;
 }
 
-static int ipaccess_bts_cb(struct ipa_client_link *link, struct msgb *msg)
+static int ipaccess_bts_cb(struct ipa_client_conn *link, struct msgb *msg)
 {
 	struct ipaccess_head *hh = (struct ipaccess_head *) msg->data;
 	struct e1inp_ts *e1i_ts = NULL;
@@ -875,13 +875,13 @@ static int ipaccess_line_update(struct e1inp_line *line)
 		break;
 	}
 	case E1INP_LINE_R_BTS: {
-		struct ipa_client_link *link, *rsl_link;
+		struct ipa_client_conn *link, *rsl_link;
 
 		LOGP(DLINP, LOGL_NOTICE, "enabling ipaccess BTS mode\n");
 
-		link = ipa_client_link_create(tall_ipa_ctx,
+		link = ipa_client_conn_create(tall_ipa_ctx,
 					      &line->ts[E1INP_SIGN_OML-1],
-					      "ipa", E1INP_SIGN_OML,
+					      E1INP_SIGN_OML,
 					      line->ops->cfg.ipa.addr,
 					      IPA_TCP_PORT_OML,
 					      NULL,
@@ -893,16 +893,16 @@ static int ipaccess_line_update(struct e1inp_line *line)
 				"BTS link: %s\n", strerror(errno));
 			return -ENOMEM;
 		}
-		if (ipa_client_link_open(link) < 0) {
+		if (ipa_client_conn_open(link) < 0) {
 			LOGP(DLINP, LOGL_ERROR, "cannot open OML BTS link: %s\n",
 				strerror(errno));
-			ipa_client_link_close(link);
-			ipa_client_link_destroy(link);
+			ipa_client_conn_close(link);
+			ipa_client_conn_destroy(link);
 			return -EIO;
 		}
-		rsl_link = ipa_client_link_create(tall_ipa_ctx,
+		rsl_link = ipa_client_conn_create(tall_ipa_ctx,
 						  &line->ts[E1INP_SIGN_RSL-1],
-						  "ipa", E1INP_SIGN_RSL,
+						  E1INP_SIGN_RSL,
 						  line->ops->cfg.ipa.addr,
 						  IPA_TCP_PORT_RSL,
 						  NULL,
@@ -914,11 +914,11 @@ static int ipaccess_line_update(struct e1inp_line *line)
 				"BTS link: %s\n", strerror(errno));
 			return -ENOMEM;
 		}
-		if (ipa_client_link_open(rsl_link) < 0) {
+		if (ipa_client_conn_open(rsl_link) < 0) {
 			LOGP(DLINP, LOGL_ERROR, "cannot open RSL BTS link: %s\n",
 				strerror(errno));
-			ipa_client_link_close(rsl_link);
-			ipa_client_link_destroy(rsl_link);
+			ipa_client_conn_close(rsl_link);
+			ipa_client_conn_destroy(rsl_link);
 			return -EIO;
 		}
 		ret = 0;
