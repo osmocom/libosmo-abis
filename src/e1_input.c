@@ -337,7 +337,8 @@ e1inp_line_create(uint8_t e1_nr, const char *driver_name)
 
 	line->rate_ctr = rate_ctr_group_alloc(line, &e1inp_ctr_g_d, line->num);
 
-	for (i = 0; i < NUM_E1_TS; i++) {
+	line->num_ts = NUM_E1_TS;
+	for (i = 0; i < line->num_ts; i++) {
 		line->ts[i].num = i+1;
 		line->ts[i].line = line;
 	}

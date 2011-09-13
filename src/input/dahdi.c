@@ -51,6 +51,62 @@
 
 #define TS1_ALLOC_SIZE	300
 
+struct span_cfg {
+	struct llist_head list;
+
+	unsigned int span_nr;
+	unsigned int chan_base;
+	unsigned int chan_num;
+};
+
+static struct span_cfg *span_cfgs[DAHDI_MAX_SPANS];
+
+static int reread_span_cfgs(void)
+{
+	struct dahdi_spaninfo si;
+	unsigned int basechan = 1;
+	int i;
+	int fd;
+
+	if ((fd = open("/dev/dahdi/ctl", O_RDWR)) < 0) {
+		LOGP(DLMI, LOGL_ERROR, "Unable to open DAHDI ctl: %s\n",
+			strerror(errno));
+		return -EIO;
+	}
+
+	for (i = 1; i < DAHDI_MAX_SPANS; i++) {
+		struct span_cfg *scfg;
+
+		/* clear any old cached information */
+		if (span_cfgs[i]) {
+			talloc_free(span_cfgs[i]);
+			span_cfgs[i] = NULL;
+		}
+
+		memset(&si, 0, sizeof(si));
+		si.spanno = i;
+		if (ioctl(fd, DAHDI_SPANSTAT, &si))
+			continue;
+
+		/* create and link new span_cfg */
+		scfg = talloc_zero(NULL, struct span_cfg);
+		if (!scfg) {
+			close(fd);
+			return -ENOMEM;
+		}
+		scfg->span_nr = i;
+		scfg->chan_num = si.totalchans;
+		scfg->chan_base = basechan;
+		span_cfgs[i] = scfg;
+
+		basechan += si.totalchans;
+	}
+
+	close(fd);
+
+	return 0;
+}
+
 /* Corresponds to dahdi/user.h, only PRI related events */
 static const struct value_string dahdi_evt_names[] = {
 	{ DAHDI_EVENT_NONE,		"NONE" },
@@ -383,10 +439,19 @@ void dahdi_set_bufinfo(int fd, int as_sigchan)
 
 static int dahdi_e1_setup(struct e1inp_line *line)
 {
+	struct span_cfg *scfg;
 	int ts, ret;
 
+	reread_span_cfgs();
+
+	scfg = span_cfgs[line->port_nr];
+	if (!scfg)
+		return -EIO;
+
+	line->num_ts = scfg->chan_num;
+
 	/* TS0 is CRC4, don't need any fd for it */
-	for (ts = 1; ts < NUM_E1_TS; ts++) {
+	for (ts = 1; ts <= scfg->chan_num; ts++) {
 		unsigned int idx = ts-1;
 		char openstr[128];
 		struct e1inp_ts *e1i_ts = &line->ts[idx];
@@ -400,7 +465,7 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 		/* DAHDI device names/numbers just keep incrementing
 		 * even over multiple boards.  So TS1 of the second
 		 * board will be 32 */
-		dev_nr = line->num * (NUM_E1_TS-1) + ts;
+		dev_nr = scfg->chan_base + idx;
 
 		bfd->data = line;
 		bfd->priv_nr = ts;

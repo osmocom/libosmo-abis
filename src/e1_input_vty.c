@@ -69,6 +69,25 @@ DEFUN(cfg_e1line_driver, cfg_e1_line_driver_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_e1line_port, cfg_e1_line_port_cmd,
+	"e1_line <0-255> port <0-255>"
+	E1_LINE_HELP, "Set physical port/span/card number\n"
+	"E1/T1 Port/Span/Card number\n")
+{
+	struct e1inp_line *line;
+	int e1_nr = atoi(argv[0]);
+
+	line = e1inp_line_find(e1_nr);
+	if (!line) {
+		vty_out(vty, "%% Line %d doesn't exist%s", e1_nr, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	line->port_nr = atoi(argv[1]);
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_e1line_name, cfg_e1_line_name_cmd,
 	"e1_line <0-255> name .LINE",
 	E1_LINE_HELP "Set name for this line\n" "Human readable name\n")
@@ -111,6 +130,8 @@ static int e1inp_config_write(struct vty *vty)
 	llist_for_each_entry(line, &e1inp_line_list, list) {
 		vty_out(vty, " e1_line %u driver %s%s", line->num,
 			line->driver->name, VTY_NEWLINE);
+		vty_out(vty, " e1_line %u port %u%s", line->num,
+			line->port_nr, VTY_NEWLINE);
 		if (line->name)
 			vty_out(vty, " e1_line %u name %s%s", line->num,
 				line->name, VTY_NEWLINE);
@@ -200,7 +221,7 @@ DEFUN(show_e1ts,
 
 	if (argc == 0) {
 		llist_for_each_entry(line, &e1inp_line_list, list) {
-			for (ts_nr = 0; ts_nr < NUM_E1_TS; ts_nr++) {
+			for (ts_nr = 0; ts_nr < line->num_ts; ts_nr++) {
 				ts = &line->ts[ts_nr];
 				e1ts_dump_vty(vty, ts);
 			}
@@ -224,7 +245,7 @@ DEFUN(show_e1ts,
 	}
 	if (argc >= 2) {
 		ts_nr = atoi(argv[1]);
-		if (ts_nr >= NUM_E1_TS) {
+		if (ts_nr >= line->num_ts) {
 			vty_out(vty, "E1 timeslot %s is invalid%s",
 				argv[1], VTY_NEWLINE);
 			return CMD_WARNING;
@@ -233,7 +254,7 @@ DEFUN(show_e1ts,
 		e1ts_dump_vty(vty, ts);
 		return CMD_SUCCESS;
 	} else {
-		for (ts_nr = 0; ts_nr < NUM_E1_TS; ts_nr++) {
+		for (ts_nr = 0; ts_nr < line->num_ts; ts_nr++) {
 			ts = &line->ts[ts_nr];
 			e1ts_dump_vty(vty, ts);
 		}
@@ -254,6 +275,7 @@ int e1inp_vty_init(void)
 	install_element(CONFIG_NODE, &cfg_e1inp_cmd);
 	install_node(&e1inp_node, e1inp_config_write);
 	install_element(L_E1INP_NODE, &cfg_e1_line_driver_cmd);
+	install_element(L_E1INP_NODE, &cfg_e1_line_port_cmd);
 	install_element(L_E1INP_NODE, &cfg_e1_line_name_cmd);
 
 	install_element_ve(&show_e1drv_cmd);

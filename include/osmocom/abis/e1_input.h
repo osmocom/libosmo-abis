@@ -157,10 +157,12 @@ struct e1inp_line {
 
 	unsigned int num;
 	const char *name;
+	unsigned int port_nr;
 	struct rate_ctr_group *rate_ctr;
 
 	/* array of timestlots */
 	struct e1inp_ts ts[NUM_E1_TS];
+	unsigned int num_ts;
 
 	const struct e1inp_line_ops *ops;
 

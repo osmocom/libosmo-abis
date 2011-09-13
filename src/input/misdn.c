@@ -495,7 +495,7 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 
 		memset(&addr, 0, sizeof(addr));
 		addr.family = AF_ISDN;
-		addr.dev = line->num;
+		addr.dev = line->port_nr;
 		switch (e1i_ts->type) {
 		case E1INP_TS_TYPE_SIGN:
 			if (mline->use_userspace_lapd) {
@@ -579,11 +579,11 @@ static int _mi_e1_line_update(struct e1inp_line *line)
 	//DEBUGP(DLMI,"%d device%s found\n", cnt, (cnt==1)?"":"s");
 	printf("%d device%s found\n", cnt, (cnt==1)?"":"s");
 #if 1
-	devinfo.id = line->num;
+	devinfo.id = line->port_nr;
 	ret = ioctl(sk, IMGETDEVINFO, &devinfo);
 	if (ret < 0) {
 		fprintf(stdout, "error getting info for device %d: %s\n",
-			line->num, strerror(errno));
+			line->port_nr, strerror(errno));
 		return -ENODEV;
 	}
 	fprintf(stdout, "        id:             %d\n", devinfo.id);
