@@ -390,6 +390,7 @@ static void ipa_server_conn_read(struct ipa_server_conn *conn)
 		if (errno == EPIPE || errno == ECONNRESET) {
 			LOGP(DLINP, LOGL_ERROR, "lost connection with server\n");
 		}
+		ipa_server_conn_destroy(conn);
 		return;
 	} else if (ret == 0) {
 		LOGP(DLINP, LOGL_ERROR, "connection closed with server\n");
