@@ -176,7 +176,7 @@ ipa_sock_src_accept_cb(struct ipa_server_link *link, int fd)
 	conn->route = route;
 
 	conn->src = ipa_server_conn_create(tall_ipa_proxy_ctx, link, fd,
-					   ipa_sock_src_cb, conn);
+					   ipa_sock_src_cb, NULL, conn);
 	if (conn->src == NULL) {
 		LOGP(DLINP, LOGL_ERROR, "could not create server peer: %s\n",
 			strerror(errno));

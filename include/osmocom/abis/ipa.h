@@ -24,11 +24,12 @@ struct ipa_server_conn {
 	struct ipa_server_link		*server;
 	struct osmo_fd			ofd;
 	struct llist_head		tx_queue;
+	int (*closed_cb)(struct ipa_server_conn *peer);
 	int (*cb)(struct ipa_server_conn *peer, struct msgb *msg);
 	void				*data;
 };
 
-struct ipa_server_conn *ipa_server_conn_create(void *ctx, struct ipa_server_link *link, int fd, int (*cb)(struct ipa_server_conn *peer, struct msgb *msg), void *data);
+struct ipa_server_conn *ipa_server_conn_create(void *ctx, struct ipa_server_link *link, int fd, int (*cb)(struct ipa_server_conn *peer, struct msgb *msg), int (*closed_cb)(struct ipa_server_conn *peer), void *data);
 void ipa_server_conn_destroy(struct ipa_server_conn *peer);
 
 void ipa_server_conn_send(struct ipa_server_conn *peer, struct msgb *msg);

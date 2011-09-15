@@ -443,7 +443,7 @@ static int ipa_server_conn_cb(struct osmo_fd *ofd, unsigned int what)
 struct ipa_server_conn *
 ipa_server_conn_create(void *ctx, struct ipa_server_link *link, int fd,
 		int (*cb)(struct ipa_server_conn *conn, struct msgb *msg),
-		void *data)
+		int (*closed_cb)(struct ipa_server_conn *conn), void *data)
 {
 	struct ipa_server_conn *conn;
 
@@ -459,6 +459,7 @@ ipa_server_conn_create(void *ctx, struct ipa_server_link *link, int fd,
 	conn->ofd.cb = ipa_server_conn_cb;
 	conn->ofd.when = BSC_FD_READ;
 	conn->cb = cb;
+	conn->closed_cb = closed_cb;
 	conn->data = data;
 	INIT_LLIST_HEAD(&conn->tx_queue);
 
@@ -474,6 +475,8 @@ void ipa_server_conn_destroy(struct ipa_server_conn *conn)
 {
 	close(conn->ofd.fd);
 	osmo_fd_unregister(&conn->ofd);
+	if (conn->closed_cb)
+		conn->closed_cb(conn);
 	talloc_free(conn);
 }
 
