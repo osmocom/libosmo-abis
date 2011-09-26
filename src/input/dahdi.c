@@ -65,7 +65,7 @@ static int reread_span_cfgs(void)
 {
 	struct dahdi_spaninfo si;
 	unsigned int basechan = 1;
-	int i;
+	int i, span_nr;
 	int fd;
 
 	if ((fd = open("/dev/dahdi/ctl", O_RDWR)) < 0) {
@@ -74,8 +74,10 @@ static int reread_span_cfgs(void)
 		return -EIO;
 	}
 
-	for (i = 1; i < DAHDI_MAX_SPANS; i++) {
+	for (span_nr = 1; span_nr < DAHDI_MAX_SPANS; span_nr++) {
 		struct span_cfg *scfg;
+		/* our array index starts at 0, but DAHDI span at 1 */
+		int i = span_nr - 1;
 
 		/* clear any old cached information */
 		if (span_cfgs[i]) {
@@ -84,7 +86,7 @@ static int reread_span_cfgs(void)
 		}
 
 		memset(&si, 0, sizeof(si));
-		si.spanno = i;
+		si.spanno = span_nr;
 		if (ioctl(fd, DAHDI_SPANSTAT, &si))
 			continue;
 
@@ -94,7 +96,7 @@ static int reread_span_cfgs(void)
 			close(fd);
 			return -ENOMEM;
 		}
-		scfg->span_nr = i;
+		scfg->span_nr = span_nr;
 		scfg->chan_num = si.totalchans;
 		scfg->chan_base = basechan;
 		span_cfgs[i] = scfg;
