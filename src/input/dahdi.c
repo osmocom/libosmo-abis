@@ -65,7 +65,7 @@ static int reread_span_cfgs(void)
 {
 	struct dahdi_spaninfo si;
 	unsigned int basechan = 1;
-	int i, span_nr;
+	int span_nr;
 	int fd;
 
 	if ((fd = open("/dev/dahdi/ctl", O_RDWR)) < 0) {
