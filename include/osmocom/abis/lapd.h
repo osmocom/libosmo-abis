@@ -4,24 +4,26 @@
 #include <stdint.h>
 
 #include <osmocom/core/linuxlist.h>
+#include <osmocom/gsm/lapd_core.h>
 
-typedef enum {
-	LAPD_MPH_NONE	= 0,
-
-	LAPD_MPH_ACTIVATE_IND,
-	LAPD_MPH_DEACTIVATE_IND,
-
-	LAPD_DL_DATA_IND,
-	LAPD_DL_UNITDATA_IND,
-
-} lapd_mph_type;
+enum lapd_profile {
+	LAPD_PROFILE_ISDN,
+	LAPD_PROFILE_ABIS,
+	LAPD_PROFILE_ASAT,
+};
 
 struct lapd_instance {
 	struct llist_head list;		/* list of LAPD instances */
 	int network_side;
 
-	void (*transmit_cb)(uint8_t *data, int len, void *cbdata);
-	void *cbdata;
+	void (*transmit_cb)(struct msgb *msg, void *cbdata);
+	void *transmit_cbdata;
+	void (*receive_cb)(struct osmo_dlsap_prim *odp, uint8_t tei,
+		uint8_t sapi, void *rx_cbdata);
+	void *receive_cbdata;
+
+	enum lapd_profile profile;
+	uint8_t short_address;
 
 	struct llist_head tei_list;	/* list of TEI in this LAPD instance */
 };
@@ -34,19 +36,20 @@ enum lapd_recv_errors {
 	LAPD_ERR_UNKNOWN_U_CMD,
 	LAPD_ERR_UNKNOWN_TEI,
 	LAPD_ERR_BAD_CMD,
+	LAPD_ERR_NO_MEM,
 	__LAPD_ERR_MAX
 };
 
-extern uint8_t *lapd_receive(struct lapd_instance *li, uint8_t *data,
-			     unsigned int len, int *ilen, lapd_mph_type *prim,
-			     int *error);
+int lapd_receive(struct lapd_instance *li, struct msgb *msg, int *error);
 
-extern void lapd_transmit(struct lapd_instance *li, uint8_t tei, uint8_t sapi,
-			  uint8_t *data, unsigned int len);
+void lapd_transmit(struct lapd_instance *li, uint8_t tei, uint8_t sapi,
+		   struct msgb *msg);
 
 struct lapd_instance *lapd_instance_alloc(int network_side,
-					  void (*tx_cb)(uint8_t *data, int len,
-							void *cbdata), void *cbdata);
+	void (*tx_cb)(struct msgb *msg, void *cbdata), void *tx_cbdata,
+	void (*rx_cb)(struct osmo_dlsap_prim *odp, uint8_t tei, uint8_t sapi, 
+			void *rx_cbdata), void *rx_cbdata,
+	enum lapd_profile profile);
 
 void lapd_instance_free(struct lapd_instance *li);
 

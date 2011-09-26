@@ -213,7 +213,7 @@ static void timeout_ts1_write(void *data)
 	ts_want_write(e1i_ts);
 }
 
-static void dahdi_write_msg(uint8_t *data, int len, void *cbdata)
+static void dahdi_write_msg(struct msgb *msg, void *cbdata)
 {
 	struct osmo_fd *bfd = cbdata;
 	struct e1inp_line *line = bfd->data;
@@ -221,7 +221,8 @@ static void dahdi_write_msg(uint8_t *data, int len, void *cbdata)
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
 	int ret;
 
-	ret = write(bfd->fd, data, len + 2);
+	ret = write(bfd->fd, msg->data, msg->len + 2);
+	msgb_free(msg);
 	if (ret == -1)
 		handle_dahdi_exception(e1i_ts);
 	else if (ret < 0)
@@ -247,8 +248,7 @@ static int handle_ts1_write(struct osmo_fd *bfd)
 
 	DEBUGP(DLMI, "TX: %s\n", osmo_hexdump(msg->data, msg->len));
 	lapd_transmit(e1i_ts->lapd, sign_link->tei,
-		      sign_link->sapi, msg->data, msg->len);
-	msgb_free(msg);
+			sign_link->sapi, msg);
 
 	/* set tx delay timer for next event */
 	e1i_ts->sign.tx_timer.cb = timeout_ts1_write;
@@ -354,7 +354,6 @@ static int handle_tsX_read(struct osmo_fd *bfd)
 	/* physical layer indicates that data has been sent,
 	 * we thus can send some more data */
 	ret = handle_tsX_write(bfd);
-	msgb_free(msg);
 
 	return ret;
 }
@@ -525,7 +524,9 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 			bfd->when = BSC_FD_READ | BSC_FD_EXCEPT;
 			dahdi_set_bufinfo(bfd->fd, 1);
 			if (!e1i_ts->lapd)
-				e1i_ts->lapd = lapd_instance_alloc(1, dahdi_write_msg, bfd);
+				e1i_ts->lapd = lapd_instance_alloc(1,
+					dahdi_write_msg, bfd, e1inp_dlsap_up,
+					e1i_ts, LAPD_PROFILE_ABIS);
 			break;
 		case E1INP_TS_TYPE_TRAU:
 			/* close/release LAPD instance, if any */

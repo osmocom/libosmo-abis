@@ -505,11 +505,13 @@ int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
 		if (!link) {
 			LOGP(DLMI, LOGL_ERROR, "didn't find signalling link for "
 				"tei %d, sapi %d\n", tei, sapi);
+			msgb_free(msg);
 			return -EINVAL;
 		}
 		if (!ts->line->ops->sign_link) {
 	                LOGP(DLINP, LOGL_ERROR, "Fix your application, "
 				"no action set for signalling messages.\n");
+			msgb_free(msg);
 			return -ENOENT;
 		}
 		msg->dst = link;
@@ -517,10 +519,12 @@ int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
 		break;
 	case E1INP_TS_TYPE_TRAU:
 		ret = subch_demux_in(&ts->trau.demux, msg->l2h, msgb_l2len(msg));
+		msgb_free(msg);
 		break;
 	default:
 		ret = -EINVAL;
 		LOGP(DLMI, LOGL_ERROR, "unknown TS type %u\n", ts->type);
+		msgb_free(msg);
 		break;
 	}
 
@@ -538,18 +542,19 @@ int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
  */
 int e1inp_rx_ts_lapd(struct e1inp_ts *e1i_ts, struct msgb *msg)
 {
-	lapd_mph_type prim;
 	unsigned int sapi, tei;
-	int ilen, ret = 0, error = 0;
-	uint8_t *idata;
+	int ret = 0, error = 0;
 
 	sapi = msg->data[0] >> 2;
-	tei = msg->data[1] >> 1;
+	if ((msg->data[0] & 0x1))
+		tei = 0;
+	else
+		tei = msg->data[1] >> 1;
 
-	DEBUGP(DLMI, "<= len = %d, sapi(%d) tei(%d)", msg->len, sapi, tei);
+	DEBUGP(DLMI, "<= len = %d, sapi(%d) tei(%d)\n", msg->len, sapi, tei);
 
-	idata = lapd_receive(e1i_ts->lapd, msg->data, msg->len, &ilen, &prim, &error);
-	if (!idata) {
+	ret = lapd_receive(e1i_ts->lapd, msg, &error);
+	if (ret < 0) {
 		switch(error) {
 		case LAPD_ERR_UNKNOWN_TEI:
 			/* We don't know about this TEI, probably the BSC
@@ -560,39 +565,48 @@ int e1inp_rx_ts_lapd(struct e1inp_ts *e1i_ts, struct msgb *msg)
 			e1inp_event(e1i_ts, S_L_INP_TEI_UNKNOWN, tei, sapi);
 			return -EIO;
 		}
-		if (prim == 0)
-			return -EIO;
 	}
 
-	msgb_pull(msg, 2);
+	return 0;
+}
 
-	DEBUGP(DLMI, "prim %08x\n", prim);
+void e1inp_dlsap_up(struct osmo_dlsap_prim *dp, uint8_t tei, uint8_t sapi,
+        void *rx_cbdata)
+{
+	struct e1inp_ts *e1i_ts = rx_cbdata;
+	struct msgb *msg = dp->oph.msg;
 
-	switch (prim) {
-	case 0:
+	switch (dp->oph.primitive) {
+	case PRIM_DL_EST:
+		DEBUGP(DLMI, "DL_EST: sapi(%d) tei(%d)\n", sapi, tei);
+		e1inp_event(e1i_ts, S_L_INP_TEI_UP, tei, sapi);
 		break;
-	case LAPD_MPH_ACTIVATE_IND:
-		DEBUGP(DLMI, "MPH_ACTIVATE_IND: sapi(%d) tei(%d)\n", sapi, tei);
-		ret = e1inp_event(e1i_ts, S_L_INP_TEI_UP, tei, sapi);
+	case PRIM_DL_REL:
+		DEBUGP(DLMI, "DL_REL: sapi(%d) tei(%d)\n", sapi, tei);
+		e1inp_event(e1i_ts, S_L_INP_TEI_DN, tei, sapi);
 		break;
-	case LAPD_MPH_DEACTIVATE_IND:
-		DEBUGP(DLMI, "MPH_DEACTIVATE_IND: sapi(%d) tei(%d)\n", sapi, tei);
-		ret = e1inp_event(e1i_ts, S_L_INP_TEI_DN, tei, sapi);
+	case PRIM_DL_DATA:
+	case PRIM_DL_UNIT_DATA:
+		if (dp->oph.operation == PRIM_OP_INDICATION) {
+			msg->l2h = msg->l3h;
+			DEBUGP(DLMI, "RX: %s sapi=%d tei=%d\n",
+				osmo_hexdump(msgb_l2(msg), msgb_l2len(msg)),
+				sapi, tei);
+			e1inp_rx_ts(e1i_ts, msg, tei, sapi);
+			return;
+		}
 		break;
-	case LAPD_DL_DATA_IND:
-	case LAPD_DL_UNITDATA_IND:
-		if (prim == LAPD_DL_DATA_IND)
-			msg->l2h = msg->data + 2;
-		else
-			msg->l2h = msg->data + 1;
-		DEBUGP(DLMI, "RX: %s\n", osmo_hexdump(msgb_l2(msg), msgb_l2len(msg)));
-		ret = e1inp_rx_ts(e1i_ts, msg, tei, sapi);
+	case PRIM_MDL_ERROR:
+		DEBUGP(DLMI, "MDL_EERROR: cause(%d)\n", dp->u.error_ind.cause);
 		break;
 	default:
 		printf("ERROR: unknown prim\n");
 		break;
 	}
-	return ret;
+
+	msgb_free(msg);
+
+	return;
 }
 
 #define TSX_ALLOC_SIZE 4096

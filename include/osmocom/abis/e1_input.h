@@ -9,6 +9,7 @@
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/select.h>
 #include <osmocom/abis/subchan_demux.h>
+#include <osmocom/abis/lapd.h>
 
 #define NUM_E1_TS   32
 
@@ -243,6 +244,10 @@ struct msgb *e1inp_tx_ts(struct e1inp_ts *e1i_ts,
 
 /* called by driver in case some kind of link state event */
 int e1inp_event(struct e1inp_ts *ts, int evt, uint8_t tei, uint8_t sapi);
+
+/* L2->L3 */
+void e1inp_dlsap_up(struct osmo_dlsap_prim *odp, uint8_t tei, uint8_t sapi,
+        void *rx_cbdata);
 
 /* Write LAPD frames to the fd. */
 void e1_set_pcap_fd(int fd);
