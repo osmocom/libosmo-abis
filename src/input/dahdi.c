@@ -447,8 +447,12 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 	reread_span_cfgs();
 
 	scfg = span_cfgs[line->port_nr];
-	if (!scfg)
+	if (!scfg) {
+		LOGP(DLMI, LOGL_ERROR, "Line %u(%s): DAHDI Port %u (Span %u) "
+			"doesn't exist\n", line->num, line->name, line->port_nr,
+			line->port_nr+1);
 		return -EIO;
+	}
 
 	line->num_ts = scfg->chan_num;
 
