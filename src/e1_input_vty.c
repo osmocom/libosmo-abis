@@ -165,6 +165,8 @@ static void e1line_dump_vty(struct vty *vty, struct e1inp_line *line,
 	vty_out(vty, "E1 Line Number %u, Name %s, Driver %s%s",
 		line->num, line->name ? line->name : "",
 		line->driver->name, VTY_NEWLINE);
+	if (line->driver->vty_show)
+		line->driver->vty_show(vty, line);
 	if (stats)
 		vty_out_rate_ctr_group(vty, " ", line->rate_ctr);
 }

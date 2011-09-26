@@ -38,14 +38,17 @@
 #include <arpa/inet.h>
 #include <dahdi/user.h>
 
+#include <osmocom/core/talloc.h>
 #include <osmocom/core/select.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/logging.h>
 #include <osmocom/core/signal.h>
 #include <osmocom/core/rate_ctr.h>
+
+#include <osmocom/vty/vty.h>
+
 #include <osmocom/abis/subchan_demux.h>
 #include <osmocom/abis/e1_input.h>
-#include <osmocom/core/talloc.h>
 
 #include <osmocom/abis/lapd.h>
 
@@ -393,12 +396,32 @@ static int dahdi_fd_cb(struct osmo_fd *bfd, unsigned int what)
 	return rc;
 }
 
+static void dahdi_vty_show(struct vty *vty, struct e1inp_line *line)
+{
+	struct span_cfg *scfg;
+
+	if (line->port_nr > ARRAY_SIZE(span_cfgs))
+		return;
+
+	scfg = span_cfgs[line->port_nr];
+	if (!scfg) {
+		vty_out(vty, "DAHDI Span %u non-existant%s",
+			line->port_nr+1, VTY_NEWLINE);
+		return;
+	}
+
+	vty_out(vty, "DAHDI Span #%u, Base Nr %u, Timeslots: %u%s",
+		line->port_nr+1, scfg->chan_base, scfg->chan_num,
+		VTY_NEWLINE);
+}
+
 static int dahdi_e1_line_update(struct e1inp_line *line);
 
 struct e1inp_driver dahdi_driver = {
 	.name = "dahdi",
 	.want_write = ts_want_write,
 	.line_update = &dahdi_e1_line_update,
+	.vty_show = &dahdi_vty_show,
 };
 
 void dahdi_set_bufinfo(int fd, int as_sigchan)

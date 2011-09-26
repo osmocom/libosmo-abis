@@ -28,6 +28,7 @@ enum e1inp_ctr {
 };
 
 struct e1inp_ts;
+struct vty;
 
 struct e1inp_sign_link {
 	/* list of signalling links */
@@ -130,6 +131,7 @@ struct e1inp_driver {
 	int (*want_write)(struct e1inp_ts *ts);
 	int (*line_update)(struct e1inp_line *line);
 	void (*close)(struct e1inp_sign_link *link);
+	void (*vty_show)(struct vty *vty, struct e1inp_line *line);
 	int default_delay;
 };
 
