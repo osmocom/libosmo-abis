@@ -70,8 +70,8 @@ DEFUN(cfg_e1line_driver, cfg_e1_line_driver_cmd,
 }
 
 DEFUN(cfg_e1line_port, cfg_e1_line_port_cmd,
-	"e1_line <0-255> port <0-255>"
-	E1_LINE_HELP, "Set physical port/span/card number\n"
+	"e1_line <0-255> port <0-255>",
+	E1_LINE_HELP "Set physical port/span/card number\n"
 	"E1/T1 Port/Span/Card number\n")
 {
 	struct e1inp_line *line;
