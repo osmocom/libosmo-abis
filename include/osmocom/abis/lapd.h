@@ -6,11 +6,21 @@
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/gsm/lapd_core.h>
 
-enum lapd_profile {
-	LAPD_PROFILE_ISDN,
-	LAPD_PROFILE_ABIS,
-	LAPD_PROFILE_ASAT,
+struct lapd_profile {
+	uint8_t k, k_sapi0;
+	int n200;
+	int n201;
+	int n202;
+	int t200_sec, t200_usec;
+	int t201_sec, t201_usec;
+	int t202_sec, t202_usec;
+	int t203_sec, t203_usec;
+	int short_address;
 };
+
+extern const struct lapd_profile lapd_profile_isdn;
+extern const struct lapd_profile lapd_profile_abis;
+extern const struct lapd_profile lapd_profile_sat;
 
 struct lapd_instance {
 	struct llist_head list;		/* list of LAPD instances */
@@ -22,8 +32,7 @@ struct lapd_instance {
 		uint8_t sapi, void *rx_cbdata);
 	void *receive_cbdata;
 
-	enum lapd_profile profile;
-	uint8_t short_address;
+	struct lapd_profile profile; /* must be a copy */
 
 	struct llist_head tei_list;	/* list of TEI in this LAPD instance */
 };
@@ -49,7 +58,7 @@ struct lapd_instance *lapd_instance_alloc(int network_side,
 	void (*tx_cb)(struct msgb *msg, void *cbdata), void *tx_cbdata,
 	void (*rx_cb)(struct osmo_dlsap_prim *odp, uint8_t tei, uint8_t sapi, 
 			void *rx_cbdata), void *rx_cbdata,
-	enum lapd_profile profile);
+	const struct lapd_profile *profile);
 
 void lapd_instance_free(struct lapd_instance *li);
 

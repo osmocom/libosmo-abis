@@ -68,6 +68,39 @@
 #define LAPD_LEN(len)	((len << 2) | 0x1)
 #define LAPD_EL	0x1
 
+const struct lapd_profile lapd_profile_isdn = {
+	7, 0,
+	3,
+	260,
+	3,
+	1,0,
+	1,0,
+	10,0,
+	0
+};
+
+const struct lapd_profile lapd_profile_abis = {
+	1, 2,
+	3,
+	260,
+	3,
+	0,240000,
+	1,0,
+	10,0,
+	0
+};
+
+const struct lapd_profile lapd_profile_sat = {
+	15, 0,
+	5,
+	260,
+	5,
+	2,500000,
+	2,500000,
+	20,0,
+	1
+};
+
 typedef enum {
 	LAPD_TEI_NONE = 0,
 	LAPD_TEI_ASSIGNED,
@@ -162,9 +195,8 @@ static struct lapd_sap *lapd_sap_alloc(struct lapd_tei *teip, uint8_t sapi)
 	struct lapd_sap *sap;
 	struct lapd_datalink *dl;
 	struct lapd_instance *li;
-	int profile;
-	int n201, k;
-	int t200_sec, t200_usec;
+	struct lapd_profile *profile;
+	int k;
 
 	sap = talloc_zero(teip, struct lapd_sap);
 	if (!sap)
@@ -177,41 +209,24 @@ static struct lapd_sap *lapd_sap_alloc(struct lapd_tei *teip, uint8_t sapi)
 	sap->tei = teip;
 	dl = &sap->dl;
 	li = teip->li;
+	profile = &li->profile;
 
-	profile = li->profile;
-	switch (profile) {
-	case LAPD_PROFILE_ABIS:
-		n201 = 260;
-		t200_sec = 0; t200_usec = 240000;
-		if (sapi == 0)
-			k = 2;
-		else
-			k = 1;
-		break;
-	case LAPD_PROFILE_ASAT:
-		n201 = 260;
-		t200_sec = 2; t200_usec = 500000;
-		k = 15;
-		li->short_address = 1;
-		break;
-	case LAPD_PROFILE_ISDN:
-	default:
-		n201 = 260;
-		t200_sec = 1; t200_usec = 0;
-		k = 7;
-		break;
-	}
-
-	lapd_dl_init(dl, k, 128, n201);
+	if (sapi == 0 && profile->k_sapi0)
+		k = profile->k_sapi0;
+	else
+		k = profile->k;
+	lapd_dl_init(dl, k, 128, profile->n201);
 	dl->use_sabme = 1; /* use SABME instead of SABM (GSM) */
 	dl->send_ph_data_req = send_ph_data_req;
 	dl->send_dlsap = send_dlsap;
+	dl->n200 = profile->n200;
+	dl->n200_est_rel = profile->n200;
+	dl->t200_sec = profile->t200_sec; dl->t200_usec = profile->t200_usec;
+	dl->t203_sec = profile->t203_sec; dl->t203_usec = profile->t203_usec;
 	dl->lctx.dl = &sap->dl;
 	dl->lctx.sapi = sapi;
 	dl->lctx.tei = teip->tei;
-	dl->lctx.n201 = n201;
-	dl->t200_sec = t200_sec;
-	dl->t200_usec = t200_usec;
+	dl->lctx.n201 = profile->n201;
 
 	lapd_set_mode(&sap->dl, (teip->li->network_side) ? LAPD_MODE_NETWORK
 							: LAPD_MODE_USER);
@@ -512,7 +527,7 @@ static int send_ph_data_req(struct lapd_msg_ctx *lctx, struct msgb *msg)
 		return -EINVAL;
 	}
 	/* address field */
-	if (li->short_address && lctx->tei == 0)
+	if (li->profile.short_address && lctx->tei == 0)
 		addr_len = 1;
 	else
 		addr_len = 2;
@@ -570,7 +585,7 @@ struct lapd_instance *lapd_instance_alloc(int network_side,
 	void (*tx_cb)(struct msgb *msg, void *cbdata), void *tx_cbdata,
 	void (*rx_cb)(struct osmo_dlsap_prim *odp, uint8_t tei, uint8_t sapi, 
 			void *rx_cbdata), void *rx_cbdata,
-	enum lapd_profile profile)
+	const struct lapd_profile *profile)
 {
 	struct lapd_instance *li;
 
@@ -583,7 +598,7 @@ struct lapd_instance *lapd_instance_alloc(int network_side,
 	li->transmit_cbdata = tx_cbdata;
 	li->receive_cb = rx_cb;
 	li->receive_cbdata = rx_cbdata;
-	li->profile = profile;
+	memcpy(&li->profile, profile, sizeof(li->profile));
 
 	INIT_LLIST_HEAD(&li->tei_list);
 

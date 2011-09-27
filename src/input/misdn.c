@@ -547,7 +547,7 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 				addr.channel = ts;
 				e1i_ts->lapd = lapd_instance_alloc(1,
 					misdn_write_msg, bfd, e1inp_dlsap_up,
-					e1i_ts, LAPD_PROFILE_ABIS);
+					e1i_ts, &lapd_profile_abis);
 			} else {
 				addr.channel = 0;
 				/* SAPI not supported yet in kernel */
