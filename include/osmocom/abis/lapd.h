@@ -7,7 +7,7 @@
 #include <osmocom/gsm/lapd_core.h>
 
 struct lapd_profile {
-	uint8_t k, k_sapi0;
+	uint8_t k[64];
 	int n200;
 	int n201;
 	int n202;

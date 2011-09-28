@@ -68,8 +68,10 @@
 #define LAPD_LEN(len)	((len << 2) | 0x1)
 #define LAPD_EL	0x1
 
+#define LAPD_SET_K(n, o)  {n,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o}
+
 const struct lapd_profile lapd_profile_isdn = {
-	7, 0,
+	LAPD_SET_K(7,7),
 	3,
 	260,
 	3,
@@ -80,10 +82,10 @@ const struct lapd_profile lapd_profile_isdn = {
 };
 
 const struct lapd_profile lapd_profile_abis = {
-	1, 2,
+	LAPD_SET_K(2,1),
 	3,
 	260,
-	3,
+	0, /* infinite */
 	0,240000,
 	1,0,
 	10,0,
@@ -91,12 +93,12 @@ const struct lapd_profile lapd_profile_abis = {
 };
 
 const struct lapd_profile lapd_profile_sat = {
-	15, 0,
+	LAPD_SET_K(15,15),
 	5,
 	260,
 	5,
-	2,500000,
-	2,500000,
+	2,400000,
+	2,400000,
 	20,0,
 	1
 };
@@ -202,7 +204,7 @@ static struct lapd_sap *lapd_sap_alloc(struct lapd_tei *teip, uint8_t sapi)
 	if (!sap)
 		return NULL;
 
-	LOGP(DLLAPD, LOGL_INFO, "LAPD Allocating SAP for SAPI=%u / TEI=%u\n",
+	LOGP(DLLAPD, LOGL_NOTICE, "LAPD Allocating SAP for SAPI=%u / TEI=%u\n",
 		sapi, teip->tei);
 
 	sap->sapi = sapi;
@@ -211,10 +213,10 @@ static struct lapd_sap *lapd_sap_alloc(struct lapd_tei *teip, uint8_t sapi)
 	li = teip->li;
 	profile = &li->profile;
 
-	if (sapi == 0 && profile->k_sapi0)
-		k = profile->k_sapi0;
-	else
-		k = profile->k;
+	k = profile->k[sapi & 0x3f];
+	LOGP(DLLAPD, LOGL_NOTICE, "k=%d N200=%d N201=%d T200=%d.%d T203=%d.%d"
+		"\n", k, profile->n200, profile->n201, profile->t200_sec,
+		profile->t200_usec, profile->t203_sec, profile->t203_usec);
 	lapd_dl_init(dl, k, 128, profile->n201);
 	dl->use_sabme = 1; /* use SABME instead of SABM (GSM) */
 	dl->send_ph_data_req = send_ph_data_req;
