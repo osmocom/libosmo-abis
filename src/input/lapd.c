@@ -77,6 +77,7 @@ const struct lapd_profile lapd_profile_isdn = {
 	3,
 	1,0,
 	1,0,
+	2,0,
 	10,0,
 	0
 };
@@ -88,6 +89,7 @@ const struct lapd_profile lapd_profile_abis = {
 	0, /* infinite */
 	0,240000,
 	1,0,
+	2,0,
 	10,0,
 	0
 };
@@ -97,6 +99,7 @@ const struct lapd_profile lapd_profile_sat = {
 	5,
 	260,
 	5,
+	2,400000,
 	2,400000,
 	2,400000,
 	20,0,
