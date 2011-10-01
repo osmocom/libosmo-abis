@@ -267,14 +267,26 @@ static void lapd_tei_free(struct lapd_tei *teip)
 /* Input function into TEI manager */
 static int lapd_tei_receive(struct lapd_instance *li, uint8_t *data, int len)
 {
-	uint8_t entity = data[0];
-	uint8_t ref = data[1];
-	uint8_t mt = data[3];
-	uint8_t action = data[4] >> 1;
-	uint8_t e = data[4] & 1;
+	uint8_t entity;
+	uint8_t ref;
+	uint8_t mt;
+	uint8_t action;
+	uint8_t e;
 	uint8_t resp[8];
 	struct lapd_tei *teip;
 	struct msgb *msg;
+
+	if (len < 5) {
+		LOGP(DLLAPD, LOGL_ERROR, "LAPD TEIMGR frame receive len %d < 5"
+			", ignoring\n", len);
+		return -EINVAL;
+	};
+
+	entity = data[0];
+	ref = data[1];
+	mt = data[3];
+	action = data[4] >> 1;
+	e = data[4] & 1;
 
 	DEBUGP(DLLAPD, "LAPD TEIMGR: entity %x, ref %x, mt %x, action %x, "
 		"e %x\n", entity, ref, mt, action, e);
@@ -326,8 +338,8 @@ int lapd_receive(struct lapd_instance *li, struct msgb *msg, int *error)
 
 	LOGP(DLLAPD, LOGL_DEBUG, "RX: %s\n", osmo_hexdump(msg->data, msg->len));
 	if (msg->len < 2) {
-		LOGP(DLLAPD, LOGL_ERROR, "LAPD receive len %d < 2, ignoring\n",
-			msg->len);
+		LOGP(DLLAPD, LOGL_ERROR, "LAPD frame receive len %d < 2, "
+			"ignoring\n", msg->len);
 		*error = LAPD_ERR_BAD_LEN;
 		return -EINVAL;
 	};
@@ -341,6 +353,12 @@ int lapd_receive(struct lapd_instance *li, struct msgb *msg, int *error)
 	lctx.cr = LAPD_ADDR_CR(msg->l2h[i]);
 	lctx.lpd = 0;
 	if (!LAPD_ADDR_EA(msg->l2h[i])) {
+		if (msg->len < 3) {
+			LOGP(DLLAPD, LOGL_ERROR, "LAPD frame with TEI receive "
+				"len %d < 3, ignoring\n", msg->len);
+			*error = LAPD_ERR_BAD_LEN;
+			return -EINVAL;
+		};
 		i++;
 		lctx.tei = LAPD_ADDR_TEI(msg->l2h[i]);
 	}
@@ -350,12 +368,36 @@ int lapd_receive(struct lapd_instance *li, struct msgb *msg, int *error)
 		lctx.format = LAPD_FORM_I;
 		lctx.n_send = LAPD_CTRL_I_Ns(msg->l2h[i]);
 		i++;
+		if (msg->len < 3 && i == 2) {
+			LOGP(DLLAPD, LOGL_ERROR, "LAPD I frame without TEI "
+				"receive len %d < 3, ignoring\n", msg->len);
+			*error = LAPD_ERR_BAD_LEN;
+			return -EINVAL;
+		};
+		if (msg->len < 4 && i == 3) {
+			LOGP(DLLAPD, LOGL_ERROR, "LAPD I frame with TEI "
+				"receive len %d < 4, ignoring\n", msg->len);
+			*error = LAPD_ERR_BAD_LEN;
+			return -EINVAL;
+		};
 		lctx.n_recv = LAPD_CTRL_Nr(msg->l2h[i]);
 		lctx.p_f = LAPD_CTRL_I_P(msg->l2h[i]);
 	} else if (LAPD_CTRL_is_S(msg->l2h[i])) {
 		lctx.format = LAPD_FORM_S;
 		lctx.s_u = LAPD_CTRL_S_BITS(msg->l2h[i]);
 		i++;
+		if (msg->len < 3 && i == 2) {
+			LOGP(DLLAPD, LOGL_ERROR, "LAPD S frame without TEI "
+				"receive len %d < 3, ignoring\n", msg->len);
+			*error = LAPD_ERR_BAD_LEN;
+			return -EINVAL;
+		};
+		if (msg->len < 4 && i == 3) {
+			LOGP(DLLAPD, LOGL_ERROR, "LAPD S frame with TEI "
+				"receive len %d < 4, ignoring\n", msg->len);
+			*error = LAPD_ERR_BAD_LEN;
+			return -EINVAL;
+		};
 		lctx.n_recv = LAPD_CTRL_Nr(msg->l2h[i]);
 		lctx.p_f = LAPD_CTRL_S_PF(msg->l2h[i]);
 	} else if (LAPD_CTRL_is_U(msg->l2h[i])) {
