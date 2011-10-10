@@ -2,7 +2,7 @@ SUBDIRS=input trau
 
 # This is _NOT_ the library release version, it's an API version.
 # Please read Chapter 6 "Library interface versions" of the libtool documentation before making any modification
-LIBVERSION=0:0:0
+LIBVERSION=1:0:0
 
 INCLUDES = $(all_includes) -I$(top_srcdir)/include -I$(top_builddir)
 AM_CFLAGS= -fPIC -Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS) $(LIBOSMOVTY_CFLAGS) $(COVERAGE_CFLAGS)
