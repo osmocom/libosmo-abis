@@ -26,4 +26,5 @@ e1inp_hsl_bts_test_LDADD = $(top_builddir)/src/libosmoabis.la \
 
 ipa_proxy_test_SOURCES = ipa_proxy_test.c
 ipa_proxy_test_LDADD = $(top_builddir)/src/libosmoabis.la \
-			$(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS)
+			$(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) \
+			$(LIBOSMOVTY_LIBS)
