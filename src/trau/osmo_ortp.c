@@ -34,6 +34,7 @@
 
 #include <ortp/ortp.h>
 #include <ortp/rtp.h>
+#include <ortp/port.h>
 
 
 static PayloadType *payload_type_efr;
