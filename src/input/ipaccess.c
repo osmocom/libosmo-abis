@@ -422,7 +422,7 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 	}
 	if (e1i_ts->line->ops->sign_link(msg) < 0) {
 		LOGP(DLINP, LOGL_ERROR, "Bad signalling message,"
-				       "closing socket.\n");
+			"sign_link returned error.\n");
 		ret = -EINVAL;
 	}
 	return ret;
