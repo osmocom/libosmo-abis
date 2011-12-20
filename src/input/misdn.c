@@ -313,15 +313,14 @@ static void misdn_write_msg(struct msgb *msg, void *cbdata)
 	msgb_free(msg);
 }
 
-#define BCHAN_TX_GRAN	160
 /* write to a B channel TS */
-static int handle_tsX_write(struct osmo_fd *bfd)
+static int handle_tsX_write(struct osmo_fd *bfd, int len)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
 	struct mISDNhead *hh;
-	uint8_t tx_buf[BCHAN_TX_GRAN + sizeof(*hh)];
+	uint8_t tx_buf[len + sizeof(*hh)];
 	struct subch_mux *mx = &e1i_ts->trau.mux;
 	int ret;
 
@@ -329,15 +328,15 @@ static int handle_tsX_write(struct osmo_fd *bfd)
 	hh->prim = PH_DATA_REQ;
 	hh->id = 0;
 
-	subchan_mux_out(mx, tx_buf+sizeof(*hh), BCHAN_TX_GRAN);
+	subchan_mux_out(mx, tx_buf+sizeof(*hh), len);
 
 	DEBUGP(DLMIB, "BCHAN TX: %s\n",
-		osmo_hexdump(tx_buf+sizeof(*hh), BCHAN_TX_GRAN));
+		osmo_hexdump(tx_buf+sizeof(*hh), len));
 
-	ret = send(bfd->fd, tx_buf, sizeof(*hh) + BCHAN_TX_GRAN, 0);
-	if (ret < sizeof(*hh) + BCHAN_TX_GRAN)
+	ret = send(bfd->fd, tx_buf, sizeof(*hh) + len, 0);
+	if (ret < sizeof(*hh) + len)
 		DEBUGP(DLMIB, "send returns %d instead of %zu\n", ret,
-			sizeof(*hh) + BCHAN_TX_GRAN);
+			sizeof(*hh) + len);
 
 	return ret;
 }
@@ -376,12 +375,12 @@ static int handle_tsX_read(struct osmo_fd *bfd)
 		msg->l2h = msg->data + MISDN_HEADER_LEN;
 		DEBUGP(DLMIB, "BCHAN RX: %s\n",
 			osmo_hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN));
+		/* the number of bytes received indicates that data to send */
+		handle_tsX_write(bfd, msgb_l2len(msg));
 		return e1inp_rx_ts(e1i_ts, msg, 0, 0);
 	case PH_ACTIVATE_IND:
 	case PH_DATA_CNF:
-		/* physical layer indicates that data has been sent,
-		 * we thus can send some more data */
-		ret = handle_tsX_write(bfd);
+		break;
 	default:
 		break;
 	}
