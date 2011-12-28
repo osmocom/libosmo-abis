@@ -645,25 +645,44 @@ struct msgb *e1inp_tx_ts(struct e1inp_ts *e1i_ts,
 	return msg;
 }
 
-/* called by driver in case some kind of link state event */
-int e1inp_event(struct e1inp_ts *ts, int evt, uint8_t tei, uint8_t sapi)
+static int e1inp_int_snd_event(struct e1inp_ts *ts,
+			       struct e1inp_sign_link *link, int evt)
 {
-	struct e1inp_sign_link *link;
 	struct input_signal_data isd;
-
-	link = e1inp_lookup_sign_link(ts, tei, sapi);
-	if (!link)
-		return -EINVAL;
-
 	isd.line = ts->line;
 	isd.link_type = link->type;
 	isd.trx = link->trx;
-	isd.tei = tei;
-	isd.sapi = sapi;
+	isd.tei = link->tei;
+	isd.sapi = link->sapi;
 
 	/* report further upwards */
 	osmo_signal_dispatch(SS_L_INPUT, evt, &isd);
 	return 0;
+}
+
+
+/* called by driver in case some kind of link state event */
+int e1inp_event(struct e1inp_ts *ts, int evt, uint8_t tei, uint8_t sapi)
+{
+	struct e1inp_sign_link *link;
+
+	link = e1inp_lookup_sign_link(ts, tei, sapi);
+	if (!link)
+		return -EINVAL;
+	return e1inp_int_snd_event(ts, link, evt);
+}
+
+void e1inp_close_socket(struct e1inp_ts *ts,
+			struct e1inp_sign_link *sign_link,
+			struct osmo_fd *bfd)
+{
+	e1inp_int_snd_event(ts, sign_link, S_L_INP_TEI_DN);
+	/* the first e1inp_sign_link_destroy call closes the socket. */
+	if (bfd->fd != -1) {
+		osmo_fd_unregister(bfd);
+		close(bfd->fd);
+		bfd->fd = -1;
+	}
 }
 
 /* register a driver with the E1 core */

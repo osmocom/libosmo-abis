@@ -307,15 +307,9 @@ static int hsl_fd_cb(struct osmo_fd *bfd, unsigned int what)
 
 static void hsl_close(struct e1inp_sign_link *sign_link)
 {
-	struct e1inp_ts *ts = sign_link->ts;
-	struct osmo_fd *bfd = &ts->driver.ipaccess.fd;
-	e1inp_event(ts, S_L_INP_TEI_DN, sign_link->tei, sign_link->sapi);
-	/* the first e1inp_sign_link_destroy call closes the socket. */
-	if (bfd->fd != -1) {
-		osmo_fd_unregister(bfd);
-		close(bfd->fd);
-		bfd->fd = -1;
-	}
+	struct e1inp_ts *e1i_ts = sign_link->ts;
+	struct osmo_fd *bfd = &e1i_ts->driver.ipaccess.fd;
+	return e1inp_close_socket(e1i_ts, sign_link, bfd);
 }
 
 static int hsl_line_update(struct e1inp_line *line);
