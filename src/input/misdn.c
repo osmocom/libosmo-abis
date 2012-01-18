@@ -484,7 +484,7 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 			}
 			memset(&addr, 0, sizeof(addr));
 			addr.family = AF_ISDN;
-			addr.dev = line->num;
+			addr.dev = line->port_nr;
 			addr.channel = 0;
 			addr.sapi = 0;
 			addr.tei = GROUP_TEI;
