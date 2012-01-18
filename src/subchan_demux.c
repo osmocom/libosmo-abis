@@ -102,10 +102,6 @@ int subch_demux_in(struct subch_demux *dmx, uint8_t *data, int len)
 {
 	int i, c;
 
-	/* we avoid partially filled bytes in outbuf */
-	if (len % 4)
-		return -EINVAL;
-
 	for (i = 0; i < len; i++) {
 		uint8_t inbyte = data[i];
 
