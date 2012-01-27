@@ -102,22 +102,22 @@ static void my_ortp_logfn(OrtpLogLevel lev, const char *fmt,
 
 static void ortp_sig_cb_ssrc(RtpSession *rs, void *data)
 {
-	fprintf(stderr, "ssrc_changed\n");
+	fprintf(stderr, "osmo-ortp: ssrc_changed\n");
 }
 
 static void ortp_sig_cb_pt(RtpSession *rs, void *data)
 {
-	fprintf(stderr, "payload_type_changed\n");
+	fprintf(stderr, "osmo-ortp: payload_type_changed\n");
 }
 
 static void ortp_sig_cb_net(RtpSession *rs, void *data)
 {
-	fprintf(stderr, "network_error\n");
+	fprintf(stderr, "osmo-ortp: network_error\n");
 }
 
 static void ortp_sig_cb_ts(RtpSession *rs, void *data)
 {
-	fprintf(stderr, "timestamp_jump\n");
+	fprintf(stderr, "osmo-rtp: timestamp_jump\n");
 }
 
 
