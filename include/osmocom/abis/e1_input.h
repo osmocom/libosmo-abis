@@ -277,5 +277,6 @@ struct input_signal_data {
 };
 
 int abis_sendmsg(struct msgb *msg);
+int abis_rsl_sendmsg(struct msgb *msg);
 
 #endif /* _E1_INPUT_H */
