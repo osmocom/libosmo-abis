@@ -425,14 +425,14 @@ struct e1inp_driver dahdi_driver = {
 	.vty_show = &dahdi_vty_show,
 };
 
-void dahdi_set_bufinfo(int fd, int as_sigchan)
+int dahdi_set_bufinfo(int fd, int as_sigchan)
 {
 	struct dahdi_bufferinfo bi;
 	int x = 0;
 
 	if (ioctl(fd, DAHDI_GET_BUFINFO, &bi)) {
 		LOGP(DLINP, LOGL_ERROR, "Error getting bufinfo\n");
-		exit(-1);
+		return -EIO;
 	}
 
 	if (as_sigchan) {
@@ -446,13 +446,13 @@ void dahdi_set_bufinfo(int fd, int as_sigchan)
 
 	if (ioctl(fd, DAHDI_SET_BUFINFO, &bi)) {
 		LOGP(DLINP, LOGL_ERROR, "Error setting bufinfo\n");
-		exit(-1);
+		return -EIO;
 	}
 
 	if (!as_sigchan) {
 		if (ioctl(fd, DAHDI_AUDIOMODE, &x)) {
 			LOGP(DLINP, LOGL_ERROR, "Error setting bufinfo\n");
-			exit(-1);
+			return -EIO;
 		}
 	} else {
 		int one = 1;
@@ -461,6 +461,7 @@ void dahdi_set_bufinfo(int fd, int as_sigchan)
 		 * as this command will fail if the slot _already_ was a
 		 * signalling slot before :( */
 	}
+	return 0;
 }
 
 static int dahdi_e1_setup(struct e1inp_line *line)
@@ -522,10 +523,13 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 				LOGP(DLINP, LOGL_ERROR,
 					"%s could not open %s %s\n",
 					__func__, openstr, strerror(errno));
-				exit(-1);
+				return -EIO;
 			}
 			bfd->when = BSC_FD_READ | BSC_FD_EXCEPT;
-			dahdi_set_bufinfo(bfd->fd, 1);
+			ret = dahdi_set_bufinfo(bfd->fd, 1);
+			if (ret < 0)
+				return ret;
+
 			if (!e1i_ts->lapd)
 				e1i_ts->lapd = lapd_instance_alloc(1,
 					dahdi_write_msg, bfd, e1inp_dlsap_up,
@@ -543,9 +547,11 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 				LOGP(DLINP, LOGL_ERROR,
 					"%s could not open %s %s\n",
 					__func__, openstr, strerror(errno));
-				exit(-1);
+				return -EIO;
 			}
-			dahdi_set_bufinfo(bfd->fd, 0);
+			ret = dahdi_set_bufinfo(bfd->fd, 0);
+			if (ret < 0)
+				return -EIO;
 			/* We never include the DAHDI B-Channel FD into the
 			 * writeset, since it doesn't support poll() based
 			 * write flow control */
