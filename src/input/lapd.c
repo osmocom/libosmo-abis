@@ -71,39 +71,39 @@
 #define LAPD_SET_K(n, o)  {n,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o}
 
 const struct lapd_profile lapd_profile_isdn = {
-	LAPD_SET_K(7,7),
-	3,
-	260,
-	3,
-	1,0,
-	1,0,
-	2,0,
-	10,0,
-	0
+	.k		= LAPD_SET_K(7,7),
+	.n200		= 3,
+	.n201		= 260,
+	.n202		= 3,
+	.t200_sec	= 1,	.t200_usec	= 0,
+	.t201_sec	= 1,	.t201_usec	= 0,
+	.t202_sec	= 2,	.t202_usec	= 0,
+	.t203_sec	= 10,	.t203_usec	= 0,
+	.short_address	= 0
 };
 
 const struct lapd_profile lapd_profile_abis = {
-	LAPD_SET_K(2,1),
-	3,
-	260,
-	0, /* infinite */
-	0,240000,
-	1,0,
-	2,0,
-	10,0,
-	0
+	.k		= LAPD_SET_K(2,1),
+	.n200		= 3,
+	.n201		= 260,
+	.n202		= 0, /* infinite */
+	.t200_sec	= 0,	.t200_usec	= 240000,
+	.t201_sec	= 1,	.t201_usec	= 0,
+	.t202_sec	= 2,	.t202_usec	= 0,
+	.t203_sec	= 10,	.t203_usec	= 0,
+	.short_address	= 0
 };
 
 const struct lapd_profile lapd_profile_sat = {
-	LAPD_SET_K(15,15),
-	5,
-	260,
-	5,
-	2,400000,
-	2,400000,
-	2,400000,
-	20,0,
-	1
+	.k		= LAPD_SET_K(15,15),
+	.n200		= 5,
+	.n201		= 260,
+	.n202		= 5,
+	.t200_sec	= 2,	.t200_usec	= 400000,
+	.t201_sec	= 2,	.t201_usec	= 400000,
+	.t202_sec	= 2,	.t202_usec	= 400000,
+	.t203_sec	= 20,	.t203_sec	= 0,
+	.short_address	= 1
 };
 
 typedef enum {
