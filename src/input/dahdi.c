@@ -196,7 +196,7 @@ static int ts_want_write(struct e1inp_ts *e1i_ts)
 	 * writeset, since it doesn't support poll() based
 	 * write flow control */
 	if (e1i_ts->type == E1INP_TS_TYPE_TRAU) {
-		fprintf(stderr, "Trying to write TRAU ts\n");
+		LOGP(DLINP, LOGL_DEBUG, "Trying to write TRAU ts\n");
 		return 0;
 	}
 
@@ -302,7 +302,7 @@ static int handle_tsX_write(struct osmo_fd *bfd)
 	ret = subchan_mux_out(mx, tx_buf, D_BCHAN_TX_GRAN);
 
 	if (ret != D_BCHAN_TX_GRAN) {
-		fprintf(stderr, "Huh, got ret of %d\n", ret);
+		LOGP(DLINP, LOGL_DEBUG, "Huh, got ret of %d\n", ret);
 		if (ret < 0)
 			return ret;
 	}
@@ -316,8 +316,8 @@ static int handle_tsX_write(struct osmo_fd *bfd)
 
 	ret = write(bfd->fd, tx_buf, ret);
 	if (ret < D_BCHAN_TX_GRAN)
-		fprintf(stderr, "send returns %d instead of %d\n", ret,
-			D_BCHAN_TX_GRAN);
+		LOGP(DLINP, LOGL_DEBUG, "send returns %d instead of %d\n",
+			ret, D_BCHAN_TX_GRAN);
 
 	return ret;
 }
@@ -337,7 +337,8 @@ static int handle_tsX_read(struct osmo_fd *bfd)
 
 	ret = read(bfd->fd, msg->data, D_TSX_ALLOC_SIZE);
 	if (ret < 0 || ret != D_TSX_ALLOC_SIZE) {
-		fprintf(stderr, "read error  %d %s\n", ret, strerror(errno));
+		LOGP(DLINP, LOGL_DEBUG, "read error  %d %s\n",
+			ret, strerror(errno));
 		return ret;
 	}
 
@@ -388,7 +389,8 @@ static int dahdi_fd_cb(struct osmo_fd *bfd, unsigned int what)
 		 * write flow control */
 		break;
 	default:
-		fprintf(stderr, "unknown E1 TS type %u\n", e1i_ts->type);
+		LOGP(DLINP, LOGL_NOTICE,
+			"unknown E1 TS type %u\n", e1i_ts->type);
 		break;
 	}
 
@@ -429,7 +431,7 @@ void dahdi_set_bufinfo(int fd, int as_sigchan)
 	int x = 0;
 
 	if (ioctl(fd, DAHDI_GET_BUFINFO, &bi)) {
-		fprintf(stderr, "Error getting bufinfo\n");
+		LOGP(DLINP, LOGL_ERROR, "Error getting bufinfo\n");
 		exit(-1);
 	}
 
@@ -443,13 +445,13 @@ void dahdi_set_bufinfo(int fd, int as_sigchan)
 	}
 
 	if (ioctl(fd, DAHDI_SET_BUFINFO, &bi)) {
-		fprintf(stderr, "Error setting bufinfo\n");
+		LOGP(DLINP, LOGL_ERROR, "Error setting bufinfo\n");
 		exit(-1);
 	}
 
 	if (!as_sigchan) {
 		if (ioctl(fd, DAHDI_AUDIOMODE, &x)) {
-			fprintf(stderr, "Error setting bufinfo\n");
+			LOGP(DLINP, LOGL_ERROR, "Error setting bufinfo\n");
 			exit(-1);
 		}
 	} else {
@@ -517,7 +519,8 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 			if (!bfd->fd)
 				bfd->fd = open(openstr, O_RDWR | O_NONBLOCK);
 			if (bfd->fd == -1) {
-				fprintf(stderr, "%s could not open %s %s\n",
+				LOGP(DLINP, LOGL_ERROR,
+					"%s could not open %s %s\n",
 					__func__, openstr, strerror(errno));
 				exit(-1);
 			}
@@ -537,7 +540,8 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 			if (!bfd->fd)
 				bfd->fd = open(openstr, O_RDWR | O_NONBLOCK);
 			if (bfd->fd == -1) {
-				fprintf(stderr, "%s could not open %s %s\n",
+				LOGP(DLINP, LOGL_ERROR,
+					"%s could not open %s %s\n",
 					__func__, openstr, strerror(errno));
 				exit(-1);
 			}
@@ -550,14 +554,16 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 		}
 
 		if (bfd->fd < 0) {
-			fprintf(stderr, "%s could not open %s %s\n",
+			LOGP(DLINP, LOGL_ERROR,
+				"%s could not open %s %s\n",
 				__func__, openstr, strerror(errno));
 			return bfd->fd;
 		}
 
 		ret = osmo_fd_register(bfd);
 		if (ret < 0) {
-			fprintf(stderr, "could not register FD: %s\n",
+			LOGP(DLINP, LOGL_ERROR,
+				"could not register FD: %s\n",
 				strerror(ret));
 			return ret;
 		}
