@@ -422,7 +422,8 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 	}
 	if (e1i_ts->line->ops->sign_link(msg) < 0) {
 		LOGP(DLINP, LOGL_ERROR, "Bad signalling message,"
-			"sign_link returned error.\n");
+			"sign_link returned error: %s\n",
+			osmo_hexdump(msgb_l2(msg), msgb_l2len(msg)));
 		ret = -EINVAL;
 	}
 	return ret;
