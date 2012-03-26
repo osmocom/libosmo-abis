@@ -1,6 +1,6 @@
 AC_INIT([libosmo-abis],
 	m4_esyscmd([./git-version-gen .tarball-version]),
-	[openbsc-devel@lists.openbsc.org])
+	[openbsc@lists.osmocom.org])
 
 AM_INIT_AUTOMAKE([dist-bzip2])
 
