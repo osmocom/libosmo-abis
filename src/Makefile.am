@@ -1,4 +1,4 @@
-SUBDIRS=input trau
+SUBDIRS=trau
 
 # This is _NOT_ the library release version, it's an API version.
 # Please read Chapter 6 "Library interface versions" of the libtool documentation before making any modification
@@ -10,10 +10,16 @@ AM_LDFLAGS = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOVTY_LIBS) $(COVERAG
 
 lib_LTLIBRARIES = libosmoabis.la
 
-libosmoabis_la_LIBADD = input/libosmoabis-input.la
 libosmoabis_la_SOURCES = init.c \
 			 e1_input.c \
 			 e1_input_vty.c \
 			 ipa_proxy.c \
 			 subchan_demux.c \
-			 trau_frame.c
+			 trau_frame.c \
+			 input/dahdi.c \
+			 input/hsl.c \
+			 input/ipa.c \
+			 input/ipaccess.c \
+			 input/lapd.c \
+			 input/misdn.c \
+			 input/rs232.c
