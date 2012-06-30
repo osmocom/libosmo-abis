@@ -45,6 +45,5 @@ AC_OUTPUT(
 	libosmotrau.pc
 	include/Makefile
 	src/Makefile
-	src/trau/Makefile
 	tests/Makefile
 	Makefile)

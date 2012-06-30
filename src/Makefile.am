@@ -1,15 +1,17 @@
-SUBDIRS=trau
-
 # This is _NOT_ the library release version, it's an API version.
 # Please read Chapter 6 "Library interface versions" of the libtool documentation before making any modification
-LIBVERSION=1:0:0
+ABIS_LIBVERSION=1:0:0
+TRAU_LIBVERSION=0:0:0
 
 INCLUDES = $(all_includes) -I$(top_srcdir)/include -I$(top_builddir)
 AM_CFLAGS= -Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS) $(LIBOSMOVTY_CFLAGS) $(COVERAGE_CFLAGS)
-AM_LDFLAGS = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOVTY_LIBS) $(COVERAGE_LDFLAGS)
+AM_LDFLAGS = $(COVERAGE_LDFLAGS)
+COMMONLIBS = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOVTY_LIBS)
 
-lib_LTLIBRARIES = libosmoabis.la
+lib_LTLIBRARIES = libosmoabis.la libosmotrau.la
 
+libosmoabis_la_LDFLAGS = $(AM_LDFLAGS) -version-info $(ABIS_LIBVERSION)
+libosmoabis_la_LIBADD = $(COMMONLIBS)
 libosmoabis_la_SOURCES = init.c \
 			 e1_input.c \
 			 e1_input_vty.c \
@@ -23,3 +25,8 @@ libosmoabis_la_SOURCES = init.c \
 			 input/lapd.c \
 			 input/misdn.c \
 			 input/rs232.c
+
+libosmotrau_la_CFLAGS = $(AM_CFLAGS) $(ORTP_CFLAGS)
+libosmotrau_la_LDFLAGS = $(AM_LDFLAGS) -version-info $(TRAU_LIBVERSION)
+libosmotrau_la_LIBADD = $(COMMONLIBS) $(ORTP_LIBS)
+libosmotrau_la_SOURCES = trau/osmo_ortp.c
