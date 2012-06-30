@@ -44,9 +44,6 @@ AC_OUTPUT(
 	libosmoabis.pc
 	libosmotrau.pc
 	include/Makefile
-	include/osmocom/Makefile
-	include/osmocom/abis/Makefile
-	include/osmocom/trau/Makefile
 	src/Makefile
 	src/input/Makefile
 	src/trau/Makefile
