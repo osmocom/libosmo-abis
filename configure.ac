@@ -15,10 +15,6 @@ LT_INIT([pic-only])
 
 AC_CONFIG_MACRO_DIR([m4])
 
-dnl checks for header files
-AC_HEADER_STDC
-AC_CHECK_HEADERS(execinfo.h sys/select.h sys/socket.h syslog.h ctype.h)
-
 # The following test is taken from WebKit's webkit.m4
 saved_CFLAGS="$CFLAGS"
 CFLAGS="$CFLAGS -fvisibility=hidden "
