@@ -175,7 +175,7 @@ DEFUN(show_e1line,
       show_e1line_cmd,
       "show e1_line [line_nr] [stats]",
 	SHOW_STR "Display information about a E1 line\n"
-	"E1 Line Number\n")
+	"E1 Line Number\n" "Include statistics\n")
 {
 	struct e1inp_line *line;
 	int stats = 0;
