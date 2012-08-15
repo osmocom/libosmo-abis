@@ -1,0 +1,5 @@
+libosmo-abis (0.1.3+git3) precise; urgency=low
+
+  Created new Ubuntu package.
+
+ -- Eric Butler <eric@codebutler.com>  Tue, 14 Aug 2012 13:00:18 -0700

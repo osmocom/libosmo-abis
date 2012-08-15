@@ -21,7 +21,7 @@ ltmain.sh
 install-sh
 stamp-h1
 libtool
-libosmo-abis-*
+#libosmo-abis-*
 tests/*_test
 
 .tarball-version

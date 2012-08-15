@@ -1,0 +1,21 @@
+Source: libosmo-abis
+Section: libs
+Priority: optional
+Maintainer: Harald Welte <laforge@gnumonks.org>
+Build-Depends: debhelper (>= 7.0.50~), autotools-dev, autoconf, automake, libtool, dh-autoreconf, libdpkg-perl, git, libosmocore-dev, pkg-config, libortp-dev
+Standards-Version: 3.8.4
+Homepage: http://openbsc.osmocom.org/trac/wiki/libosmo-abis
+Vcs-Git: git://git.osmocom.org/libosmo-abis.git
+Vcs-Browser: http://git.osmocom.org/gitweb?p=libosmo-abis.git;a=summary
+
+Package: libosmo-abis
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Library containing common/shared code regarding the A-bis interface between BTS and BSC
+
+Package: libosmo-abis-dev
+Section: libdevel
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, libosmocore, libosmo-abis
+Description: Development headers for A-bis interface.
