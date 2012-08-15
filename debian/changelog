@@ -1,3 +1,9 @@
+libosmo-abis (0.1.3+git3-1) precise; urgency=low
+
+  * Fix version issue.
+
+ -- Eric Butler <eric@codebutler.com>  Tue, 14 Aug 2012 20:50:50 -0700
+
 libosmo-abis (0.1.3+git3) precise; urgency=low
 
   Created new Ubuntu package.
