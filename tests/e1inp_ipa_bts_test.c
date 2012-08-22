@@ -44,7 +44,6 @@ static struct e1inp_sign_link *
 sign_link_up(void *unit, struct e1inp_line *line, enum e1inp_sign_type type)
 {
 	struct e1inp_sign_link *sign_link = NULL;
-	void *dst = NULL;
 
 	switch(type) {
 	case E1INP_SIGN_OML:
@@ -58,7 +57,6 @@ sign_link_up(void *unit, struct e1inp_line *line, enum e1inp_sign_type type)
 			LOGP(DBTSTEST, LOGL_ERROR,
 				"cannot create OML sign link\n");
 		}
-		dst = oml_sign_link;
 		if (oml_sign_link) {
 			unsigned int event_type = 0;
 
@@ -84,7 +82,6 @@ sign_link_up(void *unit, struct e1inp_line *line, enum e1inp_sign_type type)
 			LOGP(DBTSTEST, LOGL_ERROR,
 				"cannot create RSL sign link\n");
 		}
-		dst = rsl_sign_link;
 		break;
 	default:
 		return NULL;
@@ -221,6 +218,10 @@ static int test_bts_gsm_12_21_cb(struct osmo_fd *ofd, unsigned int what)
 					 unit->bts_id,
 					 unit->trx_id,
 					 0, NULL, 0);
+		if (ret < 0) {
+			LOGP(DBTSTEST, LOGL_ERROR, "cannot send SW ACT REQ\n");
+			break;
+		}
 		bts_state = BTS_TEST_OML_WAIT_SW_ACT_ACK;
 		break;
 	case BTS_TEST_OML_WAIT_SW_ACT_ACK:
