@@ -36,6 +36,7 @@
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/timer.h>
 #include <osmocom/abis/lapd.h>
+#include <osmocom/abis/lapd_pcap.h>
 
 #define LAPD_ADDR2(sapi, cr) ((((sapi) & 0x3f) << 2) | (((cr) & 0x1) << 1))
 #define LAPD_ADDR3(tei) ((((tei) & 0x7f) << 1) | 0x1)
@@ -311,6 +312,10 @@ static int lapd_tei_receive(struct lapd_instance *li, uint8_t *data, int len)
 		msg = msgb_alloc_headroom(56, 56, "DL EST");
 		msg->l2h = msgb_push(msg, 8);
 		memcpy(msg->l2h, resp, 8);
+
+		/* write to PCAP file, if enabled. */
+		osmo_pcap_lapd_write(li->pcap_fd, OSMO_LAPD_PCAP_OUTPUT, msg);
+
 		LOGP(DLLAPD, LOGL_DEBUG, "TX: %s\n",
 			osmo_hexdump(msg->data, msg->len));
 		li->transmit_cb(msg, li->transmit_cbdata);
@@ -335,6 +340,9 @@ int lapd_receive(struct lapd_instance *li, struct msgb *msg, int *error)
 	int rc;
 	struct lapd_sap *sap;
 	struct lapd_tei *teip;
+
+	/* write to PCAP file, if enabled. */
+	osmo_pcap_lapd_write(li->pcap_fd, OSMO_LAPD_PCAP_INPUT, msg);
 
 	LOGP(DLLAPD, LOGL_DEBUG, "RX: %s\n", osmo_hexdump(msg->data, msg->len));
 	if (msg->len < 2) {
@@ -585,6 +593,9 @@ static int send_ph_data_req(struct lapd_msg_ctx *lctx, struct msgb *msg)
 	else
 		msg->l2h[1] = LAPD_ADDR3(lctx->tei);
 
+	/* write to PCAP file, if enabled. */
+	osmo_pcap_lapd_write(li->pcap_fd, OSMO_LAPD_PCAP_OUTPUT, msg);
+
 	/* forward frame to L1 */
 	LOGP(DLLAPD, LOGL_DEBUG, "TX: %s\n", osmo_hexdump(msg->data, msg->len));
 	li->transmit_cb(msg, li->transmit_cbdata);
@@ -645,6 +656,7 @@ struct lapd_instance *lapd_instance_alloc(int network_side,
 	li->transmit_cbdata = tx_cbdata;
 	li->receive_cb = rx_cb;
 	li->receive_cbdata = rx_cbdata;
+	li->pcap_fd = -1;
 	memcpy(&li->profile, profile, sizeof(li->profile));
 
 	INIT_LLIST_HEAD(&li->tei_list);

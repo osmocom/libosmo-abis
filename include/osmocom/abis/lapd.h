@@ -35,6 +35,7 @@ struct lapd_instance {
 	struct lapd_profile profile; /* must be a copy */
 
 	struct llist_head tei_list;	/* list of TEI in this LAPD instance */
+	int pcap_fd;			/* PCAP file descriptor */
 };
 
 enum lapd_recv_errors {

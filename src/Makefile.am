@@ -23,6 +23,7 @@ libosmoabis_la_SOURCES = init.c \
 			 input/ipa.c \
 			 input/ipaccess.c \
 			 input/lapd.c \
+			 input/lapd_pcap.c \
 			 input/misdn.c \
 			 input/rs232.c
 
