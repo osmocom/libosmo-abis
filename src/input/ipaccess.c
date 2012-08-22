@@ -189,26 +189,39 @@ int ipaccess_send_id_req(int fd)
 /* base handling of the ip.access protocol */
 int ipaccess_rcvmsg_base(struct msgb *msg, struct osmo_fd *bfd)
 {
-	int ipa_ccm = 0;
 	uint8_t msg_type = *(msg->l2h);
-	int ret = 0;
+	int ret;
 
 	switch (msg_type) {
 	case IPAC_MSGT_PING:
-		ipa_ccm = 1;
 		ret = ipaccess_send_pong(bfd->fd);
+		if (ret < 0) {
+			LOGP(DLINP, LOGL_ERROR, "Cannot send PING "
+			     "message. Reason: %s\n", strerror(errno));
+			break;
+		}
+		ret = 1;
 		break;
 	case IPAC_MSGT_PONG:
 		DEBUGP(DLMI, "PONG!\n");
-		ipa_ccm = 1;
+		ret = 1;
 		break;
 	case IPAC_MSGT_ID_ACK:
 		DEBUGP(DLMI, "ID_ACK? -> ACK!\n");
-		ipa_ccm = 1;
 		ret = ipaccess_send_id_ack(bfd->fd);
+		if (ret < 0) {
+			LOGP(DLINP, LOGL_ERROR, "Cannot send ID_ACK "
+			     "message. Reason: %s\n", strerror(errno));
+			break;
+		}
+		ret = 1;
+		break;
+	default:
+		/* This is not an IPA PING, PONG or ID_ACK message */
+		ret = 0;
 		break;
 	}
-	return ipa_ccm;
+	return ret;
 }
 
 /* base handling of the ip.access protocol */
@@ -221,6 +234,10 @@ int ipaccess_rcvmsg_bts_base(struct msgb *msg,
 	switch (msg_type) {
 	case IPAC_MSGT_PING:
 		ret = ipaccess_send_pong(bfd->fd);
+		if (ret < 0) {
+			LOGP(DLINP, LOGL_ERROR, "Cannot send PONG "
+			     "message. Reason: %s\n", strerror(errno));
+		}
 		break;
 	case IPAC_MSGT_PONG:
 		DEBUGP(DLMI, "PONG!\n");
@@ -229,12 +246,12 @@ int ipaccess_rcvmsg_bts_base(struct msgb *msg,
 		DEBUGP(DLMI, "ID_ACK\n");
 		break;
 	}
-	return 0;
+	return ret;
 }
 
 static int ipaccess_drop(struct osmo_fd *bfd)
 {
-	int ret = 0;
+	int ret = 1;
 	struct e1inp_line *line = bfd->data;
 
 	/* Error case: we did not see any ID_RESP yet for this socket. */
@@ -264,8 +281,23 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 	int len, ret;
 
 	/* Handle IPA PING, PONG and ID_ACK messages. */
-	if (ipaccess_rcvmsg_base(msg, bfd))
+	ret = ipaccess_rcvmsg_base(msg, bfd);
+	switch(ret) {
+	case -1:
+		/* error in IPA control message handling */
+		goto err;
+	case 1:
+		/* this is an IPA control message, skip further processing */
 		return 0;
+	case 0:
+		/* this is not an IPA control message, continue */
+		break;
+	default:
+		LOGP(DLINP, LOGL_ERROR, "Unexpected return from "
+					"ipaccess_rcvmsg_base "
+					"(ret=%d)\n", ret);
+		goto err;
+	}
 
 	switch (msg_type) {
 	case IPAC_MSGT_ID_RESP:
@@ -379,17 +411,16 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 	struct e1inp_sign_link *link;
 	struct ipaccess_head *hh;
 	struct msgb *msg;
-	int ret = 0, error;
+	int ret;
 
-	error = ipa_msg_recv(bfd->fd, &msg);
-	if (error < 0)
-		return error;
-	else if (error == 0) {
-		if (ipaccess_drop(bfd) >= 0) {
-			LOGP(DLINP, LOGL_NOTICE, "Sign link vanished, "
-						"dead socket\n");
-		}
-		return error;
+	ret = ipa_msg_recv(bfd->fd, &msg);
+	if (ret < 0) {
+		LOGP(DLINP, LOGL_NOTICE, "Sign link problems, "
+			"closing socket. Reason: %s\n", strerror(errno));
+		goto err;
+	} else if (ret == 0) {
+		LOGP(DLINP, LOGL_NOTICE, "Sign link vanished, dead socket\n");
+		goto err;
 	}
 	DEBUGP(DLMI, "RX %u: %s\n", ts_nr, osmo_hexdump(msgb_l2(msg), msgb_l2len(msg)));
 
@@ -397,7 +428,7 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 	if (hh->proto == IPAC_PROTO_IPACCESS) {
 		ipaccess_rcvmsg(line, msg, bfd);
 		msgb_free(msg);
-		return ret;
+		return 0;
 	}
 	/* BIG FAT WARNING: bfd might no longer exist here, since ipaccess_rcvmsg()
 	 * might have free'd it !!! */
@@ -406,8 +437,8 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 	if (!link) {
 		LOGP(DLINP, LOGL_ERROR, "no matching signalling link for "
 			"hh->proto=0x%02x\n", hh->proto);
-		msgb_free(msg);
-		return -EIO;
+		ret = -EINVAL;
+		goto err_msg;
 	}
 	msg->dst = link;
 
@@ -416,20 +447,20 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 		LOGP(DLINP, LOGL_ERROR, "Fix your application, "
 			"no action set for signalling messages.\n");
 		ret = -EINVAL;
-		goto err;
+		goto err_msg;
 	}
 	if (e1i_ts->line->ops->sign_link(msg) < 0) {
 		LOGP(DLINP, LOGL_ERROR, "Bad signalling message,"
-			"sign_link returned error: %s\n",
-			osmo_hexdump(msgb_l2(msg), msgb_l2len(msg)));
+			"sign_link returned error\n");
 		ret = -EINVAL;
+		goto err;
 	}
-	return ret;
+
+	return 0;
+err_msg:
+	msgb_free(msg);
 err:
-	osmo_fd_unregister(bfd);
-	close(bfd->fd);
-	bfd->fd = -1;
-	e1inp_line_put(line);
+	ipaccess_drop(bfd);
 	return ret;
 }
 
@@ -497,9 +528,9 @@ static int __handle_ts1_write(struct osmo_fd *bfd, struct e1inp_line *line)
 	case E1INP_SIGN_RSL:
 		break;
 	default:
-		msgb_free(msg);
 		bfd->when |= BSC_FD_WRITE; /* come back for more msg */
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	msg->l2h = msg->data;
@@ -508,7 +539,11 @@ static int __handle_ts1_write(struct osmo_fd *bfd, struct e1inp_line *line)
 	DEBUGP(DLMI, "TX %u: %s\n", ts_nr, osmo_hexdump(msg->l2h, msgb_l2len(msg)));
 
 	ret = send(bfd->fd, msg->data, msg->len, 0);
-	msgb_free(msg);
+	if (ret != msg->len) {
+		LOGP(DLINP, LOGL_ERROR, "failed to send A-bis IPA signalling "
+			"message. Reason: %s\n", strerror(errno));
+		goto err;
+	}
 
 	/* set tx delay timer for next event */
 	e1i_ts->sign.tx_timer.cb = timeout_ts1_write;
@@ -517,6 +552,12 @@ static int __handle_ts1_write(struct osmo_fd *bfd, struct e1inp_line *line)
 	/* Reducing this might break the nanoBTS 900 init. */
 	osmo_timer_schedule(&e1i_ts->sign.tx_timer, 0, e1i_ts->sign.delay);
 
+out:
+	msgb_free(msg);
+	return ret;
+err:
+	ipaccess_drop(bfd);
+	msgb_free(msg);
 	return ret;
 }
 
@@ -571,7 +612,7 @@ static int ipaccess_bsc_oml_cb(struct ipa_server_link *link, int fd)
 	line = e1inp_line_clone(tall_ipa_ctx, link->line);
 	if (line == NULL) {
 		LOGP(DLINP, LOGL_ERROR, "could not clone E1 line\n");
-		return -1;
+		return -ENOMEM;
 	}
 
 	/* create virrtual E1 timeslots for signalling */
@@ -592,15 +633,25 @@ static int ipaccess_bsc_oml_cb(struct ipa_server_link *link, int fd)
 	ret = osmo_fd_register(bfd);
 	if (ret < 0) {
 		LOGP(DLINP, LOGL_ERROR, "could not register FD\n");
-		close(bfd->fd);
-		e1inp_line_put(line);
-		return ret;
+		goto err_line;
 	}
 
 	/* Request ID. FIXME: request LOCATION, HW/SW VErsion, Unit Name, Serno */
 	ret = ipaccess_send_id_req(bfd->fd);
+	if (ret < 0) {
+		LOGP(DLINP, LOGL_ERROR, "could not send ID REQ. Reason: %s\n",
+			strerror(errno));
+		goto err_socket;
+	}
+	return ret;
 
-        return ret;
+err_socket:
+	osmo_fd_unregister(bfd);
+err_line:
+	close(bfd->fd);
+	bfd->fd = -1;
+	e1inp_line_put(line);
+	return ret;
 }
 
 static int ipaccess_bsc_rsl_cb(struct ipa_server_link *link, int fd)
@@ -615,7 +666,7 @@ static int ipaccess_bsc_rsl_cb(struct ipa_server_link *link, int fd)
 	line = e1inp_line_clone(tall_ipa_ctx, link->line);
 	if (line == NULL) {
 		LOGP(DLINP, LOGL_ERROR, "could not clone E1 line\n");
-		return -1;
+		return -ENOMEM;
 	}
 	/* initialize the fds */
 	for (i = 0; i < ARRAY_SIZE(line->ts); ++i)
@@ -636,14 +687,24 @@ static int ipaccess_bsc_rsl_cb(struct ipa_server_link *link, int fd)
 	ret = osmo_fd_register(bfd);
 	if (ret < 0) {
 		LOGP(DLINP, LOGL_ERROR, "could not register FD\n");
-		close(bfd->fd);
-		e1inp_line_put(line);
-		return ret;
+		goto err_line;
 	}
 	/* Request ID. FIXME: request LOCATION, HW/SW VErsion, Unit Name, Serno */
 	ret = ipaccess_send_id_req(bfd->fd);
+	if (ret < 0) {
+		LOGP(DLINP, LOGL_ERROR, "could not send ID REQ. Reason: %s\n",
+			strerror(errno));
+		goto err_socket;
+	}
+	return ret;
 
-	return 0;
+err_socket:
+	osmo_fd_unregister(bfd);
+err_line:
+	close(bfd->fd);
+	bfd->fd = -1;
+	e1inp_line_put(line);
+	return ret;
 }
 
 static struct msgb *
@@ -736,18 +797,21 @@ static int ipaccess_bts_cb(struct ipa_client_conn *link, struct msgb *msg)
 	struct ipaccess_head *hh = (struct ipaccess_head *) msg->data;
 	struct e1inp_ts *e1i_ts = NULL;
 	struct e1inp_sign_link *sign_link;
+	struct msgb *rmsg;
+	int ret = 0;
 
 	/* special handling for IPA CCM. */
 	if (hh->proto == IPAC_PROTO_IPACCESS) {
 		uint8_t msg_type = *(msg->l2h);
 
 		/* ping, pong and acknowledgment cases. */
-		ipaccess_rcvmsg_bts_base(msg, link->ofd);
+		ret = ipaccess_rcvmsg_bts_base(msg, link->ofd);
+		if (ret < 0)
+			goto err;
 
 		/* this is a request for identification from the BSC. */
 		if (msg_type == IPAC_MSGT_ID_GET) {
 			struct e1inp_sign_link *sign_link;
-			struct msgb *rmsg;
 			uint8_t *data = msgb_l2(msg);
 			int len = msgb_l2len(msg);
 
@@ -756,10 +820,8 @@ static int ipaccess_bts_cb(struct ipa_client_conn *link, struct msgb *msg)
 				LOGP(DLINP, LOGL_ERROR,
 					"Unable to set signal link, "
 					"closing socket.\n");
-				osmo_fd_unregister(link->ofd);
-				close(link->ofd->fd);
-				link->ofd->fd = -1;
-				return -EINVAL;
+				ret = -EINVAL;
+				goto err;
 			}
 			sign_link = link->line->ops->sign_link_up(msg,
 					link->line,
@@ -768,22 +830,32 @@ static int ipaccess_bts_cb(struct ipa_client_conn *link, struct msgb *msg)
 				LOGP(DLINP, LOGL_ERROR,
 					"Unable to set signal link, "
 					"closing socket.\n");
-				osmo_fd_unregister(link->ofd);
-				close(link->ofd->fd);
-				link->ofd->fd = -1;
-				return -EINVAL;
+				ret = -EINVAL;
+				goto err;
 			}
 			rmsg = ipa_bts_id_resp(link->line->ops->cfg.ipa.dev,
 						data + 1, len - 1);
-			ipaccess_send(link->ofd->fd, rmsg->data, rmsg->len);
+			ret = ipaccess_send(link->ofd->fd, rmsg->data,
+						rmsg->len);
+			if (ret != rmsg->len) {
+				LOGP(DLINP, LOGL_ERROR, "cannot send ID_RESP "
+				     "message. Reason: %s\n", strerror(errno));
+				goto err_rmsg;
+			}
 			msgb_free(rmsg);
 
 			/* send ID_ACK. */
 			rmsg = ipa_bts_id_ack();
-			ipaccess_send(link->ofd->fd, rmsg->data, rmsg->len);
+			ret = ipaccess_send(link->ofd->fd, rmsg->data,
+						rmsg->len);
+			if (ret != rmsg->len) {
+				LOGP(DLINP, LOGL_ERROR, "cannot send ID_ACK "
+				     "message. Reason: %s\n", strerror(errno));
+				goto err_rmsg;
+			}
 			msgb_free(rmsg);
 		}
-		return 0;
+		return ret;
 	} else if (link->port == IPA_TCP_PORT_OML)
 		e1i_ts = &link->line->ts[0];
 	else if (link->port == IPA_TCP_PORT_RSL)
@@ -794,8 +866,8 @@ static int ipaccess_bts_cb(struct ipa_client_conn *link, struct msgb *msg)
 	if (sign_link == NULL) {
 		LOGP(DLINP, LOGL_ERROR, "no matching signalling link for "
 			"hh->proto=0x%02x\n", hh->proto);
-		msgb_free(msg);
-		return -EIO;
+		ret = -EIO;
+		goto err;
 	}
 	msg->dst = sign_link;
 
@@ -803,10 +875,20 @@ static int ipaccess_bts_cb(struct ipa_client_conn *link, struct msgb *msg)
 	if (!link->line->ops->sign_link) {
 		LOGP(DLINP, LOGL_ERROR, "Fix your application, "
 			"no action set for signalling messages.\n");
-		return -ENOENT;
+		ret = -ENOENT;
+		goto err;
 	}
 	link->line->ops->sign_link(msg);
 	return 0;
+
+err_rmsg:
+	msgb_free(rmsg);
+err:
+	osmo_fd_unregister(link->ofd);
+	close(link->ofd->fd);
+	link->ofd->fd = -1;
+	msgb_free(msg);
+	return ret;
 }
 
 struct ipaccess_line {
