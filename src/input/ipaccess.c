@@ -237,9 +237,6 @@ static int ipaccess_drop(struct osmo_fd *bfd)
 	int ret = 0;
 	struct e1inp_line *line = bfd->data;
 
-	/* e1inp_sign_link_destroy releases the socket descriptors for us. */
-	line->ops->sign_link_down(line);
-
 	/* Error case: we did not see any ID_RESP yet for this socket. */
 	if (bfd->fd != -1) {
 		LOGP(DLINP, LOGL_ERROR, "Forcing socket shutdown with "
@@ -249,9 +246,10 @@ static int ipaccess_drop(struct osmo_fd *bfd)
 		bfd->fd = -1;
 		ret = -ENOENT;
 	}
-	/* put the virtual E1 line that we cloned for this socket, if
-	 * it becomes unused, it gets released. */
-	e1inp_line_put(line);
+
+	/* e1inp_sign_link_destroy releases the socket descriptors for us. */
+	line->ops->sign_link_down(line);
+
 	return ret;
 }
 

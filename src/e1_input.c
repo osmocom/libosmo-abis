@@ -486,6 +486,7 @@ void e1inp_sign_link_destroy(struct e1inp_sign_link *link)
 	if (link->ts->line->driver->close)
 		link->ts->line->driver->close(link);
 
+	e1inp_line_put(link->ts->line);
 	talloc_free(link);
 }
 

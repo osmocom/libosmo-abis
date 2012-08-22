@@ -83,9 +83,6 @@ static void hsl_drop(struct e1inp_line *line, struct osmo_fd *bfd)
 		close(bfd->fd);
 		bfd->fd = -1;
 	}
-	/* put the virtual E1 line that we cloned for this socket, if
-	 * it becomes unused, it gets released. */
-	e1inp_line_put(line);
 }
 
 static int process_hsl_rsl(struct msgb *msg, struct e1inp_line *line,
