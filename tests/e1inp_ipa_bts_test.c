@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <signal.h>
 #include <osmocom/core/talloc.h>
 #include <string.h>
 #include <unistd.h>
@@ -236,6 +237,14 @@ static int test_bts_gsm_12_21_cb(struct osmo_fd *ofd, unsigned int what)
 	return 0;
 }
 
+static struct e1inp_line *line;
+
+static void sighandler(int foo)
+{
+	e1inp_line_put(line);
+	exit(EXIT_SUCCESS);
+}
+
 int main(void)
 {
 	struct ipaccess_unit bts_dev_info = {
@@ -250,7 +259,6 @@ int main(void)
 		.location2	= "testBTS",
 		.serno		= "",
 	};
-	struct e1inp_line *line;
 
 	tall_test = talloc_named_const(NULL, 1, "e1inp_test");
 	libosmo_abis_init(tall_test);
@@ -271,6 +279,12 @@ int main(void)
 	};
 
 #define LINENR 0
+
+	if (signal(SIGINT, sighandler) == SIG_ERR ||
+	    signal(SIGTERM, sighandler) == SIG_ERR) {
+		perror("Cannot set sighandler");
+		exit(EXIT_FAILURE);
+	}
 
 	line = e1inp_line_create(LINENR, "ipa");
 	if (line == NULL) {

@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <signal.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/abis/abis.h>
 #include <osmocom/abis/e1_input.h>
@@ -199,10 +200,16 @@ const struct log_info bsc_test_log_info = {
         .num_cat = ARRAY_SIZE(bsc_test_cat),
 };
 
+static struct e1inp_line *line;
+
+static void sighandler(int foo)
+{
+	e1inp_line_put(line);
+	exit(EXIT_SUCCESS);
+}
+
 int main(void)
 {
-	struct e1inp_line *line;
-
 	tall_test = talloc_named_const(NULL, 1, "e1inp_test");
 	libosmo_abis_init(tall_test);
 
@@ -219,6 +226,12 @@ int main(void)
 		.sign_link_down	= sign_link_down,
 		.sign_link	= sign_link,
 	};
+
+	if (signal(SIGINT, sighandler) == SIG_ERR ||
+	    signal(SIGTERM, sighandler) == SIG_ERR) {
+		perror("Cannot set sighandler");
+		exit(EXIT_FAILURE);
+	}
 
 #define LINENR 0
 
