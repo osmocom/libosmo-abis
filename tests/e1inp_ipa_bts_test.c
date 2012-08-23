@@ -205,8 +205,13 @@ static int abis_nm_sw_act_req(struct e1inp_sign_link *sign_link,
 
 static int test_bts_gsm_12_21_cb(struct osmo_fd *ofd, unsigned int what)
 {
-	int ret;
+	int ret, event_type;
 	struct ipaccess_unit *unit = ofd->data;
+
+	if (read(eventfds[0], &event_type, sizeof(unsigned int)) < 0) {
+		LOGP(DBTSTEST, LOGL_ERROR, "error receiving event\n");
+		return 0;
+	}
 
 	switch(bts_state) {
 	case BTS_TEST_OML_SIGN_LINK_DOWN:
