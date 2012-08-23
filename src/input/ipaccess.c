@@ -855,6 +855,7 @@ static int ipaccess_bts_cb(struct ipa_client_conn *link, struct msgb *msg)
 			}
 			msgb_free(rmsg);
 		}
+		msgb_free(msg);
 		return ret;
 	} else if (link->port == IPA_TCP_PORT_OML)
 		e1i_ts = &link->line->ts[0];
