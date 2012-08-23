@@ -151,6 +151,7 @@ static int sign_link(struct msgb *msg)
 		LOGP(DBTSTEST, LOGL_ERROR, "Unknown signalling message.\n");
 		break;
 	}
+	msgb_free(msg);
 	return ret;
 }
 
