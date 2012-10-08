@@ -92,6 +92,14 @@ static void decode_amr(struct decoded_trau_frame *fr, const uint8_t *trau_bits)
 	memcpy(fr->d_bits + d_idx, trau_bits + 305, 11);
 }
 
+static void decode_data(struct decoded_trau_frame *fr, const uint8_t *trau_bits)
+{
+	/* C1 .. C15 */
+	memcpy(fr->c_bits+0, trau_bits+17, 15);
+	/* octets 4 .. 39 */
+	memcpy(fr->d_bits, trau_bits+32, 288);
+}
+
 int decode_trau_frame(struct decoded_trau_frame *fr, const uint8_t *trau_bits)
 {
 	uint8_t cbits5 = get_bits(trau_bits, 17, 5);
@@ -107,10 +115,12 @@ int decode_trau_frame(struct decoded_trau_frame *fr, const uint8_t *trau_bits)
 	case TRAU_FT_AMR:
 		decode_amr(fr, trau_bits);
 		break;
-	case TRAU_FT_OM_UP:
-	case TRAU_FT_OM_DOWN:
 	case TRAU_FT_DATA_UP:
 	case TRAU_FT_DATA_DOWN:
+		decode_data(fr, trau_bits);
+		break;
+	case TRAU_FT_OM_UP:
+	case TRAU_FT_OM_DOWN:
 	case TRAU_FT_D145_SYNC:
 	case TRAU_FT_EDATA:
 		LOGP(DLMUX, LOGL_NOTICE, "can't decode unimplemented TRAU "
@@ -129,6 +139,7 @@ int decode_trau_frame(struct decoded_trau_frame *fr, const uint8_t *trau_bits)
 
 const uint8_t ft_fr_down_bits[] = { 1, 1, 1, 0, 0 };
 const uint8_t ft_idle_down_bits[] = { 0, 1, 1, 1, 0 };
+const uint8_t ft_data_down_bits[] = { 1, 0, 1, 1, 0 };
 
 /*! \brief modify an uplink TRAU frame so we can send it downlink
  *  \param[in,out] fr the uplink TRAU frame that is to be converted
@@ -167,6 +178,9 @@ int trau_frame_up2down(struct decoded_trau_frame *fr)
 		/* C12 .. C21 are spare and coded as '1' */
 		memset(fr->c_bits+11, 0x01, 10);
 		break;
+	case TRAU_FT_DATA_UP:
+		memcpy(fr->c_bits, ft_data_down_bits, 5);
+		break;
 	case TRAU_FT_FR_DOWN:
 	case TRAU_FT_IDLE_DOWN:
 	case TRAU_FT_OM_DOWN:
@@ -176,7 +190,6 @@ int trau_frame_up2down(struct decoded_trau_frame *fr)
 		break;
 	case TRAU_FT_AMR:
 	case TRAU_FT_OM_UP:
-	case TRAU_FT_DATA_UP:
 	case TRAU_FT_D145_SYNC:
 	case TRAU_FT_EDATA:
 		LOGP(DLMUX, LOGL_NOTICE, "unimplemented TRAU Frame Type "
@@ -220,6 +233,15 @@ static void encode_fr(uint8_t *trau_bits, const struct decoded_trau_frame *fr)
 	memcpy(trau_bits+316, fr->t_bits+0, 4);
 }
 
+static void encode_data(uint8_t *trau_bits, const struct decoded_trau_frame *fr)
+{
+	trau_bits[16] = 1;
+	/* C1 .. C15 */
+	memcpy(trau_bits+17, fr->c_bits+0, 15);
+	/* octets 4 .. 39 */
+	memcpy(trau_bits+32, fr->d_bits, 288);
+}
+
 /*! \brief encode a TRAU frame from the decoded bits
  *  \param[out] trau_bits output buffer, will contain encoded bits
  *  \param[in] fr decoded trau frame structure
@@ -240,11 +262,13 @@ int encode_trau_frame(uint8_t *trau_bits, const struct decoded_trau_frame *fr)
 	case TRAU_FT_EFR:
 		encode_fr(trau_bits, fr);
 		break;
+	case TRAU_FT_DATA_UP:
+	case TRAU_FT_DATA_DOWN:
+		encode_data(trau_bits, fr);
+		break;
 	case TRAU_FT_AMR:
 	case TRAU_FT_OM_UP:
 	case TRAU_FT_OM_DOWN:
-	case TRAU_FT_DATA_UP:
-	case TRAU_FT_DATA_DOWN:
 	case TRAU_FT_D145_SYNC:
 	case TRAU_FT_EDATA:
 		LOGP(DLMUX, LOGL_NOTICE, "unimplemented TRAU Frame Type "
