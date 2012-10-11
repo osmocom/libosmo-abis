@@ -26,3 +26,9 @@ tests/*_test
 
 .tarball-version
 .version
+
+# tests
+tests/atconfig
+tests/package.m4
+tests/testsuite
+tests/testsuite.log

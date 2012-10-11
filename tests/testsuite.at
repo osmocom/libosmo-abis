@@ -1,0 +1,12 @@
+AT_INIT
+AT_BANNER([Regression tests.])
+
+# Example for tests.. copy and uncomment. This creates a new category
+# and test. It will copy the expected output to expout and then run
+# the given test. The stdout will be compared with the expout to determine
+# if the test was successfull.
+# AT_SETUP([NAME])
+# AT_KEYWORDS([NAME])
+# cat $abs_srcdir/NAME/NAME_test.ok > expout
+# AT_CHECK([$abs_top_builddir/tests/NAME/NAME_test], [], [expout])
+# AT_CLEANUP
