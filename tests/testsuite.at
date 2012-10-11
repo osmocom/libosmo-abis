@@ -10,3 +10,9 @@ AT_BANNER([Regression tests.])
 # cat $abs_srcdir/NAME/NAME_test.ok > expout
 # AT_CHECK([$abs_top_builddir/tests/NAME/NAME_test], [], [expout])
 # AT_CLEANUP
+
+AT_SETUP([subchan_demux])
+AT_KEYWORDS([subchan_demux])
+cat $abs_srcdir/subchan_demux/subchan_demux_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/subchan_demux/subchan_demux_test], [], [expout])
+AT_CLEANUP
