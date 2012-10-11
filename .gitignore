@@ -32,3 +32,7 @@ tests/atconfig
 tests/package.m4
 tests/testsuite
 tests/testsuite.log
+
+
+# vi/vim files
+*.sw?
