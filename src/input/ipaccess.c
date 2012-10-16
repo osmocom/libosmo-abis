@@ -450,10 +450,12 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 		goto err_msg;
 	}
 	if (e1i_ts->line->ops->sign_link(msg) < 0) {
+		/* Don't close the signalling link if the upper layers report
+		 * an error, that's too strict. BTW, the signalling layer is
+		 * resposible for releasing the message.
+		 */
 		LOGP(DLINP, LOGL_ERROR, "Bad signalling message,"
 			"sign_link returned error\n");
-		ret = -EINVAL;
-		goto err;
 	}
 
 	return 0;
