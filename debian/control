@@ -19,3 +19,10 @@ Section: libdevel
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, libosmocore, libosmo-abis
 Description: Development headers for A-bis interface.
+
+Package: libosmo-abis-dbg
+Section: debug
+Architecture: any
+Priority: extra
+Depends: libosmo-abis (= ${binary:Version}), ${misc:Depends}
+Description: Debug symbols for A-bis interface.

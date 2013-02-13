@@ -9,6 +9,9 @@ export DH_VERBOSE=1
 %:
 	dh --with autoreconf $@ --fail-missing
 
+override_dh_strip:
+	dh_strip --dbg-package=libosmo-abis-dbg
+
 override_dh_autoreconf:
 	echo $(VERSION) > .tarball-version
 	dh_autoreconf
