@@ -258,7 +258,10 @@ int osmo_rtp_socket_set_param(struct osmo_rtp_socket *rs,
 
 	switch (param) {
 	case OSMO_RTP_P_JITBUF:
-		rtp_session_set_jitter_compensation(rs->sess, val);
+		rtp_session_enable_jitter_buffer(rs->sess,
+			(val) ? TRUE : FALSE);
+		if (val)
+			rtp_session_set_jitter_compensation(rs->sess, val);
 		break;
 #if 0
 	case OSMO_RTP_P_JIT_ADAP:
