@@ -35,6 +35,7 @@
 #include <ortp/ortp.h>
 #include <ortp/rtp.h>
 #include <ortp/port.h>
+#include <ortp/rtpsession.h>
 
 
 static PayloadType *payload_type_efr;
@@ -102,22 +103,41 @@ static void my_ortp_logfn(OrtpLogLevel lev, const char *fmt,
 
 static void ortp_sig_cb_ssrc(RtpSession *rs, void *data)
 {
-	fprintf(stderr, "osmo-ortp: ssrc_changed\n");
+	int port = rtp_session_get_local_port(rs);
+#if 0	/* post 0.20.0 ORTP has this function */
+	uint32_t ssrc = rtp_session_get_recv_ssrc(rs);
+#else
+	uint32_t ssrc = rs->rcv.ssrc;
+#endif
+
+	LOGP(DLMIB, LOGL_INFO,
+	     "osmo-ortp(%d): ssrc_changed to 0x%08x\n", port, ssrc);
 }
 
 static void ortp_sig_cb_pt(RtpSession *rs, void *data)
 {
-	fprintf(stderr, "osmo-ortp: payload_type_changed\n");
+	int port = rtp_session_get_local_port(rs);
+	int pt = rtp_session_get_recv_payload_type(rs);
+
+	LOGP(DLMIB, LOGL_NOTICE,
+	     "osmo-ortp(%d): payload_type_changed to 0x%02x\n", port, pt);
 }
 
 static void ortp_sig_cb_net(RtpSession *rs, void *data)
 {
-	fprintf(stderr, "osmo-ortp: network_error\n");
+	int port = rtp_session_get_local_port(rs);
+
+	LOGP(DLMIB, LOGL_ERROR,
+	     "osmo-ortp(%d): network_error\n", port);
 }
 
 static void ortp_sig_cb_ts(RtpSession *rs, void *data)
 {
-	fprintf(stderr, "osmo-rtp: timestamp_jump\n");
+	int port = rtp_session_get_local_port(rs);
+	uint32_t ts = rtp_session_get_current_recv_ts(rs);
+
+	LOGP(DLMIB, LOGL_NOTICE,
+	     "osmo-ortp(%d): timestamp_jump, new TS %d\n", port, ts);
 }
 
 
