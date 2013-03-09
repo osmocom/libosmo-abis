@@ -103,7 +103,7 @@ const struct lapd_profile lapd_profile_sat = {
 	.t200_sec	= 2,	.t200_usec	= 400000,
 	.t201_sec	= 2,	.t201_usec	= 400000,
 	.t202_sec	= 2,	.t202_usec	= 400000,
-	.t203_sec	= 20,	.t203_sec	= 0,
+	.t203_sec	= 20,	.t203_usec	= 0,
 	.short_address	= 1
 };
 
