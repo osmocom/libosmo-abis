@@ -255,6 +255,7 @@ static int handle_ts1_write(struct osmo_fd *bfd)
 			osmo_hexdump(msg->data, msg->len));
 		lapd_transmit(e1i_ts->lapd, sign_link->tei,
 				sign_link->sapi, msg);
+		ret = 0;
 	} else {
 		l2_data = msg->data;
 
