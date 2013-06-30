@@ -250,10 +250,9 @@ int ipaccess_rcvmsg_bts_base(struct msgb *msg,
 	return ret;
 }
 
-static int ipaccess_drop(struct osmo_fd *bfd)
+static int ipaccess_drop(struct osmo_fd *bfd, struct e1inp_line *line)
 {
 	int ret = 1;
-	struct e1inp_line *line = bfd->data;
 
 	/* Error case: we did not see any ID_RESP yet for this socket. */
 	if (bfd->fd != -1) {
@@ -463,7 +462,7 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 err_msg:
 	msgb_free(msg);
 err:
-	ipaccess_drop(bfd);
+	ipaccess_drop(bfd, line);
 	return ret;
 }
 
@@ -559,7 +558,7 @@ out:
 	msgb_free(msg);
 	return ret;
 err:
-	ipaccess_drop(bfd);
+	ipaccess_drop(bfd, line);
 	msgb_free(msg);
 	return ret;
 }
@@ -977,7 +976,7 @@ static int ipaccess_line_update(struct e1inp_line *line)
 					      NULL,
 					      ipaccess_bts_cb,
 					      ipaccess_bts_write_cb,
-					      NULL);
+					      line);
 		if (link == NULL) {
 			LOGP(DLINP, LOGL_ERROR, "cannot create OML "
 				"BTS link: %s\n", strerror(errno));
@@ -1011,7 +1010,7 @@ int e1inp_ipa_bts_rsl_connect(struct e1inp_line *line,
 					  NULL,
 					  ipaccess_bts_cb,
 					  ipaccess_bts_write_cb,
-					  NULL);
+					  line);
 	if (rsl_link == NULL) {
 		LOGP(DLINP, LOGL_ERROR, "cannot create RSL "
 			"BTS link: %s\n", strerror(errno));
