@@ -108,8 +108,12 @@ static void ipa_client_retry(struct ipa_client_conn *link)
 
 void ipa_client_conn_close(struct ipa_client_conn *link)
 {
-	osmo_fd_unregister(link->ofd);
-	close(link->ofd->fd);
+	/* be safe against multiple calls */
+	if (link->ofd->fd != -1) {
+		osmo_fd_unregister(link->ofd);
+		close(link->ofd->fd);
+		link->ofd->fd = -1;
+	}
 }
 
 static void ipa_client_read(struct ipa_client_conn *link)
