@@ -255,6 +255,11 @@ int e1_set_pcap_fd(int fd);
 /* called by TRAU muxer to obtain the destination mux entity */
 struct subch_mux *e1inp_get_mux(uint8_t e1_nr, uint8_t ts_nr);
 
+/* on an IPA BTS, the BTS needs to establish the RSL connection much
+ * later than the OML connection. */
+int e1inp_ipa_bts_rsl_connect(struct e1inp_line *line,
+			      const char *rem_addr, uint16_t rem_port);
+
 void e1inp_sign_link_destroy(struct e1inp_sign_link *link);
 int e1inp_line_update(struct e1inp_line *line);
 

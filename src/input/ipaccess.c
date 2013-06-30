@@ -965,7 +965,7 @@ static int ipaccess_line_update(struct e1inp_line *line)
 		break;
 	}
 	case E1INP_LINE_R_BTS: {
-		struct ipa_client_conn *link, *rsl_link;
+		struct ipa_client_conn *link;
 
 		LOGP(DLINP, LOGL_NOTICE, "enabling ipaccess BTS mode\n");
 
@@ -990,27 +990,6 @@ static int ipaccess_line_update(struct e1inp_line *line)
 			ipa_client_conn_destroy(link);
 			return -EIO;
 		}
-		rsl_link = ipa_client_conn_create(tall_ipa_ctx,
-						  &line->ts[E1INP_SIGN_RSL-1],
-						  E1INP_SIGN_RSL,
-						  line->ops->cfg.ipa.addr,
-						  IPA_TCP_PORT_RSL,
-						  NULL,
-						  ipaccess_bts_cb,
-						  ipaccess_bts_write_cb,
-						  NULL);
-		if (rsl_link == NULL) {
-			LOGP(DLINP, LOGL_ERROR, "cannot create RSL "
-				"BTS link: %s\n", strerror(errno));
-			return -ENOMEM;
-		}
-		if (ipa_client_conn_open(rsl_link) < 0) {
-			LOGP(DLINP, LOGL_ERROR, "cannot open RSL BTS link: %s\n",
-				strerror(errno));
-			ipa_client_conn_close(rsl_link);
-			ipa_client_conn_destroy(rsl_link);
-			return -EIO;
-		}
 		ret = 0;
 		break;
 	}
@@ -1018,6 +997,34 @@ static int ipaccess_line_update(struct e1inp_line *line)
 		break;
 	}
 	return ret;
+}
+
+int e1inp_ipa_bts_rsl_connect(struct e1inp_line *line,
+			      const char *rem_addr, uint16_t rem_port)
+{
+	struct ipa_client_conn *rsl_link;
+
+	rsl_link = ipa_client_conn_create(tall_ipa_ctx,
+					  &line->ts[E1INP_SIGN_RSL-1],
+					  E1INP_SIGN_RSL,
+					  rem_addr, rem_port,
+					  NULL,
+					  ipaccess_bts_cb,
+					  ipaccess_bts_write_cb,
+					  NULL);
+	if (rsl_link == NULL) {
+		LOGP(DLINP, LOGL_ERROR, "cannot create RSL "
+			"BTS link: %s\n", strerror(errno));
+		return -ENOMEM;
+	}
+	if (ipa_client_conn_open(rsl_link) < 0) {
+		LOGP(DLINP, LOGL_ERROR, "cannot open RSL BTS link: %s\n",
+			strerror(errno));
+		ipa_client_conn_close(rsl_link);
+		ipa_client_conn_destroy(rsl_link);
+		return -EIO;
+	}
+	return 0;
 }
 
 void e1inp_ipaccess_init(void)
