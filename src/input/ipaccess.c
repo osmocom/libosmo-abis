@@ -842,16 +842,6 @@ static int ipaccess_bts_read_cb(struct ipa_client_conn *link, struct msgb *msg)
 				ret = -EINVAL;
 				goto err;
 			}
-			sign_link = link->line->ops->sign_link_up(msg,
-					link->line,
-					link->ofd->priv_nr);
-			if (sign_link == NULL) {
-				LOGP(DLINP, LOGL_ERROR,
-					"Unable to set signal link, "
-					"closing socket.\n");
-				ret = -EINVAL;
-				goto err;
-			}
 			rmsg = ipa_bts_id_resp(link->line->ops->cfg.ipa.dev,
 						data + 1, len - 1);
 			ret = ipaccess_send(link->ofd->fd, rmsg->data,
@@ -873,6 +863,17 @@ static int ipaccess_bts_read_cb(struct ipa_client_conn *link, struct msgb *msg)
 				goto err_rmsg;
 			}
 			msgb_free(rmsg);
+
+			sign_link = link->line->ops->sign_link_up(msg,
+					link->line,
+					link->ofd->priv_nr);
+			if (sign_link == NULL) {
+				LOGP(DLINP, LOGL_ERROR,
+					"Unable to set signal link, "
+					"closing socket.\n");
+				ret = -EINVAL;
+				goto err;
+			}
 		}
 		msgb_free(msg);
 		return ret;
