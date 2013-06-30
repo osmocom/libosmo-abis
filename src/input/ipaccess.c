@@ -800,6 +800,17 @@ static struct msgb *ipa_bts_id_ack(void)
 	return nmsg2;
 }
 
+static void ipaccess_bts_updown_cb(struct ipa_client_conn *link, int up)
+{
+	struct e1inp_line *line = link->line;
+
+	if (up)
+		return;
+
+	if (line->ops->sign_link_down)
+		line->ops->sign_link_down(line);
+}
+
 static int ipaccess_bts_read_cb(struct ipa_client_conn *link, struct msgb *msg)
 {
 	struct ipaccess_head *hh = (struct ipaccess_head *) msg->data;
@@ -973,7 +984,7 @@ static int ipaccess_line_update(struct e1inp_line *line)
 					      E1INP_SIGN_OML,
 					      line->ops->cfg.ipa.addr,
 					      IPA_TCP_PORT_OML,
-					      NULL,
+					      ipaccess_bts_updown_cb,
 					      ipaccess_bts_read_cb,
 					      ipaccess_bts_write_cb,
 					      line);
@@ -1007,7 +1018,7 @@ int e1inp_ipa_bts_rsl_connect(struct e1inp_line *line,
 					  &line->ts[E1INP_SIGN_RSL-1],
 					  E1INP_SIGN_RSL,
 					  rem_addr, rem_port,
-					  NULL,
+					  ipaccess_bts_updown_cb,
 					  ipaccess_bts_read_cb,
 					  ipaccess_bts_write_cb,
 					  line);

@@ -95,17 +95,6 @@ int ipa_msg_recv(int fd, struct msgb **rmsg)
 	return ret;
 }
 
-void ipa_client_conn_close(struct ipa_client_conn *link);
-
-static void ipa_client_retry(struct ipa_client_conn *link)
-{
-	LOGP(DLINP, LOGL_NOTICE, "connection closed\n");
-	ipa_client_conn_close(link);
-	LOGP(DLINP, LOGL_NOTICE, "retrying in 5 seconds...\n");
-	osmo_timer_schedule(&link->timer, 5, 0);
-	link->state = IPA_CLIENT_LINK_STATE_CONNECTING;
-}
-
 void ipa_client_conn_close(struct ipa_client_conn *link)
 {
 	/* be safe against multiple calls */
@@ -129,11 +118,15 @@ static void ipa_client_read(struct ipa_client_conn *link)
 		if (errno == EPIPE || errno == ECONNRESET) {
 			LOGP(DLINP, LOGL_ERROR, "lost connection with server\n");
 		}
-		ipa_client_retry(link);
+		ipa_client_conn_close(link);
+		if (link->updown_cb)
+			link->updown_cb(link, 0);
 		return;
 	} else if (ret == 0) {
 		LOGP(DLINP, LOGL_ERROR, "connection closed with server\n");
-		ipa_client_retry(link);
+		ipa_client_conn_close(link);
+		if (link->updown_cb)
+			link->updown_cb(link, 0);
 		return;
 	}
 	if (link->read_cb)
@@ -166,7 +159,9 @@ static int ipa_client_write_default_cb(struct ipa_client_conn *link)
 	ret = send(link->ofd->fd, msg->data, msg->len, 0);
 	if (ret < 0) {
 		if (errno == EPIPE || errno == ENOTCONN) {
-			ipa_client_retry(link);
+			ipa_client_conn_close(link);
+			if (link->updown_cb)
+				link->updown_cb(link, 0);
 		}
 		LOGP(DLINP, LOGL_ERROR, "error to send\n");
 	}
@@ -184,14 +179,16 @@ static int ipa_client_fd_cb(struct osmo_fd *ofd, unsigned int what)
 	case IPA_CLIENT_LINK_STATE_CONNECTING:
 		ret = getsockopt(ofd->fd, SOL_SOCKET, SO_ERROR, &error, &len);
 		if (ret >= 0 && error > 0) {
-			ipa_client_retry(link);
+			ipa_client_conn_close(link);
+			if (link->updown_cb)
+				link->updown_cb(link, 0);
 			return 0;
 		}
 		ofd->when &= ~BSC_FD_WRITE;
 		LOGP(DLINP, LOGL_NOTICE, "connection done.\n");
 		link->state = IPA_CLIENT_LINK_STATE_CONNECTED;
-		if (link->connect_cb)
-			link->connect_cb(link);
+		if (link->updown_cb)
+			link->updown_cb(link, 1);
 		break;
 	case IPA_CLIENT_LINK_STATE_CONNECTED:
 		if (what & BSC_FD_READ) {
@@ -209,12 +206,10 @@ static int ipa_client_fd_cb(struct osmo_fd *ofd, unsigned int what)
         return 0;
 }
 
-static void ipa_link_timer_cb(void *data);
-
 struct ipa_client_conn *
 ipa_client_conn_create(void *ctx, struct e1inp_ts *ts,
 		       int priv_nr, const char *addr, uint16_t port,
-		       int (*connect_cb)(struct ipa_client_conn *link),
+		       void (*updown_cb)(struct ipa_client_conn *link, int up),
 		       int (*read_cb)(struct ipa_client_conn *link,
 				      struct msgb *msgb),
 		       int (*write_cb)(struct ipa_client_conn *link),
@@ -244,12 +239,11 @@ ipa_client_conn_create(void *ctx, struct e1inp_ts *ts,
 	ipa_link->ofd->priv_nr = priv_nr;
 	ipa_link->ofd->cb = ipa_client_fd_cb;
 	ipa_link->ofd->data = ipa_link;
+	ipa_link->ofd->fd = -1;
 	ipa_link->state = IPA_CLIENT_LINK_STATE_CONNECTING;
-	ipa_link->timer.cb = ipa_link_timer_cb;
-	ipa_link->timer.data = ipa_link;
 	ipa_link->addr = talloc_strdup(ipa_link, addr);
 	ipa_link->port = port;
-	ipa_link->connect_cb = connect_cb;
+	ipa_link->updown_cb = updown_cb;
 	ipa_link->read_cb = read_cb;
 	/* default to generic write callback if not set. */
 	if (write_cb == NULL)
@@ -284,24 +278,11 @@ int ipa_client_conn_open(struct ipa_client_conn *link)
 	link->ofd->fd = ret;
 	if (osmo_fd_register(link->ofd) < 0) {
 		close(ret);
+		link->ofd->fd = -1;
 		return -EIO;
 	}
+
 	return 0;
-}
-
-static void ipa_link_timer_cb(void *data)
-{
-	struct ipa_client_conn *link = data;
-
-	LOGP(DLINP, LOGL_NOTICE, "reconnecting.\n");
-
-	switch(link->state) {
-	case IPA_CLIENT_LINK_STATE_CONNECTING:
-		ipa_client_conn_open(link);
-	        break;
-	default:
-		break;
-	}
 }
 
 void ipa_client_conn_send(struct ipa_client_conn *link, struct msgb *msg)
