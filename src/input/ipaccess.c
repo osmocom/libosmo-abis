@@ -800,7 +800,7 @@ static struct msgb *ipa_bts_id_ack(void)
 	return nmsg2;
 }
 
-static int ipaccess_bts_cb(struct ipa_client_conn *link, struct msgb *msg)
+static int ipaccess_bts_read_cb(struct ipa_client_conn *link, struct msgb *msg)
 {
 	struct ipaccess_head *hh = (struct ipaccess_head *) msg->data;
 	struct e1inp_ts *e1i_ts = NULL;
@@ -974,7 +974,7 @@ static int ipaccess_line_update(struct e1inp_line *line)
 					      line->ops->cfg.ipa.addr,
 					      IPA_TCP_PORT_OML,
 					      NULL,
-					      ipaccess_bts_cb,
+					      ipaccess_bts_read_cb,
 					      ipaccess_bts_write_cb,
 					      line);
 		if (link == NULL) {
@@ -1008,7 +1008,7 @@ int e1inp_ipa_bts_rsl_connect(struct e1inp_line *line,
 					  E1INP_SIGN_RSL,
 					  rem_addr, rem_port,
 					  NULL,
-					  ipaccess_bts_cb,
+					  ipaccess_bts_read_cb,
 					  ipaccess_bts_write_cb,
 					  line);
 	if (rsl_link == NULL) {
