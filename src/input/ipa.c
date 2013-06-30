@@ -86,7 +86,7 @@ int ipa_msg_recv(int fd, struct msgb **rmsg)
 		msgb_free(msg);
 		return ret;
 	} else if (ret < len) {
-		LOGP(DLINP, LOGL_ERROR, "trunked message received\n");
+		LOGP(DLINP, LOGL_ERROR, "truncated message received\n");
 		msgb_free(msg);
 		return -EIO;
 	}
