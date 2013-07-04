@@ -162,7 +162,6 @@ static int ipa_sock_src_cb(struct ipa_server_conn *peer, struct msgb *msg)
 static int
 ipa_sock_src_accept_cb(struct ipa_server_link *link, int fd)
 {
-	int ret;
 	struct ipa_proxy_route *route = link->data;
 	struct ipa_proxy_conn *conn;
 
@@ -171,7 +170,7 @@ ipa_sock_src_accept_cb(struct ipa_server_link *link, int fd)
 		LOGP(DLINP, LOGL_ERROR, "cannot allocate memory for "
 				       "origin IPA\n");
 		close(fd);
-		return ret;
+		return -ENOMEM;
 	}
 	conn->route = route;
 
@@ -203,7 +202,7 @@ ipa_sock_src_accept_cb(struct ipa_server_link *link, int fd)
 		return -ENOMEM;
 	}
 	llist_add(&conn->head, &route->shared->conn_list);
-	return ret;
+	return 0;
 }
 
 /*
