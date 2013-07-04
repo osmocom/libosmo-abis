@@ -221,7 +221,7 @@ DEFUN(show_e1ts,
 	struct e1inp_ts *ts;
 	int ts_nr;
 
-	if (argc == 0) {
+	if (argc <= 0) {
 		llist_for_each_entry(line, &e1inp_line_list, list) {
 			for (ts_nr = 0; ts_nr < line->num_ts; ts_nr++) {
 				ts = &line->ts[ts_nr];
