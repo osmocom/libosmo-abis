@@ -19,7 +19,6 @@ libosmoabis_la_SOURCES = init.c \
 			 subchan_demux.c \
 			 trau_frame.c \
 			 input/dahdi.c \
-			 input/hsl.c \
 			 input/ipa.c \
 			 input/ipaccess.c \
 			 input/lapd.c \

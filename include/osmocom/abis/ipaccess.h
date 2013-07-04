@@ -103,11 +103,6 @@ struct ipaccess_unit {
 	char *serno;
 };
 
-struct hsl_unit {
-	uint8_t swversion;
-	uint64_t serno;
-};
-
 /* quick solution to get openBSC's ipaccess tools working. */
 extern int ipaccess_fd_cb(struct osmo_fd *bfd, unsigned int what);
 

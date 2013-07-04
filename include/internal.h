@@ -13,9 +13,8 @@ extern void *libosmo_abis_ctx;
 /* use libosmo_abis_init, this is only for internal use. */
 void e1inp_init(void);
 
-/* hsl requires these functions defined in ipaccess driver. */
+/* ipaccess.c requires these functions defined here */
 struct msgb;
-void ipaccess_prepend_header(struct msgb *msg, int proto);
 struct msgb *ipa_msg_alloc(int headroom);
 void ipa_msg_push_header(struct msgb *msg, uint8_t proto);
 

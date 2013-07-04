@@ -743,7 +743,6 @@ static int e1i_sig_cb(unsigned int subsys, unsigned int signal,
 void e1inp_misdn_init(void);
 void e1inp_dahdi_init(void);
 void e1inp_ipaccess_init(void);
-void e1inp_hsl_init(void);
 void e1inp_rs232_init(void);
 
 void e1inp_init(void)
@@ -758,6 +757,5 @@ void e1inp_init(void)
 	e1inp_dahdi_init();
 #endif
 	e1inp_ipaccess_init();
-	e1inp_hsl_init();
 	e1inp_rs232_init();
 }
