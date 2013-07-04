@@ -67,13 +67,13 @@ struct ipa_proxy_route_shared {
 		struct ipa_proxy_instance	*inst;
 		struct bitvec			streamid_map;
 		uint8_t				streamid_map_data[(0xff+1)/8];
-		uint8_t				streamid[0xff];
+		uint8_t				streamid[0xff + 1];
 	} src;
 	struct {
 		struct ipa_proxy_instance	*inst;
 		struct bitvec			streamid_map;
 		uint8_t				streamid_map_data[(0xff+1)/8];
-		uint8_t				streamid[0xff];
+		uint8_t				streamid[0xff + 1];
 	} dst;
 
 	struct llist_head			conn_list;
