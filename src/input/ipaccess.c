@@ -864,6 +864,8 @@ static int ipaccess_bts_cb(struct ipa_client_conn *link, struct msgb *msg)
 	else if (link->port == IPA_TCP_PORT_RSL)
 		e1i_ts = &link->line->ts[1];
 
+	OSMO_ASSERT(e1i_ts != NULL);
+
 	/* look up for some existing signaling link. */
 	sign_link = e1inp_lookup_sign_link(e1i_ts, hh->proto, 0);
 	if (sign_link == NULL) {
