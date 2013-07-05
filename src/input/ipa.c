@@ -323,6 +323,8 @@ static int ipa_server_fd_cb(struct osmo_fd *ofd, unsigned int what)
 
 	if (link->accept_cb)
 		link->accept_cb(link, ret);
+	else
+		close(ret);
 
 	return 0;
 }
