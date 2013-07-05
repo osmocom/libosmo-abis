@@ -636,6 +636,12 @@ struct msgb *e1inp_tx_ts(struct e1inp_ts *e1i_ts,
 		if (!msg)
 			return NULL;
 		len = subchan_mux_out(&e1i_ts->trau.mux, msg->data, 40);
+		if (len != 40) {
+			LOGP(DLMI, LOGL_ERROR,
+			     "cannot transmit, failed to mux\n");
+			msgb_free(msg);
+			return NULL;
+		}
 		msgb_put(msg, 40);
 		break;
 	default:
