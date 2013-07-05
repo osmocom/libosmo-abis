@@ -138,9 +138,8 @@ osmo_static_assert(sizeof(struct fake_linux_lapd_header) == 16,	       lapd_head
 
 static int pcap_fd = -1;
 
-void e1_set_pcap_fd(int fd)
+int e1_set_pcap_fd(int fd)
 {
-	int ret;
 	struct pcap_hdr header = {
 		.magic_number	= 0xa1b2c3d4,
 		.version_major	= 2,
@@ -152,7 +151,7 @@ void e1_set_pcap_fd(int fd)
 	};
 
 	pcap_fd = fd;
-	ret = write(pcap_fd, &header, sizeof(header));
+	return write(pcap_fd, &header, sizeof(header));
 }
 
 /* This currently only works for the D-Channel */

@@ -250,7 +250,7 @@ void e1inp_dlsap_up(struct osmo_dlsap_prim *odp, uint8_t tei, uint8_t sapi,
         void *rx_cbdata);
 
 /* Write LAPD frames to the fd. */
-void e1_set_pcap_fd(int fd);
+int e1_set_pcap_fd(int fd);
 
 /* called by TRAU muxer to obtain the destination mux entity */
 struct subch_mux *e1inp_get_mux(uint8_t e1_nr, uint8_t ts_nr);
