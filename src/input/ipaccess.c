@@ -709,11 +709,13 @@ err_line:
 	return ret;
 }
 
+#define IPA_STRING_MAX 64
+
 static struct msgb *
 ipa_bts_id_resp(struct ipaccess_unit *dev, uint8_t *data, int len)
 {
 	struct msgb *nmsg;
-	char str[64];
+	char str[IPA_STRING_MAX];
 	uint8_t *tag;
 
 	nmsg = ipa_msg_alloc(0);
@@ -730,36 +732,38 @@ ipa_bts_id_resp(struct ipaccess_unit *dev, uint8_t *data, int len)
 		}
 		switch (data[1]) {
 		case IPAC_IDTAG_UNIT:
-			sprintf(str, "%u/%u/%u",
+			snprintf(str, sizeof(str), "%u/%u/%u",
 				dev->site_id, dev->bts_id, dev->trx_id);
 			break;
 		case IPAC_IDTAG_MACADDR:
-			sprintf(str, "%02x:%02x:%02x:%02x:%02x:%02x",
-				dev->mac_addr[0], dev->mac_addr[1],
-				dev->mac_addr[2], dev->mac_addr[3],
-				dev->mac_addr[4], dev->mac_addr[5]);
+			snprintf(str, sizeof(str),
+				 "%02x:%02x:%02x:%02x:%02x:%02x",
+				 dev->mac_addr[0], dev->mac_addr[1],
+				 dev->mac_addr[2], dev->mac_addr[3],
+				 dev->mac_addr[4], dev->mac_addr[5]);
 			break;
 		case IPAC_IDTAG_LOCATION1:
-			strcpy(str, dev->location1);
+			strncpy(str, dev->location1, IPA_STRING_MAX);
 			break;
 		case IPAC_IDTAG_LOCATION2:
-			strcpy(str, dev->location2);
+			strncpy(str, dev->location2, IPA_STRING_MAX);
 			break;
 		case IPAC_IDTAG_EQUIPVERS:
-			strcpy(str, dev->equipvers);
+			strncpy(str, dev->equipvers, IPA_STRING_MAX);
 			break;
 		case IPAC_IDTAG_SWVERSION:
-			strcpy(str, dev->swversion);
+			strncpy(str, dev->swversion, IPA_STRING_MAX);
 			break;
 		case IPAC_IDTAG_UNITNAME:
-			sprintf(str, "%s-%02x-%02x-%02x-%02x-%02x-%02x",
-				dev->unit_name,
-				dev->mac_addr[0], dev->mac_addr[1],
-				dev->mac_addr[2], dev->mac_addr[3],
-				dev->mac_addr[4], dev->mac_addr[5]);
+			snprintf(str, sizeof(str),
+				 "%s-%02x-%02x-%02x-%02x-%02x-%02x",
+				 dev->unit_name,
+				 dev->mac_addr[0], dev->mac_addr[1],
+				 dev->mac_addr[2], dev->mac_addr[3],
+				 dev->mac_addr[4], dev->mac_addr[5]);
 			break;
 		case IPAC_IDTAG_SERNR:
-			strcpy(str, dev->serno);
+			strncpy(str, dev->serno, IPA_STRING_MAX);
 			break;
 		default:
 			LOGP(DLINP, LOGL_NOTICE,
@@ -767,6 +771,8 @@ ipa_bts_id_resp(struct ipaccess_unit *dev, uint8_t *data, int len)
 			msgb_free(nmsg);
 			return NULL;
 		}
+		str[IPA_STRING_MAX-1] = '\0';
+
 		LOGP(DLINP, LOGL_INFO, " tag %d: %s\n", data[1], str);
 		tag = msgb_put(nmsg, 3 + strlen(str) + 1);
 		tag[0] = 0x00;
