@@ -401,7 +401,7 @@ static void dahdi_vty_show(struct vty *vty, struct e1inp_line *line)
 {
 	struct span_cfg *scfg;
 
-	if (line->port_nr > ARRAY_SIZE(span_cfgs))
+	if (line->port_nr >= ARRAY_SIZE(span_cfgs))
 		return;
 
 	scfg = span_cfgs[line->port_nr];
