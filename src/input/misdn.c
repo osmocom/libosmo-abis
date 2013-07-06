@@ -640,6 +640,7 @@ static int _mi_e1_line_update(struct e1inp_line *line)
 	fprintf(stdout, "        nrbchan:        %d\n", devinfo.nrbchan);
 	fprintf(stdout, "        name:           %s\n", devinfo.name);
 #endif
+	close(sk);
 
 	if (!(devinfo.Dprotocols & (1 << ISDN_P_NT_E1))) {
 		fprintf(stderr, "error: card is not of type E1 (NT-mode)\n");
