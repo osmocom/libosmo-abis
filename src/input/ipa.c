@@ -307,24 +307,28 @@ void ipa_client_conn_send(struct ipa_client_conn *link, struct msgb *msg)
 
 static int ipa_server_fd_cb(struct osmo_fd *ofd, unsigned int what)
 {
-	int ret;
+	int fd, ret;
 	struct sockaddr_in sa;
 	socklen_t sa_len = sizeof(sa);
 	struct ipa_server_link *link = ofd->data;
 
-	ret = accept(ofd->fd, (struct sockaddr *)&sa, &sa_len);
-	if (ret < 0) {
+	fd = accept(ofd->fd, (struct sockaddr *)&sa, &sa_len);
+	if (fd < 0) {
 		LOGP(DLINP, LOGL_ERROR, "failed to accept from origin "
 			"peer, reason=`%s'\n", strerror(errno));
-		return ret;
+		return fd;
 	}
 	LOGP(DLINP, LOGL_NOTICE, "accept()ed new link from %s to port %u\n",
 		inet_ntoa(sa.sin_addr), link->port);
 
-	if (link->accept_cb)
-		link->accept_cb(link, ret);
-	else
-		close(ret);
+	ret = link->accept_cb(link, fd);
+	if (ret < 0) {
+		LOGP(DLINP, LOGL_ERROR,
+		     "failed to processs accept()ed new link, "
+		     "reason=`%s'\n", strerror(-ret));
+		close(fd);
+		return ret;
+	}
 
 	return 0;
 }
@@ -336,6 +340,8 @@ ipa_server_link_create(void *ctx, struct e1inp_line *line,
 		       void *data)
 {
 	struct ipa_server_link *ipa_link;
+
+	OSMO_ASSERT(accept_cb != NULL);
 
 	ipa_link = talloc_zero(ctx, struct ipa_server_link);
 	if (!ipa_link)
