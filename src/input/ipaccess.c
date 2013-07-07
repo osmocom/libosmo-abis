@@ -44,6 +44,7 @@
 #include <osmocom/abis/ipaccess.h>
 #include <osmocom/core/socket.h>
 #include <osmocom/abis/ipa.h>
+#include <osmocom/core/backtrace.h>
 
 static void *tall_ipa_ctx;
 
