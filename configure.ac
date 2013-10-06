@@ -35,7 +35,7 @@ PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 0.3.0)
 PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 0.3.10)
 PKG_CHECK_MODULES([ORTP], [ortp >= 0.13.1],
 	[
-	 	PKG_CHECK_MODULES([ORTP], [ortp >= 0.21],
+		PKG_CHECK_MODULES([ORTP_VERSION], [ortp >= 0.21],
 				  [AC_DEFINE(HAVE_ORTP_021, 1,
 				   	     [libortp >= 0.21])],
 				  [AC_DEFINE(HAVE_ORTP_021, 0,

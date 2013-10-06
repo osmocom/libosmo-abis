@@ -349,7 +349,7 @@ struct osmo_rtp_socket *osmo_rtp_socket_create(void *talloc_ctx, unsigned int fl
 int osmo_rtp_socket_bind(struct osmo_rtp_socket *rs, const char *ip, int port)
 {
 	int rc;
-#ifdef HAVE_ORTP_021
+#if HAVE_ORTP_021
 	rc = rtp_session_set_local_addr(rs->sess, ip, port, port+1);
 #else
 	rc = rtp_session_set_local_addr(rs->sess, ip, port);
