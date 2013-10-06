@@ -250,10 +250,9 @@ int ipaccess_rcvmsg_bts_base(struct msgb *msg,
 	return ret;
 }
 
-static int ipaccess_drop(struct osmo_fd *bfd)
+static int ipaccess_drop(struct osmo_fd *bfd, struct e1inp_line *line)
 {
 	int ret = 1;
-	struct e1inp_line *line = bfd->data;
 
 	/* Error case: we did not see any ID_RESP yet for this socket. */
 	if (bfd->fd != -1) {
@@ -463,7 +462,7 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 err_msg:
 	msgb_free(msg);
 err:
-	ipaccess_drop(bfd);
+	ipaccess_drop(bfd, line);
 	return ret;
 }
 
@@ -559,7 +558,7 @@ out:
 	msgb_free(msg);
 	return ret;
 err:
-	ipaccess_drop(bfd);
+	ipaccess_drop(bfd, line);
 	msgb_free(msg);
 	return ret;
 }
@@ -801,7 +800,18 @@ static struct msgb *ipa_bts_id_ack(void)
 	return nmsg2;
 }
 
-static int ipaccess_bts_cb(struct ipa_client_conn *link, struct msgb *msg)
+static void ipaccess_bts_updown_cb(struct ipa_client_conn *link, int up)
+{
+	struct e1inp_line *line = link->line;
+
+	if (up)
+		return;
+
+	if (line->ops->sign_link_down)
+		line->ops->sign_link_down(line);
+}
+
+static int ipaccess_bts_read_cb(struct ipa_client_conn *link, struct msgb *msg)
 {
 	struct ipaccess_head *hh = (struct ipaccess_head *) msg->data;
 	struct e1inp_ts *e1i_ts = NULL;
@@ -832,16 +842,6 @@ static int ipaccess_bts_cb(struct ipa_client_conn *link, struct msgb *msg)
 				ret = -EINVAL;
 				goto err;
 			}
-			sign_link = link->line->ops->sign_link_up(msg,
-					link->line,
-					link->ofd->priv_nr);
-			if (sign_link == NULL) {
-				LOGP(DLINP, LOGL_ERROR,
-					"Unable to set signal link, "
-					"closing socket.\n");
-				ret = -EINVAL;
-				goto err;
-			}
 			rmsg = ipa_bts_id_resp(link->line->ops->cfg.ipa.dev,
 						data + 1, len - 1);
 			ret = ipaccess_send(link->ofd->fd, rmsg->data,
@@ -863,6 +863,17 @@ static int ipaccess_bts_cb(struct ipa_client_conn *link, struct msgb *msg)
 				goto err_rmsg;
 			}
 			msgb_free(rmsg);
+
+			sign_link = link->line->ops->sign_link_up(msg,
+					link->line,
+					link->ofd->priv_nr);
+			if (sign_link == NULL) {
+				LOGP(DLINP, LOGL_ERROR,
+					"Unable to set signal link, "
+					"closing socket.\n");
+				ret = -EINVAL;
+				goto err;
+			}
 		}
 		msgb_free(msg);
 		return ret;
@@ -965,7 +976,7 @@ static int ipaccess_line_update(struct e1inp_line *line)
 		break;
 	}
 	case E1INP_LINE_R_BTS: {
-		struct ipa_client_conn *link, *rsl_link;
+		struct ipa_client_conn *link;
 
 		LOGP(DLINP, LOGL_NOTICE, "enabling ipaccess BTS mode\n");
 
@@ -974,10 +985,10 @@ static int ipaccess_line_update(struct e1inp_line *line)
 					      E1INP_SIGN_OML,
 					      line->ops->cfg.ipa.addr,
 					      IPA_TCP_PORT_OML,
-					      NULL,
-					      ipaccess_bts_cb,
+					      ipaccess_bts_updown_cb,
+					      ipaccess_bts_read_cb,
 					      ipaccess_bts_write_cb,
-					      NULL);
+					      line);
 		if (link == NULL) {
 			LOGP(DLINP, LOGL_ERROR, "cannot create OML "
 				"BTS link: %s\n", strerror(errno));
@@ -990,27 +1001,6 @@ static int ipaccess_line_update(struct e1inp_line *line)
 			ipa_client_conn_destroy(link);
 			return -EIO;
 		}
-		rsl_link = ipa_client_conn_create(tall_ipa_ctx,
-						  &line->ts[E1INP_SIGN_RSL-1],
-						  E1INP_SIGN_RSL,
-						  line->ops->cfg.ipa.addr,
-						  IPA_TCP_PORT_RSL,
-						  NULL,
-						  ipaccess_bts_cb,
-						  ipaccess_bts_write_cb,
-						  NULL);
-		if (rsl_link == NULL) {
-			LOGP(DLINP, LOGL_ERROR, "cannot create RSL "
-				"BTS link: %s\n", strerror(errno));
-			return -ENOMEM;
-		}
-		if (ipa_client_conn_open(rsl_link) < 0) {
-			LOGP(DLINP, LOGL_ERROR, "cannot open RSL BTS link: %s\n",
-				strerror(errno));
-			ipa_client_conn_close(rsl_link);
-			ipa_client_conn_destroy(rsl_link);
-			return -EIO;
-		}
 		ret = 0;
 		break;
 	}
@@ -1018,6 +1008,34 @@ static int ipaccess_line_update(struct e1inp_line *line)
 		break;
 	}
 	return ret;
+}
+
+int e1inp_ipa_bts_rsl_connect(struct e1inp_line *line,
+			      const char *rem_addr, uint16_t rem_port)
+{
+	struct ipa_client_conn *rsl_link;
+
+	rsl_link = ipa_client_conn_create(tall_ipa_ctx,
+					  &line->ts[E1INP_SIGN_RSL-1],
+					  E1INP_SIGN_RSL,
+					  rem_addr, rem_port,
+					  ipaccess_bts_updown_cb,
+					  ipaccess_bts_read_cb,
+					  ipaccess_bts_write_cb,
+					  line);
+	if (rsl_link == NULL) {
+		LOGP(DLINP, LOGL_ERROR, "cannot create RSL "
+			"BTS link: %s\n", strerror(errno));
+		return -ENOMEM;
+	}
+	if (ipa_client_conn_open(rsl_link) < 0) {
+		LOGP(DLINP, LOGL_ERROR, "cannot open RSL BTS link: %s\n",
+			strerror(errno));
+		ipa_client_conn_close(rsl_link);
+		ipa_client_conn_destroy(rsl_link);
+		return -EIO;
+	}
+	return 0;
 }
 
 void e1inp_ipaccess_init(void)

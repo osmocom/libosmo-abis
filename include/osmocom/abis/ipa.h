@@ -49,13 +49,13 @@ struct ipa_client_conn {
 	enum ipa_client_conn_state	state;
 	const char			*addr;
 	uint16_t			port;
-	int (*connect_cb)(struct ipa_client_conn *link);
+	void (*updown_cb)(struct ipa_client_conn *link, int up);
 	int (*read_cb)(struct ipa_client_conn *link, struct msgb *msg);
 	int (*write_cb)(struct ipa_client_conn *link);
 	void				*data;
 };
 
-struct ipa_client_conn *ipa_client_conn_create(void *ctx, struct e1inp_ts *ts, int priv_nr, const char *addr, uint16_t port, int (*connect)(struct ipa_client_conn *link), int (*read_cb)(struct ipa_client_conn *link, struct msgb *msgb), int (*write_cb)(struct ipa_client_conn *link), void *data);
+struct ipa_client_conn *ipa_client_conn_create(void *ctx, struct e1inp_ts *ts, int priv_nr, const char *addr, uint16_t port, void (*updown)(struct ipa_client_conn *link, int), int (*read_cb)(struct ipa_client_conn *link, struct msgb *msgb), int (*write_cb)(struct ipa_client_conn *link), void *data);
 void ipa_client_conn_destroy(struct ipa_client_conn *link);
 
 int ipa_client_conn_open(struct ipa_client_conn *link);
