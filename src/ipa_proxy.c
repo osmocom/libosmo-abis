@@ -644,28 +644,6 @@ static int ipa_cfg_write(struct vty *vty)
 	return CMD_SUCCESS;
 }
 
-DEFUN(ournode_exit,
-      ournode_exit_cmd, "exit", "Exit current mode and down to previous mode\n")
-{
-        switch (vty->node) {
-        case L_IPA_NODE:
-                vty->node = CONFIG_NODE;
-                vty->index = NULL;
-                break;
-	}
-	return CMD_SUCCESS;
-}
-
-DEFUN(ournode_end,
-      ournode_end_cmd, "end", "End current mode and change to enable mode.\n")
-{
-	switch (vty->node) {
-	case L_IPA_NODE:
-		break;
-	}
-	return CMD_SUCCESS;
-}
-
 void ipa_proxy_vty_init(void)
 {
 	tall_ipa_proxy_ctx =
@@ -681,9 +659,7 @@ void ipa_proxy_vty_init(void)
 
 	install_element(CONFIG_NODE, &ipa_cfg_cmd);
 	install_node(&ipa_node, ipa_cfg_write);
-	install_default(L_IPA_NODE);
-	install_element(L_IPA_NODE, &ournode_exit_cmd);
-	install_element(L_IPA_NODE, &ournode_end_cmd);
+	vty_install_default(L_IPA_NODE);
 	install_element(L_IPA_NODE, &ipa_instance_cfg_add_cmd);
 	install_element(L_IPA_NODE, &ipa_route_cfg_add_cmd);
 }
