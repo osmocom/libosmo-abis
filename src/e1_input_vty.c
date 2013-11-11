@@ -268,7 +268,7 @@ DEFUN(show_e1ts,
 
 struct cmd_node e1inp_node = {
 	L_E1INP_NODE,
-	"%s(e1_input)#",
+	"%s(config-e1_input)# ",
 	1,
 };
 

@@ -612,7 +612,7 @@ DEFUN(ipa_instance_cfg_add, ipa_instance_cfg_add_cmd,
 
 struct cmd_node ipa_node = {
 	L_IPA_NODE,
-	"%s(ipa)#",
+	"%s(config-ipa)# ",
 	1,
 };
 
