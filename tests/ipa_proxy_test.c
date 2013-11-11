@@ -28,31 +28,9 @@ const struct log_info ipa_proxy_test_log_info = {
 	.num_cat = ARRAY_SIZE(ipa_proxy_test_cat),
 };
 
-static int bsc_vty_is_config_node(struct vty *vty, int node)
-{
-	switch(node) {
-	case L_IPA_NODE:
-		return 1;
-		break;
-	}
-	return 0;
-}
-
-static enum node_type bsc_vty_go_parent(struct vty *vty)
-{
-	switch (vty->node) {
-	case L_IPA_NODE:
-		vty->node = VIEW_NODE;
-		break;
-	}
-	return vty->node;
-}
-
 static struct vty_app_info vty_info = {
 	.name		= "ipa-proxy-test",
 	.version	= "1.0",
-	.go_parent_cb	= bsc_vty_go_parent,
-	.is_config_node	= bsc_vty_is_config_node,
 };
 
 #define IPA_PROXY_TEST_TELNET_PORT	4260

@@ -208,13 +208,6 @@ ipa_sock_src_accept_cb(struct ipa_server_link *link, int fd)
 /*
  * VTY commands for IPA
  */
-DEFUN(ipa_proxy, ipa_cmd, "ipa", "Configure the ipaccess proxy")
-{
-	vty->index = NULL;
-	vty->node = L_IPA_NODE;
-	return CMD_SUCCESS;
-}
-
 static int __ipa_instance_add(struct vty *vty, int argc, const char *argv[])
 {
 	struct ipa_proxy_instance *ipi;
@@ -649,7 +642,6 @@ void ipa_proxy_vty_init(void)
 	tall_ipa_proxy_ctx =
 		talloc_named_const(libosmo_abis_ctx, 1, "ipa_proxy");
 
-	install_element(ENABLE_NODE, &ipa_cmd);
 	install_element(ENABLE_NODE, &ipa_instance_add_cmd);
 	install_element(ENABLE_NODE, &ipa_instance_del_cmd);
 	install_element(ENABLE_NODE, &ipa_instance_show_cmd);
