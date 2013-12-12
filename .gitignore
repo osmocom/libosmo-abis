@@ -15,6 +15,7 @@ config.log
 config.status
 config.guess
 configure
+compile
 depcomp
 missing
 ltmain.sh
