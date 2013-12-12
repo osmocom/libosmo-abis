@@ -9,20 +9,34 @@ Vcs-Git: git://git.osmocom.org/libosmo-abis.git
 Vcs-Browser: http://git.osmocom.org/gitweb?p=libosmo-abis.git;a=summary
 
 Package: libosmo-abis
+Section: oldlibs
+Architecture: any
+Depends: libosmoabis1, libosmotrau0, ${misc:Depends}
+Description: Legacy package for libosmo-abis
+ libosmo-abis is an empty package helping in the transition to one
+ package per DSO.
+
+Package: libosmoabis1
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: Library containing common/shared code regarding the A-bis interface between BTS and BSC
+Description: GSM A-bis handling
+
+Package: libosmotrau0
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: GSM trau handling
 
 Package: libosmo-abis-dev
 Section: libdevel
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libosmocore, libosmo-abis
+Depends: ${misc:Depends}, libosmocore, libosmo-abis
 Description: Development headers for A-bis interface.
 
 Package: libosmo-abis-dbg
 Section: debug
 Architecture: any
 Priority: extra
-Depends: libosmo-abis (= ${binary:Version}), ${misc:Depends}
+Depends: libosmoabis1 (= ${binary:Version}), libosmotrau0 (= ${binary:Version}), ${misc:Depends}
 Description: Debug symbols for A-bis interface.
