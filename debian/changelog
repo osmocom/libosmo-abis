@@ -1,3 +1,9 @@
+libosmo-abis (0.1.5+git1) unstable; urgency=low
+
+  * Rebuild 0.1.5 with the right libosmocore depedency
+
+ -- Holger Hans Peter Freyther <holger@freyther.de>  Thu, 12 Dec 2013 11:47:01 +0100
+
 libosmo-abis (0.1.4) unstable; urgency=low
 
   * New upstream release
