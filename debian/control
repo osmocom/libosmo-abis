@@ -31,7 +31,7 @@ Description: GSM trau handling
 Package: libosmo-abis-dev
 Section: libdevel
 Architecture: any
-Depends: ${misc:Depends}, libosmocore, libosmo-abis
+Depends: ${misc:Depends}, libosmotrau0, libosmoabis1
 Description: Development headers for A-bis interface.
 
 Package: libosmo-abis-dbg
