@@ -3,7 +3,7 @@ Section: libs
 Priority: optional
 Maintainer: Harald Welte <laforge@gnumonks.org>
 Build-Depends: debhelper (>= 7.0.50~), autotools-dev, autoconf, automake, libtool, dh-autoreconf, libdpkg-perl, git, libosmocore-dev (>= 0.6.4), pkg-config, libortp-dev
-Standards-Version: 3.8.4
+Standards-Version: 3.9.0
 Homepage: http://openbsc.osmocom.org/trac/wiki/libosmo-abis
 Vcs-Git: git://git.osmocom.org/libosmo-abis.git
 Vcs-Browser: http://git.osmocom.org/gitweb?p=libosmo-abis.git;a=summary
