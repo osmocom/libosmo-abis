@@ -429,6 +429,11 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 		ipaccess_rcvmsg(line, msg, bfd);
 		msgb_free(msg);
 		return 0;
+	} else if (e1i_ts->type == E1INP_TS_TYPE_NONE) {
+		/* this sign link is not know yet.. complain. */
+		LOGP(DLINP, LOGL_ERROR, "Timeslot is not configured.\n");
+		ret = -EINVAL;
+		goto err_msg;
 	}
 	/* BIG FAT WARNING: bfd might no longer exist here, since ipaccess_rcvmsg()
 	 * might have free'd it !!! */
