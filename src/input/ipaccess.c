@@ -608,6 +608,7 @@ struct e1inp_driver ipaccess_driver = {
 	.line_update = ipaccess_line_update,
 	.close = ipaccess_close,
 	.default_delay = 0,
+	.has_keepalive = 1,
 };
 
 static void update_fd_settings(struct e1inp_line *line, int fd)
@@ -615,7 +616,7 @@ static void update_fd_settings(struct e1inp_line *line, int fd)
 	int ret;
 	int val;
 
-	if (DEFAULT_TCP_KEEPALIVE_RETRY_COUNT) {
+	if (line->keepalive_num_probes) {
 		/* Enable TCP keepalive to find out if the connection is gone */
 		val = 1;
 		ret = setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &val, sizeof(val));
@@ -627,21 +628,27 @@ static void update_fd_settings(struct e1inp_line *line, int fd)
 
 #if defined(TCP_KEEPIDLE) && defined(TCP_KEEPINTVL) && defined(TCP_KEEPCNT)
 		/* The following options are not portable! */
-		val = DEFAULT_TCP_KEEPALIVE_IDLE_TIMEOUT;
+		val = line->keepalive_idle_timeout > 0 ?
+			line->keepalive_idle_timeout :
+			DEFAULT_TCP_KEEPALIVE_IDLE_TIMEOUT;
 		ret = setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE,
 				 &val, sizeof(val));
 		if (ret < 0)
 			LOGP(DLINP, LOGL_NOTICE,
 			     "Failed to set keepalive idle time: %s\n",
 			     strerror(errno));
-		val = DEFAULT_TCP_KEEPALIVE_INTERVAL;
+		val = line->keepalive_probe_interval > -1 ?
+			line->keepalive_probe_interval :
+			DEFAULT_TCP_KEEPALIVE_INTERVAL;
 		ret = setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL,
 				 &val, sizeof(val));
 		if (ret < 0)
 			LOGP(DLINP, LOGL_NOTICE,
 			     "Failed to set keepalive interval: %s\n",
 			     strerror(errno));
-		val = DEFAULT_TCP_KEEPALIVE_RETRY_COUNT;
+		val = line->keepalive_num_probes > 0 ?
+			line->keepalive_num_probes :
+			DEFAULT_TCP_KEEPALIVE_RETRY_COUNT;
 		ret = setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT,
 				 &val, sizeof(val));
 		if (ret < 0)
