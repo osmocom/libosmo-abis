@@ -610,12 +610,54 @@ struct e1inp_driver ipaccess_driver = {
 	.default_delay = 0,
 };
 
+static void update_fd_settings(struct e1inp_line *line, int fd)
+{
+	int ret;
+	int val;
+
+	if (DEFAULT_TCP_KEEPALIVE_RETRY_COUNT) {
+		/* Enable TCP keepalive to find out if the connection is gone */
+		val = 1;
+		ret = setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &val, sizeof(val));
+		if (ret < 0)
+			LOGP(DLINP, LOGL_NOTICE, "Failed to set keepalive: %s\n",
+			     strerror(errno));
+		else
+			LOGP(DLINP, LOGL_NOTICE, "Keepalive is set: %i\n", ret);
+
+#if defined(TCP_KEEPIDLE) && defined(TCP_KEEPINTVL) && defined(TCP_KEEPCNT)
+		/* The following options are not portable! */
+		val = DEFAULT_TCP_KEEPALIVE_IDLE_TIMEOUT;
+		ret = setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE,
+				 &val, sizeof(val));
+		if (ret < 0)
+			LOGP(DLINP, LOGL_NOTICE,
+			     "Failed to set keepalive idle time: %s\n",
+			     strerror(errno));
+		val = DEFAULT_TCP_KEEPALIVE_INTERVAL;
+		ret = setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL,
+				 &val, sizeof(val));
+		if (ret < 0)
+			LOGP(DLINP, LOGL_NOTICE,
+			     "Failed to set keepalive interval: %s\n",
+			     strerror(errno));
+		val = DEFAULT_TCP_KEEPALIVE_RETRY_COUNT;
+		ret = setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT,
+				 &val, sizeof(val));
+		if (ret < 0)
+			LOGP(DLINP, LOGL_NOTICE,
+			     "Failed to set keepalive count: %s\n",
+			     strerror(errno));
+	}
+#endif
+}
+
 /* callback of the OML listening filedescriptor */
 static int ipaccess_bsc_oml_cb(struct ipa_server_link *link, int fd)
 {
 	int ret;
 	int idx = 0;
-	int i, val;
+	int i;
 	struct e1inp_line *line;
 	struct e1inp_ts *e1i_ts;
 	struct osmo_fd *bfd;
@@ -648,33 +690,7 @@ static int ipaccess_bsc_oml_cb(struct ipa_server_link *link, int fd)
 		goto err_line;
 	}
 
-	/* Enable TCP keepalive to find out if the connection is gone */
-	val = 1;
-	ret = setsockopt(bfd->fd, SOL_SOCKET, SO_KEEPALIVE, &val, sizeof(val));
-	if (ret < 0)
-		LOGP(DLINP, LOGL_NOTICE, "Failed to set keepalive: %s\n",
-		     strerror(errno));
-	else
-		LOGP(DLINP, LOGL_NOTICE, "Keepalive is set: %i\n", ret);
-
-#if defined(TCP_KEEPIDLE) && defined(TCP_KEEPINTVL) && defined(TCP_KEEPCNT)
-	/* The following options are not portable! */
-	val = DEFAULT_TCP_KEEPALIVE_IDLE_TIMEOUT;
-	ret = setsockopt(bfd->fd, IPPROTO_TCP, TCP_KEEPIDLE, &val, sizeof(val));
-	if (ret < 0)
-		LOGP(DLINP, LOGL_NOTICE, "Failed to set keepalive idle time: %s\n",
-		     strerror(errno));
-	val = DEFAULT_TCP_KEEPALIVE_INTERVAL;
-	ret = setsockopt(bfd->fd, IPPROTO_TCP, TCP_KEEPINTVL, &val, sizeof(val));
-	if (ret < 0)
-		LOGP(DLINP, LOGL_NOTICE, "Failed to set keepalive interval: %s\n",
-		     strerror(errno));
-	val = DEFAULT_TCP_KEEPALIVE_RETRY_COUNT;
-	ret = setsockopt(bfd->fd, IPPROTO_TCP, TCP_KEEPCNT, &val, sizeof(val));
-	if (ret < 0)
-		LOGP(DLINP, LOGL_NOTICE, "Failed to set keepalive count: %s\n",
-		     strerror(errno));
-#endif
+	update_fd_settings(line, bfd->fd);
 
 	/* Request ID. FIXME: request LOCATION, HW/SW VErsion, Unit Name, Serno */
 	ret = ipaccess_send_id_req(bfd->fd);
@@ -736,6 +752,7 @@ static int ipaccess_bsc_rsl_cb(struct ipa_server_link *link, int fd)
 			strerror(errno));
 		goto err_socket;
 	}
+	update_fd_settings(line, bfd->fd);
 	return ret;
 
 err_socket:
