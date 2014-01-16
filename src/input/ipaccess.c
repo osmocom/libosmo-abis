@@ -61,15 +61,15 @@ static void *tall_ipa_ctx;
  *      - ID_REQUEST: first messages once OML has been established.
  *      - ID_ACK: in reply to ID_ACK.
  */
-const uint8_t ipa_pong_msg[] = {
+static const uint8_t ipa_pong_msg[] = {
 	0, 1, IPAC_PROTO_IPACCESS, IPAC_MSGT_PONG
 };
 
-const uint8_t ipa_id_ack_msg[] = {
+static const uint8_t ipa_id_ack_msg[] = {
 	0, 1, IPAC_PROTO_IPACCESS, IPAC_MSGT_ID_ACK
 };
 
-const uint8_t ipa_id_req_msg[] = {
+static const uint8_t ipa_id_req_msg[] = {
 	0, 17, IPAC_PROTO_IPACCESS, IPAC_MSGT_ID_GET,
 	0x01, IPAC_IDTAG_UNIT,
 	0x01, IPAC_IDTAG_MACADDR,
