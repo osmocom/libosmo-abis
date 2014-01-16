@@ -1,0 +1,2 @@
+#library	what		description / commit summary line
+libosmoabis	abi-change	input: Make keep alive configurable (generic)

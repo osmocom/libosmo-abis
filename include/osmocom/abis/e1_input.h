@@ -12,6 +12,7 @@
 #include <osmocom/abis/lapd.h>
 
 #define NUM_E1_TS   32
+#define E1INP_USE_DEFAULT (-1)
 
 enum e1inp_sign_type {
 	E1INP_SIGN_NONE,
@@ -134,6 +135,7 @@ struct e1inp_driver {
 	void (*close)(struct e1inp_sign_link *link);
 	void (*vty_show)(struct vty *vty, struct e1inp_line *line);
 	int default_delay;
+	int has_keepalive;
 };
 
 struct e1inp_line_ops {
@@ -162,6 +164,11 @@ struct e1inp_line {
 	const char *name;
 	unsigned int port_nr;
 	struct rate_ctr_group *rate_ctr;
+
+	/* keepalive configuration */
+	int keepalive_num_probes; /* 0: disable, num, or E1INP_USE_DEFAULT */
+	int keepalive_idle_timeout; /* secs, or E1INP_USE_DEFAULT */
+	int keepalive_probe_interval; /* secs or E1INP_USE_DEFAULT */
 
 	/* array of timestlots */
 	struct e1inp_ts ts[NUM_E1_TS];

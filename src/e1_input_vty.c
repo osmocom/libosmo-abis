@@ -88,6 +88,56 @@ DEFUN(cfg_e1line_port, cfg_e1_line_port_cmd,
 	return CMD_SUCCESS;
 }
 
+#define KEEPALIVE_HELP "Enable keep-alive probing\n"
+static int set_keepalive_params(struct vty *vty, int e1_nr,
+				int idle, int num_probes, int probe_interval)
+{
+	struct e1inp_line *line = e1inp_line_find(e1_nr);
+
+	if (!line) {
+		vty_out(vty, "%% Line %d doesn't exist%s", e1_nr, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	if (!line->driver->has_keepalive && num_probes != 0) {
+		vty_out(vty, "%% Driver '%s' does not support keep alive%s",
+			line->driver->name, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	line->keepalive_idle_timeout = idle;
+	line->keepalive_num_probes = num_probes;
+	line->keepalive_probe_interval = probe_interval;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_e1line_keepalive, cfg_e1_line_keepalive_cmd,
+	"e1_line <0-255> keepalive",
+	E1_LINE_HELP KEEPALIVE_HELP)
+{
+	return set_keepalive_params(vty, atoi(argv[0]),
+				    E1INP_USE_DEFAULT, E1INP_USE_DEFAULT,
+				    E1INP_USE_DEFAULT);
+}
+
+DEFUN(cfg_e1line_keepalive_params, cfg_e1_line_keepalive_params_cmd,
+	"e1_line <0-255> keepalive <1-300> <1-20> <1-300>",
+	E1_LINE_HELP KEEPALIVE_HELP
+	"Idle interval in seconds before probes are sent\n"
+	"Number of probes to sent\n"
+	"Delay between probe packets in seconds\n")
+{
+	return set_keepalive_params(vty, atoi(argv[0]),
+				    atoi(argv[1]), atoi(argv[2]), atoi(argv[3]));
+}
+
+DEFUN(cfg_e1line_no_keepalive, cfg_e1_line_no_keepalive_cmd,
+	"no e1_line <0-255> keepalive",
+	NO_STR E1_LINE_HELP KEEPALIVE_HELP)
+{
+	return set_keepalive_params(vty, atoi(argv[0]), 0, 0, 0);
+}
+
 DEFUN(cfg_e1line_name, cfg_e1_line_name_cmd,
 	"e1_line <0-255> name .LINE",
 	E1_LINE_HELP "Set name for this line\n" "Human readable name\n")
@@ -135,6 +185,22 @@ static int e1inp_config_write(struct vty *vty)
 		if (line->name)
 			vty_out(vty, " e1_line %u name %s%s", line->num,
 				line->name, VTY_NEWLINE);
+		if (!line->keepalive_num_probes)
+			vty_out(vty, " no e1_line %u keepalive%s", line->num,
+				VTY_NEWLINE);
+		else if (line->keepalive_idle_timeout == E1INP_USE_DEFAULT &&
+			 line->keepalive_num_probes == E1INP_USE_DEFAULT &&
+			 line->keepalive_probe_interval == E1INP_USE_DEFAULT)
+			vty_out(vty, " e1_line %u keepalive%s", line->num,
+				VTY_NEWLINE);
+		else
+			vty_out(vty, " e1_line %u keepalive %d %d %d%s",
+				line->num,
+				line->keepalive_idle_timeout,
+				line->keepalive_num_probes,
+				line->keepalive_probe_interval,
+				VTY_NEWLINE);
+
 	}
 	return CMD_SUCCESS;
 }
@@ -281,6 +347,9 @@ int e1inp_vty_init(void)
 	install_element(L_E1INP_NODE, &cfg_e1_line_driver_cmd);
 	install_element(L_E1INP_NODE, &cfg_e1_line_port_cmd);
 	install_element(L_E1INP_NODE, &cfg_e1_line_name_cmd);
+	install_element(L_E1INP_NODE, &cfg_e1_line_keepalive_cmd);
+	install_element(L_E1INP_NODE, &cfg_e1_line_keepalive_params_cmd);
+	install_element(L_E1INP_NODE, &cfg_e1_line_no_keepalive_cmd);
 
 	install_element_ve(&show_e1drv_cmd);
 	install_element_ve(&show_e1line_cmd);
