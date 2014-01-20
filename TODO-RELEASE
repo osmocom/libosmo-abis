@@ -1,3 +1,1 @@
 #library	what		description / commit summary line
-libosmoabis	abi-change	input: Make keep alive configurable (generic)
-libosmoabis	abi-change	ipaccess: Change the visibility of the ipa messages
