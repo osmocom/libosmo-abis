@@ -1,3 +1,9 @@
+libosmo-abis (0.1.6) UNRELEASED; urgency=medium
+
+  * New upstream release of libosmo-abis
+
+ -- Holger Hans Peter Freyther <holger@freyther.de>  Mon, 20 Jan 2014 10:33:36 +0100
+
 libosmo-abis (0.1.5+git1) unstable; urgency=low
 
   * Rebuild 0.1.5 with the right libosmocore depedency
