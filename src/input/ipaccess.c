@@ -564,7 +564,7 @@ err_line:
 #define IPA_STRING_MAX 64
 
 static struct msgb *
-ipa_bts_id_resp(struct ipaccess_unit *dev, uint8_t *data, int len)
+ipa_bts_id_resp(struct ipaccess_unit *dev, uint8_t *data, int len, int trx_nr)
 {
 	struct msgb *nmsg;
 	char str[IPA_STRING_MAX];
@@ -585,7 +585,7 @@ ipa_bts_id_resp(struct ipaccess_unit *dev, uint8_t *data, int len)
 		switch (data[1]) {
 		case IPAC_IDTAG_UNIT:
 			snprintf(str, sizeof(str), "%u/%u/%u",
-				dev->site_id, dev->bts_id, dev->trx_id);
+				dev->site_id, dev->bts_id, trx_nr);
 			break;
 		case IPAC_IDTAG_MACADDR:
 			snprintf(str, sizeof(str),
@@ -685,9 +685,13 @@ int ipaccess_bts_handle_ccm(struct ipa_client_conn *link,
 		if (msg_type == IPAC_MSGT_ID_GET) {
 			uint8_t *data = msgb_l2(msg);
 			int len = msgb_l2len(msg);
+			int trx_nr = 0;
+
+			if (link->ofd->priv_nr >= E1INP_SIGN_RSL)
+				trx_nr = link->ofd->priv_nr - E1INP_SIGN_RSL;
 
 			LOGP(DLINP, LOGL_NOTICE, "received ID get\n");
-			rmsg = ipa_bts_id_resp(dev, data + 1, len - 1);
+			rmsg = ipa_bts_id_resp(dev, data + 1, len - 1, trx_nr);
 			ret = ipa_send(link->ofd->fd, rmsg->data, rmsg->len);
 			if (ret != rmsg->len) {
 				LOGP(DLINP, LOGL_ERROR, "cannot send ID_RESP "
@@ -766,7 +770,7 @@ static int ipaccess_bts_read_cb(struct ipa_client_conn *link, struct msgb *msg)
 	} else if (link->port == IPA_TCP_PORT_OML)
 		e1i_ts = &link->line->ts[0];
 	else if (link->port == IPA_TCP_PORT_RSL)
-		e1i_ts = &link->line->ts[1];
+		e1i_ts = &link->line->ts[link->ofd->priv_nr-1];
 
 	OSMO_ASSERT(e1i_ts != NULL);
 
@@ -892,14 +896,35 @@ static int ipaccess_line_update(struct e1inp_line *line)
 	return ret;
 }
 
+
+/* backwards compatibility */
 int e1inp_ipa_bts_rsl_connect(struct e1inp_line *line,
 			      const char *rem_addr, uint16_t rem_port)
 {
+	return e1inp_ipa_bts_rsl_connect_n(line, rem_addr, rem_port, 0);
+}
+
+int e1inp_ipa_bts_rsl_connect_n(struct e1inp_line *line,
+				const char *rem_addr, uint16_t rem_port,
+				uint8_t trx_nr)
+{
 	struct ipa_client_conn *rsl_link;
 
+	if (E1INP_SIGN_RSL+trx_nr-1 >= NUM_E1_TS) {
+		LOGP(DLINP, LOGL_ERROR, "cannot create RSL BTS link: "
+			"trx_nr (%d) out of range\n", trx_nr);
+		return -EINVAL;
+	}
+	if (line->ts[E1INP_SIGN_RSL+trx_nr-1].type != E1INP_TS_TYPE_SIGN) {
+		LOGP(DLINP, LOGL_ERROR, "cannot create RSL BTS link: "
+			"trx_nr (%d) does not refer to a signalling link\n",
+			trx_nr);
+		return -EINVAL;
+	}
+
 	rsl_link = ipa_client_conn_create(tall_ipa_ctx,
-					  &line->ts[E1INP_SIGN_RSL-1],
-					  E1INP_SIGN_RSL,
+					  &line->ts[E1INP_SIGN_RSL+trx_nr-1],
+					  E1INP_SIGN_RSL+trx_nr,
 					  rem_addr, rem_port,
 					  ipaccess_bts_updown_cb,
 					  ipaccess_bts_read_cb,
