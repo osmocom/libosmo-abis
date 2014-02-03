@@ -655,8 +655,8 @@ static void update_fd_settings(struct e1inp_line *line, int fd)
 			LOGP(DLINP, LOGL_NOTICE,
 			     "Failed to set keepalive count: %s\n",
 			     strerror(errno));
-	}
 #endif
+	}
 }
 
 /* callback of the OML listening filedescriptor */
