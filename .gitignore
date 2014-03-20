@@ -27,6 +27,7 @@ tests/*_test
 
 .tarball-version
 .version
+.dirstamp
 
 # tests
 tests/atconfig
@@ -35,6 +36,7 @@ tests/testsuite
 tests/testsuite.log
 tests/subchan_demux/.dirstamp
 tests/subchan_demux/subchan_demux_test
+tests/ipa_recv/ipa_recv_test
 
 
 
