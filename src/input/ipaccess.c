@@ -258,6 +258,8 @@ int ipaccess_rcvmsg_bts_base(struct msgb *msg,
 static int ipaccess_drop(struct osmo_fd *bfd, struct e1inp_line *line)
 {
 	int ret = 1;
+	unsigned int ts_nr = bfd->priv_nr;
+	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
 
 	/* Error case: we did not see any ID_RESP yet for this socket. */
 	if (bfd->fd != -1) {
@@ -268,6 +270,9 @@ static int ipaccess_drop(struct osmo_fd *bfd, struct e1inp_line *line)
 		bfd->fd = -1;
 		ret = -ENOENT;
 	}
+
+	msgb_free(e1i_ts->pending_msg);
+	e1i_ts->pending_msg = NULL;
 
 	/* e1inp_sign_link_destroy releases the socket descriptors for us. */
 	line->ops->sign_link_down(line);
@@ -415,13 +420,15 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
 	struct e1inp_sign_link *link;
 	struct ipaccess_head *hh;
-	struct msgb *msg;
+	struct msgb *msg = NULL;
 	int ret;
 
-	ret = ipa_msg_recv(bfd->fd, &msg);
+	ret = ipa_msg_recv_buffered(bfd->fd, &msg, &e1i_ts->pending_msg);
 	if (ret < 0) {
+		if (ret == -EAGAIN)
+			return 0;
 		LOGP(DLINP, LOGL_NOTICE, "Sign link problems, "
-			"closing socket. Reason: %s\n", strerror(errno));
+			"closing socket. Reason: %s\n", strerror(-ret));
 		goto err;
 	} else if (ret == 0) {
 		LOGP(DLINP, LOGL_NOTICE, "Sign link vanished, dead socket\n");

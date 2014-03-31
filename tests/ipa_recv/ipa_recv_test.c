@@ -65,7 +65,7 @@ static void append_ipa_message(struct msgb *msg, int proto, const char *text)
 		strcpy((char *)l2, text);
 }
 
-static int receive_messages(int fd)
+static int receive_messages(int fd, struct msgb **pending_msg)
 {
 	struct msgb *msg;
 	char dummy;
@@ -76,13 +76,22 @@ static int receive_messages(int fd)
 			break;
 		}
 		msg = NULL;
-		rc = ipa_msg_recv(fd, &msg);
-		if (rc == -1)
-			rc = -errno;
+		rc = ipa_msg_recv_buffered(fd, &msg, pending_msg);
+
 		fprintf(stderr,
-			"ipa_msg_recv: %d, msg %s NULL\n",
-			rc, msg ? "!=" : "==");
-		if (rc == -EAGAIN)
+			"ipa_msg_recv_buffered: %d, msg %s NULL, "
+			"pending_msg %s NULL\n",
+			rc, msg ? "!=" : "==",
+			!pending_msg ? "??" : *pending_msg ? "!=" : "==");
+		if (pending_msg && !!msg == !!*pending_msg)
+			printf( "got msg %s NULL, pending_msg %s NULL, "
+				"returned: %s\n",
+				msg ?  "!=" : "==",
+				*pending_msg ? "!=" : "==",
+				rc == 0 ? "EOF" :
+				rc > 0 ? "OK" :
+				strerror(-rc));
+		else if (!pending_msg && rc == -EAGAIN)
 			printf( "got msg %s NULL, "
 				"returned: %s\n",
 				msg ?  "!=" : "==",
@@ -94,7 +103,8 @@ static int receive_messages(int fd)
 		if (rc == -EAGAIN)
 			break;
 		if (rc < 0) {
-			printf("ipa_msg_recv failed with: %s\n", strerror(-rc));
+			printf("ipa_msg_recv_buffered failed with: %s\n",
+			       strerror(-rc));
 			return rc;
 		}
 		printf("got IPA message, size=%d, proto=%d, text=\"%s\"\n",
@@ -121,13 +131,15 @@ static int slurp_data(int fd) {
 	return count;
 };
 
-static void test_complete_recv(void)
+static void test_complete_recv(int do_not_assemble)
 {
 	int sv[2];
 	struct msgb *msg_out = msgb_alloc(4096, "msg_out");
+	struct msgb *pending_msg = NULL;
 	int rc, i;
 
-	printf("Testing IPA recv with complete messages.\n");
+	printf("Testing IPA recv with complete messages%s.\n",
+	       do_not_assemble ? "" : " with assembling enabled");
 
 	if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) == -1)
 		err(1, "socketpair");
@@ -145,7 +157,11 @@ static void test_complete_recv(void)
 	}
 
 	for (i=0; i < ARRAY_SIZE(ipa_test_messages); i++) {
-		rc = receive_messages(sv[0]);
+		rc = receive_messages(sv[0],
+				      do_not_assemble ? NULL : &pending_msg);
+		if (pending_msg)
+			printf("Unexpected partial message: size=%d\n",
+			       pending_msg->len);
 		if (rc == 0)
 			break;
 
@@ -160,16 +176,19 @@ static void test_complete_recv(void)
 	close(sv[0]);
 
 	msgb_free(msg_out);
+	msgb_free(pending_msg);
 }
 
 
-static void test_partial_recv(void)
+static void test_partial_recv(int do_not_assemble)
 {
 	int sv[2];
 	struct msgb *msg_out = msgb_alloc(4096, "msg_out");
+	struct msgb *pending_msg = NULL;
 	int rc, i;
 
-	printf("Testing IPA recv with partitioned messages.\n");
+	printf("Testing IPA recv with partitioned messages%s.\n",
+	       do_not_assemble ? "" : " with assembling enabled");
 
 	if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) == -1)
 		err(1, "socketpair");
@@ -190,7 +209,8 @@ static void test_partial_recv(void)
 		if (msg_out->len == 0)
 			shutdown(sv[1], SHUT_WR);
 
-		rc = receive_messages(sv[0]);
+		rc = receive_messages(sv[0],
+				      do_not_assemble ? NULL : &pending_msg);
 
 		if (rc == 0)
 			break;
@@ -205,6 +225,7 @@ static void test_partial_recv(void)
 	close(sv[0]);
 
 	msgb_free(msg_out);
+	msgb_free(pending_msg);
 }
 
 static struct log_info info = {};
@@ -218,8 +239,10 @@ int main(int argc, char **argv)
 	printf("Testing the IPA layer.\n");
 
 	/* run the tests */
-	test_complete_recv();
-	test_partial_recv();
+	test_complete_recv(1);
+	test_partial_recv(1);
+	test_complete_recv(0);
+	test_partial_recv(0);
 
 	printf("No crashes.\n");
 	return 0;

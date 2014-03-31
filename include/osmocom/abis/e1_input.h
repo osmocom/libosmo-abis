@@ -109,6 +109,8 @@ struct e1inp_ts {
 			struct osmo_fd fd;
 		} rs232;
 	} driver;
+
+	struct msgb *pending_msg;
 };
 
 struct gsm_e1_subslot {

@@ -27,6 +27,7 @@ struct ipa_server_conn {
 	int (*closed_cb)(struct ipa_server_conn *peer);
 	int (*cb)(struct ipa_server_conn *peer, struct msgb *msg);
 	void				*data;
+	struct msgb			*pending_msg;
 };
 
 struct ipa_server_conn *ipa_server_conn_create(void *ctx, struct ipa_server_link *link, int fd, int (*cb)(struct ipa_server_conn *peer, struct msgb *msg), int (*closed_cb)(struct ipa_server_conn *peer), void *data);
@@ -53,6 +54,7 @@ struct ipa_client_conn {
 	int (*read_cb)(struct ipa_client_conn *link, struct msgb *msg);
 	int (*write_cb)(struct ipa_client_conn *link);
 	void				*data;
+	struct msgb			*pending_msg;
 };
 
 struct ipa_client_conn *ipa_client_conn_create(void *ctx, struct e1inp_ts *ts, int priv_nr, const char *addr, uint16_t port, void (*updown)(struct ipa_client_conn *link, int), int (*read_cb)(struct ipa_client_conn *link, struct msgb *msgb), int (*write_cb)(struct ipa_client_conn *link), void *data);
@@ -64,6 +66,7 @@ void ipa_client_conn_close(struct ipa_client_conn *link);
 void ipa_client_conn_send(struct ipa_client_conn *link, struct msgb *msg);
 
 int ipa_msg_recv(int fd, struct msgb **rmsg);
+int ipa_msg_recv_buffered(int fd, struct msgb **rmsg, struct msgb **tmp_msg);
 
 int ipaccess_rcvmsg_base(struct msgb *msg, struct osmo_fd *bfd);
 

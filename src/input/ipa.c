@@ -49,49 +49,129 @@ void ipa_msg_push_header(struct msgb *msg, uint8_t proto)
 
 int ipa_msg_recv(int fd, struct msgb **rmsg)
 {
-	struct msgb *msg;
+	int rc = ipa_msg_recv_buffered(fd, rmsg, NULL);
+	if (rc < 0) {
+		errno = -rc;
+		rc = -1;
+	}
+	return rc;
+}
+
+int ipa_msg_recv_buffered(int fd, struct msgb **rmsg, struct msgb **tmp_msg)
+{
+	struct msgb *msg = tmp_msg ? *tmp_msg : NULL;
 	struct ipaccess_head *hh;
 	int len, ret;
+	int needed;
 
-	msg = ipa_msg_alloc(0);
 	if (msg == NULL)
-		return -ENOMEM;
+		msg = ipa_msg_alloc(0);
 
-	/* first read our 3-byte header */
-	hh = (struct ipaccess_head *) msg->data;
-	ret = recv(fd, msg->data, sizeof(*hh), 0);
-	if (ret <= 0) {
-		msgb_free(msg);
-		return ret;
-	} else if (ret != sizeof(*hh)) {
-		LOGP(DLINP, LOGL_ERROR, "too small message received\n");
-		msgb_free(msg);
-		return -EIO;
+	if (msg == NULL) {
+		ret = -ENOMEM;
+		goto discard_msg;
 	}
-	msgb_put(msg, ret);
+
+	if (msg->l2h == NULL) {
+		/* first read our 3-byte header */
+		needed = sizeof(*hh) - msg->len;
+		ret = recv(fd, msg->tail, needed, 0);
+		if (ret == 0)
+		       goto discard_msg;
+
+		if (ret < 0) {
+			if (errno == EAGAIN || errno == EINTR)
+				ret = 0;
+			else {
+				ret = -errno;
+				goto discard_msg;
+			}
+		}
+
+		msgb_put(msg, ret);
+
+		if (ret < needed) {
+			if (msg->len == 0) {
+				ret = -EAGAIN;
+				goto discard_msg;
+			}
+
+			LOGP(DLINP, LOGL_INFO,
+			     "Received part of IPA message header (%d/%d)\n",
+			     msg->len, sizeof(*hh));
+			if (!tmp_msg) {
+				ret = -EIO;
+				goto discard_msg;
+			}
+			*tmp_msg = msg;
+			return -EAGAIN;
+		}
+
+		msg->l2h = msg->tail;
+	}
+
+	hh = (struct ipaccess_head *) msg->data;
 
 	/* then read the length as specified in header */
-	msg->l2h = msg->data + sizeof(*hh);
 	len = ntohs(hh->len);
 
 	if (len < 0 || IPA_ALLOC_SIZE < len + sizeof(*hh)) {
 		LOGP(DLINP, LOGL_ERROR, "bad message length of %d bytes, "
-					"received %d bytes\n", len, ret);
-		msgb_free(msg);
-		return -EIO;
+					"received %d bytes\n", len, msg->len);
+		ret = -EIO;
+		goto discard_msg;
 	}
 
-	ret = recv(fd, msg->l2h, len, 0);
-	if (ret <= 0) {
-		msgb_free(msg);
-		return ret;
-	} else if (ret < len) {
-		LOGP(DLINP, LOGL_ERROR, "truncated message received\n");
-		msgb_free(msg);
-		return -EIO;
+	needed = len - msgb_l2len(msg);
+
+	if (needed > 0) {
+		ret = recv(fd, msg->tail, needed, 0);
+
+		if (ret == 0)
+			goto discard_msg;
+
+		if (ret < 0) {
+			if (errno == EAGAIN || errno == EINTR)
+				ret = 0;
+			else {
+				ret = -errno;
+				goto discard_msg;
+			}
+		}
+
+		msgb_put(msg, ret);
+
+		if (ret < needed) {
+			LOGP(DLINP, LOGL_INFO,
+			     "Received part of IPA message L2 data (%d/%d)\n",
+			    msgb_l2len(msg), len);
+			if (!tmp_msg) {
+				ret = -EIO;
+				goto discard_msg;
+			}
+			*tmp_msg = msg;
+			return -EAGAIN;
+		}
 	}
-	msgb_put(msg, ret);
+
+	ret = msgb_l2len(msg);
+
+	if (ret == 0) {
+		LOGP(DLINP, LOGL_INFO,
+		     "Discarding IPA message without payload\n");
+		ret = -EAGAIN;
+		goto discard_msg;
+	}
+
+	if (tmp_msg)
+		*tmp_msg = NULL;
 	*rmsg = msg;
+	return ret;
+
+discard_msg:
+	if (tmp_msg)
+		*tmp_msg = NULL;
+	msgb_free(msg);
 	return ret;
 }
 
@@ -103,6 +183,8 @@ void ipa_client_conn_close(struct ipa_client_conn *link)
 		close(link->ofd->fd);
 		link->ofd->fd = -1;
 	}
+	msgb_free(link->pending_msg);
+	link->pending_msg = NULL;
 }
 
 static void ipa_client_read(struct ipa_client_conn *link)
@@ -113,11 +195,12 @@ static void ipa_client_read(struct ipa_client_conn *link)
 
 	LOGP(DLINP, LOGL_DEBUG, "message received\n");
 
-	ret = ipa_msg_recv(ofd->fd, &msg);
+	ret = ipa_msg_recv_buffered(ofd->fd, &msg, &link->pending_msg);
 	if (ret < 0) {
-		if (errno == EPIPE || errno == ECONNRESET) {
+		if (ret == -EAGAIN)
+			return;
+		if (ret == -EPIPE || ret == -ECONNRESET)
 			LOGP(DLINP, LOGL_ERROR, "lost connection with server\n");
-		}
 		ipa_client_conn_close(link);
 		if (link->updown_cb)
 			link->updown_cb(link, 0);
@@ -382,11 +465,12 @@ static void ipa_server_conn_read(struct ipa_server_conn *conn)
 
 	LOGP(DLINP, LOGL_DEBUG, "message received\n");
 
-	ret = ipa_msg_recv(ofd->fd, &msg);
+	ret = ipa_msg_recv_buffered(ofd->fd, &msg, &conn->pending_msg);
 	if (ret < 0) {
-		if (errno == EPIPE || errno == ECONNRESET) {
+		if (ret == -EAGAIN)
+			return;
+		if (ret == -EPIPE || ret == -ECONNRESET)
 			LOGP(DLINP, LOGL_ERROR, "lost connection with server\n");
-		}
 		ipa_server_conn_destroy(conn);
 		return;
 	} else if (ret == 0) {
@@ -471,6 +555,7 @@ ipa_server_conn_create(void *ctx, struct ipa_server_link *link, int fd,
 void ipa_server_conn_destroy(struct ipa_server_conn *conn)
 {
 	close(conn->ofd.fd);
+	msgb_free(conn->pending_msg);
 	osmo_fd_unregister(&conn->ofd);
 	if (conn->closed_cb)
 		conn->closed_cb(conn);
