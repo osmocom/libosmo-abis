@@ -70,4 +70,8 @@ int ipa_msg_recv_buffered(int fd, struct msgb **rmsg, struct msgb **tmp_msg);
 
 int ipaccess_rcvmsg_base(struct msgb *msg, struct osmo_fd *bfd);
 
+void ipaccess_prepend_header(struct msgb *msg, int proto);
+void ipaccess_prepend_header_ext(struct msgb *msg, int proto);
+
+
 #endif
