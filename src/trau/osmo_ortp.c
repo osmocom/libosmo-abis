@@ -339,6 +339,7 @@ struct osmo_rtp_socket *osmo_rtp_socket_create(void *talloc_ctx, unsigned int fl
 
 	/* initialize according to the RFC */
 	rtp_session_set_seq_number(rs->sess, random());
+	rs->tx_timestamp = random();
 	
 
 	return rs;
