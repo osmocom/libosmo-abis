@@ -64,8 +64,10 @@ int ipa_msg_recv_buffered(int fd, struct msgb **rmsg, struct msgb **tmp_msg)
 	int len, ret;
 	int needed;
 
-	if (msg == NULL)
+	if (msg == NULL) {
 		msg = ipa_msg_alloc(0);
+		msg->l1h = msg->tail;
+	}
 
 	if (msg == NULL) {
 		ret = -ENOMEM;
