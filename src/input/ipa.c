@@ -353,6 +353,7 @@ int ipa_client_conn_open(struct ipa_client_conn *link)
 {
 	int ret;
 
+	link->state = IPA_CLIENT_LINK_STATE_CONNECTING;
 	ret = osmo_sock_init(AF_INET, SOCK_STREAM, IPPROTO_TCP,
 			     link->addr, link->port,
 			     OSMO_SOCK_F_CONNECT|OSMO_SOCK_F_NONBLOCK);
