@@ -880,11 +880,12 @@ static void ipaccess_bts_updown_cb(struct ipa_client_conn *link, int up)
 		line->ops->sign_link_down(line);
 }
 
-static int ipaccess_bts_read_cb(struct ipa_client_conn *link, struct msgb *msg)
+/* handle incoming message to BTS, check if it is an IPA CCM, and if yes,
+ * handle it accordingly (PING/PONG/ID_REQ/ID_RESP/ID_ACK) */
+int ipaccess_bts_handle_ccm(struct ipa_client_conn *link,
+			    struct ipaccess_unit *dev, struct msgb *msg)
 {
 	struct ipaccess_head *hh = (struct ipaccess_head *) msg->data;
-	struct e1inp_ts *e1i_ts = NULL;
-	struct e1inp_sign_link *sign_link;
 	struct msgb *rmsg;
 	int ret = 0;
 
@@ -899,20 +900,11 @@ static int ipaccess_bts_read_cb(struct ipa_client_conn *link, struct msgb *msg)
 
 		/* this is a request for identification from the BSC. */
 		if (msg_type == IPAC_MSGT_ID_GET) {
-			struct e1inp_sign_link *sign_link;
 			uint8_t *data = msgb_l2(msg);
 			int len = msgb_l2len(msg);
 
 			LOGP(DLINP, LOGL_NOTICE, "received ID get\n");
-			if (!link->line->ops->sign_link_up) {
-				LOGP(DLINP, LOGL_ERROR,
-					"Unable to set signal link, "
-					"closing socket.\n");
-				ret = -EINVAL;
-				goto err;
-			}
-			rmsg = ipa_bts_id_resp(link->line->ops->cfg.ipa.dev,
-						data + 1, len - 1);
+			rmsg = ipa_bts_id_resp(dev, data + 1, len - 1);
 			ret = ipaccess_send(link->ofd->fd, rmsg->data,
 						rmsg->len);
 			if (ret != rmsg->len) {
@@ -932,7 +924,51 @@ static int ipaccess_bts_read_cb(struct ipa_client_conn *link, struct msgb *msg)
 				goto err_rmsg;
 			}
 			msgb_free(rmsg);
+		}
+		return 1;
+	}
 
+	return 0;
+
+err_rmsg:
+	msgb_free(rmsg);
+err:
+	ipa_client_conn_close(link);
+	return -1;
+}
+
+static int ipaccess_bts_read_cb(struct ipa_client_conn *link, struct msgb *msg)
+{
+	struct ipaccess_head *hh = (struct ipaccess_head *) msg->data;
+	struct e1inp_ts *e1i_ts = NULL;
+	struct e1inp_sign_link *sign_link;
+	int ret = 0;
+
+	/* special handling for IPA CCM. */
+	if (hh->proto == IPAC_PROTO_IPACCESS) {
+		uint8_t msg_type = *(msg->l2h);
+
+		/* this is a request for identification from the BSC. */
+		if (msg_type == IPAC_MSGT_ID_GET) {
+			if (!link->line->ops->sign_link_up) {
+				LOGP(DLINP, LOGL_ERROR,
+					"Unable to set signal link, "
+					"closing socket.\n");
+				ret = -EINVAL;
+				goto err;
+			}
+		}
+	}
+
+	/* core CCM handling */
+	ret = ipaccess_bts_handle_ccm(link, link->line->ops->cfg.ipa.dev, msg);
+	if (ret < 0)
+		goto err;
+
+	if (ret == 1 && hh->proto == IPAC_PROTO_IPACCESS) {
+		uint8_t msg_type = *(msg->l2h);
+
+		if (msg_type == IPAC_MSGT_ID_GET) {
 			sign_link = link->line->ops->sign_link_up(msg,
 					link->line,
 					link->ofd->priv_nr);
@@ -973,12 +1009,8 @@ static int ipaccess_bts_read_cb(struct ipa_client_conn *link, struct msgb *msg)
 	link->line->ops->sign_link(msg);
 	return 0;
 
-err_rmsg:
-	msgb_free(rmsg);
 err:
-	osmo_fd_unregister(link->ofd);
-	close(link->ofd->fd);
-	link->ofd->fd = -1;
+	ipa_client_conn_close(link);
 	msgb_free(msg);
 	return ret;
 }
