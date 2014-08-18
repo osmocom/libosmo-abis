@@ -763,10 +763,11 @@ static int ipaccess_bts_read_cb(struct ipa_client_conn *link, struct msgb *msg)
 		}
 		msgb_free(msg);
 		return ret;
-	} else if (link->port == IPA_TCP_PORT_OML)
-		e1i_ts = &link->line->ts[0];
-	else if (link->port == IPA_TCP_PORT_RSL)
-		e1i_ts = &link->line->ts[1];
+	} else if (hh->proto == IPAC_PROTO_OML ||
+		   hh->proto == IPAC_PROTO_OSMO)
+		e1i_ts = &link->line->ts[E1INP_SIGN_OML-1];
+	else if (hh->proto == IPAC_PROTO_RSL)
+		e1i_ts = &link->line->ts[E1INP_SIGN_RSL-1];
 
 	OSMO_ASSERT(e1i_ts != NULL);
 
@@ -827,7 +828,8 @@ static int ipaccess_line_update(struct e1inp_line *line)
 		LOGP(DLINP, LOGL_NOTICE, "enabling ipaccess BSC mode\n");
 
 		oml_link = ipa_server_link_create(tall_ipa_ctx, line,
-					          "0.0.0.0", IPA_TCP_PORT_OML,
+					          line->ops->cfg.ipa.addr,
+						  line->ops->cfg.ipa.oml_port,
 						  ipaccess_bsc_oml_cb, NULL);
 		if (oml_link == NULL) {
 			LOGP(DLINP, LOGL_ERROR, "cannot create OML "
@@ -841,7 +843,8 @@ static int ipaccess_line_update(struct e1inp_line *line)
 			return -EIO;
 		}
 		rsl_link = ipa_server_link_create(tall_ipa_ctx, line,
-						  "0.0.0.0", IPA_TCP_PORT_RSL,
+						  line->ops->cfg.ipa.addr,
+						  line->ops->cfg.ipa.rsl_port,
 						  ipaccess_bsc_rsl_cb, NULL);
 		if (rsl_link == NULL) {
 			LOGP(DLINP, LOGL_ERROR, "cannot create RSL "
@@ -866,7 +869,7 @@ static int ipaccess_line_update(struct e1inp_line *line)
 					      &line->ts[E1INP_SIGN_OML-1],
 					      E1INP_SIGN_OML,
 					      line->ops->cfg.ipa.addr,
-					      IPA_TCP_PORT_OML,
+					      line->ops->cfg.ipa.oml_port,
 					      ipaccess_bts_updown_cb,
 					      ipaccess_bts_read_cb,
 					      ipaccess_bts_write_cb,

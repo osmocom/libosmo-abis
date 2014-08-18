@@ -146,6 +146,8 @@ struct e1inp_line_ops {
 		struct {
 			enum e1inp_line_role role;	/* BSC or BTS mode. */
 			const char *addr;		/* IP address .*/
+			uint16_t oml_port;		/* Port number */
+			uint16_t rsl_port;		/* Port number */
 			void *dev;			/* device parameters. */
 		} ipa;
 		struct {
