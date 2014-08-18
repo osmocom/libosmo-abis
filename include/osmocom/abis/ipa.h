@@ -92,4 +92,8 @@ void ipaccess_prepend_header_ext(struct msgb *msg, int proto);
 
 void ipa_msg_push_header(struct msgb *msg, uint8_t proto);
 
+int ipaccess_idtag_parse(struct tlv_parsed *dec, unsigned char *buf, int len);
+int ipaccess_send_id_req(int fd);
+int ipaccess_parse_unitid(const char *str, struct ipaccess_unit *unit_data);
+
 #endif
