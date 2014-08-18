@@ -16,7 +16,6 @@ void e1inp_init(void);
 /* ipaccess.c requires these functions defined here */
 struct msgb;
 struct msgb *ipa_msg_alloc(int headroom);
-void ipa_msg_push_header(struct msgb *msg, uint8_t proto);
 
 /*
  * helper for internal drivers, not public

@@ -87,5 +87,6 @@ int ipaccess_rcvmsg_base(struct msgb *msg, struct osmo_fd *bfd);
 void ipaccess_prepend_header(struct msgb *msg, int proto);
 void ipaccess_prepend_header_ext(struct msgb *msg, int proto);
 
+void ipa_msg_push_header(struct msgb *msg, uint8_t proto);
 
 #endif
