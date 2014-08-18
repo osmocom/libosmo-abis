@@ -39,6 +39,7 @@
 #include <osmocom/core/select.h>
 #include <osmocom/gsm/tlv.h>
 #include <osmocom/core/msgb.h>
+#include <osmocom/core/macaddr.h>
 #include <osmocom/core/logging.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/abis/e1_input.h>
@@ -161,6 +162,50 @@ int ipaccess_parse_unitid(const char *str, struct ipaccess_unit *unit_data)
 	unit_data->trx_id = ul & 0xffff;
 
 	return 0;
+}
+
+int ipaccess_tlv_to_unitdata(struct ipaccess_unit *ud,
+			     const struct tlv_parsed *tp)
+{
+	int rc = 0;
+
+	if (TLVP_PRES_LEN(tp, IPAC_IDTAG_SERNR, 1))
+		ud->serno = talloc_strdup(ud, (char *)
+					TLVP_VAL(tp, IPAC_IDTAG_SERNR));
+
+	if (TLVP_PRES_LEN(tp, IPAC_IDTAG_UNITNAME, 1))
+		ud->unit_name = talloc_strdup(ud, (char *)
+					TLVP_VAL(tp, IPAC_IDTAG_UNITNAME));
+
+	if (TLVP_PRES_LEN(tp, IPAC_IDTAG_LOCATION1, 1))
+		ud->location1 = talloc_strdup(ud, (char *)
+					TLVP_VAL(tp, IPAC_IDTAG_LOCATION1));
+
+	if (TLVP_PRES_LEN(tp, IPAC_IDTAG_LOCATION2, 1))
+		ud->location2 = talloc_strdup(ud, (char *)
+					TLVP_VAL(tp, IPAC_IDTAG_LOCATION2));
+
+	if (TLVP_PRES_LEN(tp, IPAC_IDTAG_EQUIPVERS, 1))
+		ud->equipvers = talloc_strdup(ud, (char *)
+					TLVP_VAL(tp, IPAC_IDTAG_EQUIPVERS));
+
+	if (TLVP_PRES_LEN(tp, IPAC_IDTAG_SWVERSION, 1))
+		ud->swversion = talloc_strdup(ud, (char *)
+					TLVP_VAL(tp, IPAC_IDTAG_SWVERSION));
+
+	if (TLVP_PRES_LEN(tp, IPAC_IDTAG_MACADDR, 17)) {
+		rc = osmo_macaddr_parse(ud->mac_addr, (char *)
+					TLVP_VAL(tp, IPAC_IDTAG_MACADDR));
+		if (rc < 0)
+			goto out;
+	}
+
+	if (TLVP_PRES_LEN(tp, IPAC_IDTAG_UNIT, 1))
+		rc = ipaccess_parse_unitid((char *)
+					TLVP_VAL(tp, IPAC_IDTAG_UNIT), ud);
+
+out:
+	return rc;
 }
 
 static int ipaccess_send(int fd, const void *msg, size_t msglen)
