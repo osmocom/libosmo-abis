@@ -205,6 +205,7 @@ static const char *sign_types[] = {
 	[E1INP_SIGN_NONE]	= "None",
 	[E1INP_SIGN_OML]	= "OML",
 	[E1INP_SIGN_RSL]	= "RSL",
+	[E1INP_SIGN_OSMO]	= "OSMO",
 };
 const char *e1inp_signtype_name(enum e1inp_sign_type tp)
 {

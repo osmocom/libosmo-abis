@@ -588,8 +588,8 @@ static int __handle_ts1_write(struct osmo_fd *bfd, struct e1inp_line *line)
 
 	switch (sign_link->type) {
 	case E1INP_SIGN_OML:
-		break;
 	case E1INP_SIGN_RSL:
+	case E1INP_SIGN_OSMO:
 		break;
 	default:
 		bfd->when |= BSC_FD_WRITE; /* come back for more msg */

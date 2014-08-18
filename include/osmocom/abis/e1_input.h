@@ -18,6 +18,7 @@ enum e1inp_sign_type {
 	E1INP_SIGN_NONE,
 	E1INP_SIGN_OML,
 	E1INP_SIGN_RSL,
+	E1INP_SIGN_OSMO,	/* IPA CCM OSMO sub-type */
 };
 const char *e1inp_signtype_name(enum e1inp_sign_type tp);
 
