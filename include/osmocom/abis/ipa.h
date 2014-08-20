@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/timer.h>
-#include <osmocom/abis/ipaccess.h>
+#include <osmocom/gsm/ipa.h>
 
 struct ipa_server_link {
 	struct e1inp_line		*line;
@@ -80,22 +80,9 @@ void ipa_client_conn_close(struct ipa_client_conn *link);
 
 void ipa_client_conn_send(struct ipa_client_conn *link, struct msgb *msg);
 
-int ipa_msg_recv(int fd, struct msgb **rmsg);
-int ipa_msg_recv_buffered(int fd, struct msgb **rmsg, struct msgb **tmp_msg);
-
-int ipaccess_rcvmsg_base(struct msgb *msg, struct osmo_fd *bfd);
 int ipaccess_bts_handle_ccm(struct ipa_client_conn *link,
 			    struct ipaccess_unit *dev, struct msgb *msg);
 
-void ipaccess_prepend_header(struct msgb *msg, int proto);
-void ipaccess_prepend_header_ext(struct msgb *msg, int proto);
-
 void ipa_msg_push_header(struct msgb *msg, uint8_t proto);
-
-int ipaccess_idtag_parse(struct tlv_parsed *dec, unsigned char *buf, int len);
-int ipaccess_send_id_req(int fd);
-int ipaccess_parse_unitid(const char *str, struct ipaccess_unit *unit_data);
-int ipaccess_tlv_to_unitdata(struct ipaccess_unit *ud,
-			     const struct tlv_parsed *tp);
 
 #endif

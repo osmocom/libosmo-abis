@@ -9,6 +9,7 @@
 #include <osmocom/core/application.h>
 #include <osmocom/abis/ipaccess.h>
 #include <osmocom/gsm/protocol/gsm_12_21.h>
+#include <osmocom/gsm/ipa.h>
 
 static void *tall_test;
 static struct e1inp_sign_link *oml_sign_link, *rsl_sign_link;

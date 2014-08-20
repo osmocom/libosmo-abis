@@ -47,6 +47,7 @@
 #include <osmocom/core/socket.h>
 #include <osmocom/abis/ipa.h>
 #include <osmocom/core/backtrace.h>
+#include <osmocom/gsm/ipa.h>
 
 static void *tall_ipa_ctx;
 
@@ -55,250 +56,6 @@ static void *tall_ipa_ctx;
 #define DEFAULT_TCP_KEEPALIVE_IDLE_TIMEOUT 30
 #define DEFAULT_TCP_KEEPALIVE_INTERVAL     3
 #define DEFAULT_TCP_KEEPALIVE_RETRY_COUNT  10
-
-/*
- * Common propietary IPA messages:
- *      - PONG: in reply to PING.
- *      - ID_REQUEST: first messages once OML has been established.
- *      - ID_ACK: in reply to ID_ACK.
- */
-static const uint8_t ipa_pong_msg[] = {
-	0, 1, IPAC_PROTO_IPACCESS, IPAC_MSGT_PONG
-};
-
-static const uint8_t ipa_id_ack_msg[] = {
-	0, 1, IPAC_PROTO_IPACCESS, IPAC_MSGT_ID_ACK
-};
-
-static const uint8_t ipa_id_req_msg[] = {
-	0, 17, IPAC_PROTO_IPACCESS, IPAC_MSGT_ID_GET,
-	0x01, IPAC_IDTAG_UNIT,
-	0x01, IPAC_IDTAG_MACADDR,
-	0x01, IPAC_IDTAG_LOCATION1,
-	0x01, IPAC_IDTAG_LOCATION2,
-	0x01, IPAC_IDTAG_EQUIPVERS,
-	0x01, IPAC_IDTAG_SWVERSION,
-	0x01, IPAC_IDTAG_UNITNAME,
-	0x01, IPAC_IDTAG_SERNR,
-};
-
-static const char *idtag_names[] = {
-	[IPAC_IDTAG_SERNR]	= "Serial_Number",
-	[IPAC_IDTAG_UNITNAME]	= "Unit_Name",
-	[IPAC_IDTAG_LOCATION1]	= "Location_1",
-	[IPAC_IDTAG_LOCATION2]	= "Location_2",
-	[IPAC_IDTAG_EQUIPVERS]	= "Equipment_Version",
-	[IPAC_IDTAG_SWVERSION]	= "Software_Version",
-	[IPAC_IDTAG_IPADDR]	= "IP_Address",
-	[IPAC_IDTAG_MACADDR]	= "MAC_Address",
-	[IPAC_IDTAG_UNIT]	= "Unit_ID",
-};
-
-const char *ipaccess_idtag_name(uint8_t tag)
-{
-	if (tag >= ARRAY_SIZE(idtag_names))
-		return "unknown";
-
-	return idtag_names[tag];
-}
-
-int ipaccess_idtag_parse(struct tlv_parsed *dec, unsigned char *buf, int len)
-{
-	uint8_t t_len;
-	uint8_t t_tag;
-	uint8_t *cur = buf;
-
-	memset(dec, 0, sizeof(*dec));
-
-	while (len >= 2) {
-		len -= 2;
-		t_len = *cur++;
-		t_tag = *cur++;
-
-		if (t_len > len + 1) {
-			LOGP(DLMI, LOGL_ERROR, "The tag does not fit: %d\n", t_len);
-			return -EINVAL;
-		}
-
-		DEBUGPC(DLMI, "%s='%s' ", ipaccess_idtag_name(t_tag), cur);
-
-		dec->lv[t_tag].len = t_len;
-		dec->lv[t_tag].val = cur;
-
-		cur += t_len;
-		len -= t_len;
-	}
-	return 0;
-}
-
-int ipaccess_parse_unitid(const char *str, struct ipaccess_unit *unit_data)
-{
-	unsigned long ul;
-	char *endptr;
-	const char *nptr;
-
-	nptr = str;
-	ul = strtoul(nptr, &endptr, 10);
-	if (endptr <= nptr)
-		return -EINVAL;
-	unit_data->site_id = ul & 0xffff;
-
-	if (*endptr++ != '/')
-		return -EINVAL;
-
-	nptr = endptr;
-	ul = strtoul(nptr, &endptr, 10);
-	if (endptr <= nptr)
-		return -EINVAL;
-	unit_data->bts_id = ul & 0xffff;
-
-	if (*endptr++ != '/')
-		return -EINVAL;
-
-	nptr = endptr;
-	ul = strtoul(nptr, &endptr, 10);
-	if (endptr <= nptr)
-		return -EINVAL;
-	unit_data->trx_id = ul & 0xffff;
-
-	return 0;
-}
-
-int ipaccess_tlv_to_unitdata(struct ipaccess_unit *ud,
-			     const struct tlv_parsed *tp)
-{
-	int rc = 0;
-
-	if (TLVP_PRES_LEN(tp, IPAC_IDTAG_SERNR, 1))
-		ud->serno = talloc_strdup(ud, (char *)
-					TLVP_VAL(tp, IPAC_IDTAG_SERNR));
-
-	if (TLVP_PRES_LEN(tp, IPAC_IDTAG_UNITNAME, 1))
-		ud->unit_name = talloc_strdup(ud, (char *)
-					TLVP_VAL(tp, IPAC_IDTAG_UNITNAME));
-
-	if (TLVP_PRES_LEN(tp, IPAC_IDTAG_LOCATION1, 1))
-		ud->location1 = talloc_strdup(ud, (char *)
-					TLVP_VAL(tp, IPAC_IDTAG_LOCATION1));
-
-	if (TLVP_PRES_LEN(tp, IPAC_IDTAG_LOCATION2, 1))
-		ud->location2 = talloc_strdup(ud, (char *)
-					TLVP_VAL(tp, IPAC_IDTAG_LOCATION2));
-
-	if (TLVP_PRES_LEN(tp, IPAC_IDTAG_EQUIPVERS, 1))
-		ud->equipvers = talloc_strdup(ud, (char *)
-					TLVP_VAL(tp, IPAC_IDTAG_EQUIPVERS));
-
-	if (TLVP_PRES_LEN(tp, IPAC_IDTAG_SWVERSION, 1))
-		ud->swversion = talloc_strdup(ud, (char *)
-					TLVP_VAL(tp, IPAC_IDTAG_SWVERSION));
-
-	if (TLVP_PRES_LEN(tp, IPAC_IDTAG_MACADDR, 17)) {
-		rc = osmo_macaddr_parse(ud->mac_addr, (char *)
-					TLVP_VAL(tp, IPAC_IDTAG_MACADDR));
-		if (rc < 0)
-			goto out;
-	}
-
-	if (TLVP_PRES_LEN(tp, IPAC_IDTAG_UNIT, 1))
-		rc = ipaccess_parse_unitid((char *)
-					TLVP_VAL(tp, IPAC_IDTAG_UNIT), ud);
-
-out:
-	return rc;
-}
-
-static int ipaccess_send(int fd, const void *msg, size_t msglen)
-{
-	int ret;
-
-	ret = write(fd, msg, msglen);
-	if (ret < 0)
-		return ret;
-	if (ret < msglen) {
-		LOGP(DLINP, LOGL_ERROR, "ipaccess_send: short write\n");
-		return -EIO;
-	}
-	return ret;
-}
-
-int ipaccess_send_pong(int fd)
-{
-	return ipaccess_send(fd, ipa_pong_msg, sizeof(ipa_pong_msg));
-}
-
-int ipaccess_send_id_ack(int fd)
-{
-	return ipaccess_send(fd, ipa_id_ack_msg, sizeof(ipa_id_ack_msg));
-}
-
-int ipaccess_send_id_req(int fd)
-{
-	return ipaccess_send(fd, ipa_id_req_msg, sizeof(ipa_id_req_msg));
-}
-
-/* base handling of the ip.access protocol */
-int ipaccess_rcvmsg_base(struct msgb *msg, struct osmo_fd *bfd)
-{
-	uint8_t msg_type = *(msg->l2h);
-	int ret;
-
-	switch (msg_type) {
-	case IPAC_MSGT_PING:
-		ret = ipaccess_send_pong(bfd->fd);
-		if (ret < 0) {
-			LOGP(DLINP, LOGL_ERROR, "Cannot send PING "
-			     "message. Reason: %s\n", strerror(errno));
-			break;
-		}
-		ret = 1;
-		break;
-	case IPAC_MSGT_PONG:
-		DEBUGP(DLMI, "PONG!\n");
-		ret = 1;
-		break;
-	case IPAC_MSGT_ID_ACK:
-		DEBUGP(DLMI, "ID_ACK? -> ACK!\n");
-		ret = ipaccess_send_id_ack(bfd->fd);
-		if (ret < 0) {
-			LOGP(DLINP, LOGL_ERROR, "Cannot send ID_ACK "
-			     "message. Reason: %s\n", strerror(errno));
-			break;
-		}
-		ret = 1;
-		break;
-	default:
-		/* This is not an IPA PING, PONG or ID_ACK message */
-		ret = 0;
-		break;
-	}
-	return ret;
-}
-
-/* base handling of the ip.access protocol */
-int ipaccess_rcvmsg_bts_base(struct msgb *msg,
-			     struct osmo_fd *bfd)
-{
-	uint8_t msg_type = *(msg->l2h);
-	int ret = 0;
-
-	switch (msg_type) {
-	case IPAC_MSGT_PING:
-		ret = ipaccess_send_pong(bfd->fd);
-		if (ret < 0) {
-			LOGP(DLINP, LOGL_ERROR, "Cannot send PONG "
-			     "message. Reason: %s\n", strerror(errno));
-		}
-		break;
-	case IPAC_MSGT_PONG:
-		DEBUGP(DLMI, "PONG!\n");
-		break;
-	case IPAC_MSGT_ID_ACK:
-		DEBUGP(DLMI, "ID_ACK\n");
-		break;
-	}
-	return ret;
-}
 
 static int ipaccess_drop(struct osmo_fd *bfd, struct e1inp_line *line)
 {
@@ -336,7 +93,7 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 	int len, ret;
 
 	/* Handle IPA PING, PONG and ID_ACK messages. */
-	ret = ipaccess_rcvmsg_base(msg, bfd);
+	ret = ipa_ccm_rcvmsg_base(msg, bfd);
 	switch(ret) {
 	case -1:
 		/* error in IPA control message handling */
@@ -349,7 +106,7 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 		break;
 	default:
 		LOGP(DLINP, LOGL_ERROR, "Unexpected return from "
-					"ipaccess_rcvmsg_base "
+					"ipa_ccm_rcvmsg_base "
 					"(ret=%d)\n", ret);
 		goto err;
 	}
@@ -358,7 +115,7 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 	case IPAC_MSGT_ID_RESP:
 		DEBUGP(DLMI, "ID_RESP\n");
 		/* parse tags, search for Unit ID */
-		ret = ipaccess_idtag_parse(&tlvp, (uint8_t *)msg->l2h + 2,
+		ret = ipa_ccm_idtag_parse(&tlvp, (uint8_t *)msg->l2h + 2,
 						msgb_l2len(msg)-2);
 		DEBUGP(DLMI, "\n");
 		if (ret < 0) {
@@ -383,7 +140,7 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 		}
 		unitid = (char *) TLVP_VAL(&tlvp, IPAC_IDTAG_UNIT);
 		unitid[len - 1] = '\0';
-		ipaccess_parse_unitid(unitid, &unit_data);
+		ipa_parse_unitid(unitid, &unit_data);
 
 		if (!line->ops->sign_link_up) {
 			LOGP(DLINP, LOGL_ERROR,
@@ -528,25 +285,6 @@ err:
 	return ret;
 }
 
-void ipaccess_prepend_header_ext(struct msgb *msg, int proto)
-{
-	struct ipaccess_head_ext *hh_ext;
-
-	/* prepend the osmo ip.access header extension */
-	hh_ext = (struct ipaccess_head_ext *) msgb_push(msg, sizeof(*hh_ext));
-	hh_ext->proto = proto;
-}
-
-void ipaccess_prepend_header(struct msgb *msg, int proto)
-{
-	struct ipaccess_head *hh;
-
-	/* prepend the ip.access header */
-	hh = (struct ipaccess_head *) msgb_push(msg, sizeof(*hh));
-	hh->len = htons(msg->len - sizeof(*hh));
-	hh->proto = proto;
-}
-
 static int ts_want_write(struct e1inp_ts *e1i_ts)
 {
 	e1i_ts->driver.ipaccess.fd.when |= BSC_FD_WRITE;
@@ -598,7 +336,7 @@ static int __handle_ts1_write(struct osmo_fd *bfd, struct e1inp_line *line)
 	}
 
 	msg->l2h = msg->data;
-	ipaccess_prepend_header(msg, sign_link->tei);
+	ipa_prepend_header(msg, sign_link->tei);
 
 	DEBUGP(DLMI, "TX %u: %s\n", ts_nr, osmo_hexdump(msg->l2h, msgb_l2len(msg)));
 
@@ -752,7 +490,7 @@ static int ipaccess_bsc_oml_cb(struct ipa_server_link *link, int fd)
 	update_fd_settings(line, bfd->fd);
 
 	/* Request ID. FIXME: request LOCATION, HW/SW VErsion, Unit Name, Serno */
-	ret = ipaccess_send_id_req(bfd->fd);
+	ret = ipa_ccm_send_id_req(bfd->fd);
 	if (ret < 0) {
 		LOGP(DLINP, LOGL_ERROR, "could not send ID REQ. Reason: %s\n",
 			strerror(errno));
@@ -805,7 +543,7 @@ static int ipaccess_bsc_rsl_cb(struct ipa_server_link *link, int fd)
 		goto err_line;
 	}
 	/* Request ID. FIXME: request LOCATION, HW/SW VErsion, Unit Name, Serno */
-	ret = ipaccess_send_id_req(bfd->fd);
+	ret = ipa_ccm_send_id_req(bfd->fd);
 	if (ret < 0) {
 		LOGP(DLINP, LOGL_ERROR, "could not send ID REQ. Reason: %s\n",
 			strerror(errno));
@@ -939,7 +677,7 @@ int ipaccess_bts_handle_ccm(struct ipa_client_conn *link,
 		uint8_t msg_type = *(msg->l2h);
 
 		/* ping, pong and acknowledgment cases. */
-		ret = ipaccess_rcvmsg_bts_base(msg, link->ofd);
+		ret = ipa_ccm_rcvmsg_bts_base(msg, link->ofd);
 		if (ret < 0)
 			goto err;
 
@@ -950,8 +688,7 @@ int ipaccess_bts_handle_ccm(struct ipa_client_conn *link,
 
 			LOGP(DLINP, LOGL_NOTICE, "received ID get\n");
 			rmsg = ipa_bts_id_resp(dev, data + 1, len - 1);
-			ret = ipaccess_send(link->ofd->fd, rmsg->data,
-						rmsg->len);
+			ret = ipa_send(link->ofd->fd, rmsg->data, rmsg->len);
 			if (ret != rmsg->len) {
 				LOGP(DLINP, LOGL_ERROR, "cannot send ID_RESP "
 				     "message. Reason: %s\n", strerror(errno));
@@ -961,8 +698,7 @@ int ipaccess_bts_handle_ccm(struct ipa_client_conn *link,
 
 			/* send ID_ACK. */
 			rmsg = ipa_bts_id_ack();
-			ret = ipaccess_send(link->ofd->fd, rmsg->data,
-						rmsg->len);
+			ret = ipa_send(link->ofd->fd, rmsg->data, rmsg->len);
 			if (ret != rmsg->len) {
 				LOGP(DLINP, LOGL_ERROR, "cannot send ID_ACK "
 				     "message. Reason: %s\n", strerror(errno));
