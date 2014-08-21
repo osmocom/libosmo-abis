@@ -160,7 +160,6 @@ static void write_pcap_packet(int direction, int sapi, int tei,
 	if (pcap_fd < 0)
 		return;
 
-	int ret;
 	time_t cur_time;
 	struct tm *tm;
 
@@ -195,10 +194,10 @@ static void write_pcap_packet(int direction, int sapi, int tei,
 	tm = localtime(&cur_time);
 	payload_header.ts_sec = mktime(tm);
 
-	ret = write(pcap_fd, &payload_header, sizeof(payload_header));
-	ret = write(pcap_fd, &header, sizeof(header));
-	ret = write(pcap_fd, &lapd_header, sizeof(lapd_header));
-	ret = write(pcap_fd, msg->l2h, msgb_l2len(msg));
+	write(pcap_fd, &payload_header, sizeof(payload_header));
+	write(pcap_fd, &header, sizeof(header));
+	write(pcap_fd, &lapd_header, sizeof(lapd_header));
+	write(pcap_fd, msg->l2h, msgb_l2len(msg));
 }
 
 static const char *sign_types[] = {
