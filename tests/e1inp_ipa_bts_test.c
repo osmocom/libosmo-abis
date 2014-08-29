@@ -71,7 +71,7 @@ sign_link_up(void *unit, struct e1inp_line *line, enum e1inp_sign_type type)
 			/* Now we can send OML messages to the BSC. */
 			bts_state = BTS_TEST_OML_SIGN_LINK_UP;
 		}
-		e1inp_ipa_bts_rsl_connect(line, "127.0.0.1", IPA_TCP_PORT_RSL, 0);
+		e1inp_ipa_bts_rsl_connect_n(line, "127.0.0.1", IPA_TCP_PORT_RSL, 0);
 		break;
 	case E1INP_SIGN_RSL:
 		LOGP(DBTSTEST, LOGL_NOTICE, "RSL link up request received.\n");
