@@ -1,1 +1,2 @@
 #library	what		description / commit summary line
+libosmoabis    abi-change      Support for multiple RSL connections with ABIS/ipaccess (BTS side)
