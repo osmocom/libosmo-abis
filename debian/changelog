@@ -1,8 +1,14 @@
-libosmo-abis (0.2.0) UNRELEASED; urgency=medium
+libosmo-abis (0.3.0) unstable; urgency=medium
 
   * New upstream release of libosmo-abis
 
- -- Holger Hans Peter Freyther <holger@freyther.de>  Mon, 31 Mar 2014 15:47:32 +0200
+ -- Holger Hans Peter Freyther <holger@freyther.de>  Mon, 08 Sep 2014 07:29:39 +0200
+
+libosmo-abis (0.2.0) unstable; urgency=medium
+
+  * New upstream release of libosmo-abis
+
+ -- Holger Hans Peter Freyther <holger@freyther.de>  Mon, 08 Sep 2014 07:29:19 +0200
 
 libosmo-abis (0.1.6) unstable; urgency=medium
 
