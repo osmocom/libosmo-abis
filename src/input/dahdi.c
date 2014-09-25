@@ -22,7 +22,7 @@
  *
  */
 
-#include "../../config.h"
+#include "config.h"
 
 #ifdef HAVE_DAHDI_USER_H
 
