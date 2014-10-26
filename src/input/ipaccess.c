@@ -915,12 +915,6 @@ int e1inp_ipa_bts_rsl_connect_n(struct e1inp_line *line,
 			"trx_nr (%d) out of range\n", trx_nr);
 		return -EINVAL;
 	}
-	if (line->ts[E1INP_SIGN_RSL+trx_nr-1].type != E1INP_TS_TYPE_SIGN) {
-		LOGP(DLINP, LOGL_ERROR, "cannot create RSL BTS link: "
-			"trx_nr (%d) does not refer to a signalling link\n",
-			trx_nr);
-		return -EINVAL;
-	}
 
 	rsl_link = ipa_client_conn_create(tall_ipa_ctx,
 					  &line->ts[E1INP_SIGN_RSL+trx_nr-1],
