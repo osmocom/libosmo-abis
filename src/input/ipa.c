@@ -218,6 +218,7 @@ int ipa_client_conn_open(struct ipa_client_conn *link)
 			return ret;
 	}
 	link->ofd->fd = ret;
+	link->ofd->when |= BSC_FD_WRITE;
 	if (osmo_fd_register(link->ofd) < 0) {
 		close(ret);
 		link->ofd->fd = -1;
