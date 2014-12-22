@@ -4,7 +4,12 @@
 #include <stdint.h>
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/timer.h>
+#include <osmocom/core/select.h>
 #include <osmocom/gsm/ipa.h>
+
+struct e1inp_line;
+struct e1inp_ts;
+struct msgb;
 
 struct ipa_server_link {
 	struct e1inp_line		*line;
