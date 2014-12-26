@@ -631,6 +631,7 @@ static int _mi_e1_line_update(struct e1inp_line *line)
 	if (ret < 0) {
 		fprintf(stdout, "error getting info for device %d: %s\n",
 			line->port_nr, strerror(errno));
+		close(sk);
 		return -ENODEV;
 	}
 	fprintf(stdout, "        id:             %d\n", devinfo.id);
