@@ -234,6 +234,20 @@ void ipa_client_conn_send(struct ipa_client_conn *link, struct msgb *msg)
 	link->ofd->when |= BSC_FD_WRITE;
 }
 
+size_t ipa_client_conn_clear_queue(struct ipa_client_conn *link)
+{
+	size_t deleted = 0;
+
+	while (!llist_empty(&link->tx_queue)) {
+		struct msgb *msg = msgb_dequeue(&link->tx_queue);
+		msgb_free(msg);
+		deleted += 1;
+	}
+
+	link->ofd->when &= ~BSC_FD_WRITE;
+	return deleted;
+}
+
 static int ipa_server_fd_cb(struct osmo_fd *ofd, unsigned int what)
 {
 	int fd, ret;

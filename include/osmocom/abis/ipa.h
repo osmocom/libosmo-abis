@@ -84,6 +84,7 @@ int ipa_client_conn_open(struct ipa_client_conn *link);
 void ipa_client_conn_close(struct ipa_client_conn *link);
 
 void ipa_client_conn_send(struct ipa_client_conn *link, struct msgb *msg);
+size_t ipa_client_conn_clear_queue(struct ipa_client_conn *link);
 
 int ipaccess_bts_handle_ccm(struct ipa_client_conn *link,
 			    struct ipaccess_unit *dev, struct msgb *msg);
