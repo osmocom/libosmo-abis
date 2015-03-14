@@ -2,8 +2,8 @@ Source: libosmo-abis
 Section: libs
 Priority: optional
 Maintainer: Harald Welte <laforge@gnumonks.org>
-Build-Depends: debhelper (>= 7.0.50~), autotools-dev, autoconf, automake, libtool, dh-autoreconf, libdpkg-perl, git, libosmocore-dev (>= 0.6.4), pkg-config, libortp-dev
-Standards-Version: 3.9.0
+Build-Depends: debhelper (>= 9), autotools-dev, autoconf, automake, libtool, dh-autoreconf, libdpkg-perl, git, libosmocore-dev (>= 0.6.4), pkg-config, libortp-dev
+Standards-Version: 3.9.6
 Homepage: http://openbsc.osmocom.org/trac/wiki/libosmo-abis
 Vcs-Git: git://git.osmocom.org/libosmo-abis.git
 Vcs-Browser: http://git.osmocom.org/gitweb?p=libosmo-abis.git;a=summary
@@ -11,7 +11,8 @@ Vcs-Browser: http://git.osmocom.org/gitweb?p=libosmo-abis.git;a=summary
 Package: libosmo-abis
 Section: oldlibs
 Architecture: any
-Depends: libosmoabis4, libosmotrau0, ${misc:Depends}
+Depends: libosmoabis4 (= ${binary:Version}), libosmotrau0 (= ${binary:Version}), ${misc:Depends}
+Multi-Arch: same
 Description: Legacy package for libosmo-abis
  libosmo-abis is an empty package helping in the transition to one
  package per DSO.
@@ -20,18 +21,21 @@ Package: libosmoabis4
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
+Multi-Arch: same
 Description: GSM A-bis handling
 
 Package: libosmotrau0
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
+Multi-Arch: same
 Description: GSM trau handling
 
 Package: libosmo-abis-dev
 Section: libdevel
 Architecture: any
-Depends: ${misc:Depends}, libosmotrau0, libosmoabis4
+Depends: ${misc:Depends}, libosmotrau0 (= ${binary:Version}), libosmoabis4 (= ${binary:Version})
+Multi-Arch: same
 Description: Development headers for A-bis interface.
 
 Package: libosmo-abis-dbg
@@ -39,4 +43,5 @@ Section: debug
 Architecture: any
 Priority: extra
 Depends: libosmoabis4 (= ${binary:Version}), libosmotrau0 (= ${binary:Version}), ${misc:Depends}
+Multi-Arch: same
 Description: Debug symbols for A-bis interface.
