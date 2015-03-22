@@ -44,7 +44,6 @@ static inline void append_bit(struct demux_subch *sch, uint8_t bit)
 }
 
 #define SYNC_HDR_BITS	16
-static const uint8_t nullbytes[SYNC_HDR_BITS];
 
 /* check if we have just completed the 16 bit zero + 1 bit one sync
  * header, in accordance with GSM TS 08.60 Chapter 4.8.1 */
