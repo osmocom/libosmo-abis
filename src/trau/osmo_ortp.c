@@ -553,7 +553,6 @@ void osmo_rtp_socket_stats(struct osmo_rtp_socket *rs,
 		uint32_t *recv_lost, uint32_t *last_jitter)
 {
 	const rtp_stats_t *stats;
-	const jitter_stats_t *jitter;
 
 	*sent_packets = *sent_octets = *recv_packets = *recv_octets = 0;
 	*recv_lost = *last_jitter = 0;
@@ -568,7 +567,11 @@ void osmo_rtp_socket_stats(struct osmo_rtp_socket *rs,
 		*recv_lost = stats->cum_packet_loss;
 	}
 
+#if HAVE_ORTP_021
+	const jitter_stats_t *jitter;
+
 	jitter = rtp_session_get_jitter_stats(rs->sess);
 	if (jitter)
 		*last_jitter = jitter->jitter;
+#endif
 }
