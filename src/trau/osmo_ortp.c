@@ -546,3 +546,29 @@ void osmo_rtp_socket_log_stats(struct osmo_rtp_socket *rs,
 		stats->packet_recv, stats->hw_recv, stats->outoftime,
 		stats->cum_packet_loss, stats->discarded);
 }
+
+void osmo_rtp_socket_stats(struct osmo_rtp_socket *rs,
+		uint32_t *sent_packets, uint32_t *sent_octets,
+		uint32_t *recv_packets, uint32_t *recv_octets,
+		uint32_t *recv_lost, uint32_t *last_jitter)
+{
+	const rtp_stats_t *stats;
+	const jitter_stats_t *jitter;
+
+	*sent_packets = *sent_octets = *recv_packets = *recv_octets = 0;
+	*recv_lost = *last_jitter = 0;
+
+	stats = rtp_session_get_stats(rs->sess);
+	if (stats) {
+		/* truncate from 64bit to 32bit here */
+		*sent_packets = stats->packet_sent;
+		*sent_octets = stats->sent;
+		*recv_packets = stats->packet_recv;
+		*recv_octets = stats->recv;
+		*recv_lost = stats->cum_packet_loss;
+	}
+
+	jitter = rtp_session_get_jitter_stats(rs->sess);
+	if (jitter)
+		*last_jitter = jitter->jitter;
+}

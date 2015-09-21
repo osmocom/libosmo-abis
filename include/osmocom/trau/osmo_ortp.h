@@ -79,4 +79,10 @@ void osmo_rtp_socket_log_stats(struct osmo_rtp_socket *rs,
 				int subsys, int level,
 				const char *pfx);
 
+void osmo_rtp_socket_stats(struct osmo_rtp_socket *rs,
+				uint32_t *sent_packets, uint32_t *sent_octets,
+				uint32_t *recv_packets, uint32_t *recv_octets,
+				uint32_t *recv_lost, uint32_t *last_jitter);
+
+
 #endif /* _OSMO_ORTP_H */
