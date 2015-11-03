@@ -1,7 +1,7 @@
 # This is _NOT_ the library release version, it's an API version.
 # Please read Chapter 6 "Library interface versions" of the libtool documentation before making any modification
-ABIS_LIBVERSION=4:0:0
-TRAU_LIBVERSION=0:0:0
+ABIS_LIBVERSION=5:0:0
+TRAU_LIBVERSION=1:0:0
 
 AM_CPPFLAGS = $(all_includes) -I$(top_srcdir)/include -I$(top_builddir)
 AM_CFLAGS= -Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS) $(LIBOSMOVTY_CFLAGS) $(COVERAGE_CFLAGS)
