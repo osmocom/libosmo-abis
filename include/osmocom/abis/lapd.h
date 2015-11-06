@@ -50,6 +50,8 @@ enum lapd_recv_errors {
 	__LAPD_ERR_MAX
 };
 
+struct lapd_tei *lapd_tei_alloc(struct lapd_instance *li, uint8_t tei);
+
 int lapd_receive(struct lapd_instance *li, struct msgb *msg, int *error);
 
 void lapd_transmit(struct lapd_instance *li, uint8_t tei, uint8_t sapi,
