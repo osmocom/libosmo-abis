@@ -831,7 +831,8 @@ static int ipaccess_line_update(struct e1inp_line *line)
 		LOGP(DLINP, LOGL_NOTICE, "enabling ipaccess BSC mode\n");
 
 		oml_link = ipa_server_link_create(tall_ipa_ctx, line,
-					          "0.0.0.0", IPA_TCP_PORT_OML,
+						  e1inp_ipa_get_bind_addr(),
+						  IPA_TCP_PORT_OML,
 						  ipaccess_bsc_oml_cb, NULL);
 		if (oml_link == NULL) {
 			LOGP(DLINP, LOGL_ERROR, "cannot create OML "
@@ -845,7 +846,8 @@ static int ipaccess_line_update(struct e1inp_line *line)
 			return -EIO;
 		}
 		rsl_link = ipa_server_link_create(tall_ipa_ctx, line,
-						  "0.0.0.0", IPA_TCP_PORT_RSL,
+						  e1inp_ipa_get_bind_addr(),
+						  IPA_TCP_PORT_RSL,
 						  ipaccess_bsc_rsl_cb, NULL);
 		if (rsl_link == NULL) {
 			LOGP(DLINP, LOGL_ERROR, "cannot create RSL "
@@ -943,4 +945,21 @@ void e1inp_ipaccess_init(void)
 {
 	tall_ipa_ctx = talloc_named_const(libosmo_abis_ctx, 1, "ipa");
 	e1inp_driver_register(&ipaccess_driver);
+}
+
+void e1inp_ipa_set_bind_addr(const char *ip_bind_addr)
+{
+	talloc_free((char*)ipaccess_driver.bind_addr);
+	ipaccess_driver.bind_addr = NULL;
+
+	if (ip_bind_addr)
+		ipaccess_driver.bind_addr = talloc_strdup(tall_ipa_ctx,
+							  ip_bind_addr);
+}
+
+const char *e1inp_ipa_get_bind_addr(void)
+{
+	return ipaccess_driver.bind_addr?
+		ipaccess_driver.bind_addr
+		: "0.0.0.0";
 }

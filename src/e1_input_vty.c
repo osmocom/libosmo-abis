@@ -168,6 +168,17 @@ DEFUN(cfg_e1inp, cfg_e1inp_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_ipa_bind,
+      cfg_ipa_bind_cmd,
+      "ipa bind A.B.C.D",
+      "ipa driver config\n"
+      "Set ipa local bind address\n"
+      "Listen on this IP address (default 0.0.0.0)\n")
+{
+	e1inp_ipa_set_bind_addr(argv[0]);
+	return CMD_SUCCESS;
+}
+
 static int e1inp_config_write(struct vty *vty)
 {
 	struct e1inp_line *line;
@@ -202,6 +213,12 @@ static int e1inp_config_write(struct vty *vty)
 				VTY_NEWLINE);
 
 	}
+
+	const char *ipa_bind = e1inp_ipa_get_bind_addr();
+	if (ipa_bind && (strcmp(ipa_bind, "0.0.0.0") != 0))
+		vty_out(vty, " ipa bind %s%s",
+			ipa_bind, VTY_NEWLINE);
+
 	return CMD_SUCCESS;
 }
 
@@ -350,6 +367,8 @@ int e1inp_vty_init(void)
 	install_element(L_E1INP_NODE, &cfg_e1_line_keepalive_cmd);
 	install_element(L_E1INP_NODE, &cfg_e1_line_keepalive_params_cmd);
 	install_element(L_E1INP_NODE, &cfg_e1_line_no_keepalive_cmd);
+
+	install_element(L_E1INP_NODE, &cfg_ipa_bind_cmd);
 
 	install_element_ve(&show_e1drv_cmd);
 	install_element_ve(&show_e1line_cmd);

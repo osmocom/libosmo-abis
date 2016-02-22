@@ -13,6 +13,9 @@ extern void *libosmo_abis_ctx;
 /* use libosmo_abis_init, this is only for internal use. */
 void e1inp_init(void);
 
+void e1inp_ipa_set_bind_addr(const char *ip_bind_addr);
+const char *e1inp_ipa_get_bind_addr(void);
+
 /* ipaccess.c requires these functions defined here */
 struct msgb;
 struct msgb *ipa_msg_alloc(int headroom);

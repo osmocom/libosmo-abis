@@ -139,6 +139,7 @@ struct e1inp_driver {
 	void (*vty_show)(struct vty *vty, struct e1inp_line *line);
 	int default_delay;
 	int has_keepalive;
+	const char *bind_addr;
 };
 
 struct e1inp_line_ops {
