@@ -533,6 +533,19 @@ void osmo_rtp_socket_log_stats(struct osmo_rtp_socket *rs,
 				int subsys, int level,
 				const char *pfx)
 {
+	char jitter_stats_str[1024] = "";
+#if HAVE_ORTP_021
+	const jitter_stats_t *jitter;
+
+	jitter = rtp_session_get_jitter_stats(rs->sess);
+	if (jitter)
+		snprintf(jitter_stats_str, sizeof(jitter_stats_str),
+			" Rx jitter(last: %"PRIu32" ms max: %"PRIu32" ms "
+			"sum: %"PRIu64" ms mean jb size %.1f ms)",
+			jitter->jitter, jitter->max_jitter,
+			jitter->sum_jitter, jitter->jitter_buffer_size_ms);
+#endif
+
 	const rtp_stats_t *stats;
 
 	stats = rtp_session_get_stats(rs->sess);
@@ -541,10 +554,11 @@ void osmo_rtp_socket_log_stats(struct osmo_rtp_socket *rs,
 
 	LOGP(subsys, level, "%sRTP Tx(%"PRIu64" pkts, %"PRIu64" bytes) "
 		"Rx(%"PRIu64" pkts, %"PRIu64" bytes, %"PRIu64" late, "
-		"%"PRIu64" loss, %"PRIu64" qmax)\n",
+		"%"PRIu64" loss, %"PRIu64" qmax)%s\n",
 		pfx, stats->packet_sent, stats->sent,
 		stats->packet_recv, stats->hw_recv, stats->outoftime,
-		stats->cum_packet_loss, stats->discarded);
+		stats->cum_packet_loss, stats->discarded,
+		jitter_stats_str);
 }
 
 void osmo_rtp_socket_stats(struct osmo_rtp_socket *rs,
