@@ -35,6 +35,8 @@ struct ipa_server_conn {
 	struct osmo_fd			ofd;
 	struct llist_head		tx_queue;
 	int (*closed_cb)(struct ipa_server_conn *peer);
+	int (*ccm_cb)(struct ipa_server_conn *peer, struct msgb *msg,
+			struct tlv_parsed *tlvp, struct ipaccess_unit *ud);
 	int (*cb)(struct ipa_server_conn *peer, struct msgb *msg);
 	void				*data;
 	struct msgb			*pending_msg;
@@ -51,6 +53,7 @@ ipa_server_conn_create(void *ctx, struct ipa_server_link *link, int fd,
 void ipa_server_conn_destroy(struct ipa_server_conn *peer);
 
 void ipa_server_conn_send(struct ipa_server_conn *peer, struct msgb *msg);
+int ipa_server_conn_ccm(struct ipa_server_conn *conn, struct msgb *msg);
 
 enum ipa_client_conn_state {
 	IPA_CLIENT_LINK_STATE_NONE         = 0,

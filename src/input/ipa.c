@@ -434,6 +434,73 @@ ipa_server_conn_create(void *ctx, struct ipa_server_link *link, int fd,
 	return conn;
 }
 
+int ipa_server_conn_ccm(struct ipa_server_conn *conn, struct msgb *msg)
+{
+	struct tlv_parsed tlvp;
+	uint8_t msg_type = *(msg->l2h);
+	struct ipaccess_unit unit_data = {};
+	char *unitid;
+	int len, rc;
+
+	/* shared CCM handling on both server and client */
+	rc = ipa_ccm_rcvmsg_base(msg, &conn->ofd);
+	switch (rc) {
+	case -1:
+		/* error in IPA CCM processing */
+		goto err;
+	case 1:
+		/* IPA CCM message that was handled in _base */
+		return 0;
+	case 0:
+		/* IPA CCM message that we need to handle */
+		break;
+	default:
+		/* Error */
+		LOGP(DLINP, LOGL_ERROR, "Unexpected return from "
+		     "ipa_ccm_rcvmsg_base: %d\n", rc);
+		goto err;
+	}
+
+	switch (msg_type) {
+	case IPAC_MSGT_ID_RESP:
+		rc = ipa_ccm_idtag_parse(&tlvp, (uint8_t *)msg->l2h + 2,
+					 msgb_l2len(msg)-2);
+		if (rc < 0) {
+			LOGP(DLINP, LOGL_ERROR, "IPA CCM RESPonse with "
+				"malformed TLVs\n");
+			goto err;
+		}
+		if (!TLVP_PRESENT(&tlvp, IPAC_IDTAG_UNIT)) {
+			LOGP(DLINP, LOGL_ERROR, "IPA CCM RESP without "
+				"unit ID\n");
+			goto err;
+		}
+		len = TLVP_LEN(&tlvp, IPAC_IDTAG_UNIT);
+		if (len < 1) {
+			LOGP(DLINP, LOGL_ERROR, "IPA CCM RESP with short"
+				"unit ID\n");
+			goto err;
+		}
+		unitid = (char *) TLVP_VAL(&tlvp, IPAC_IDTAG_UNIT);
+		unitid[len-1] = '\0';
+		ipa_parse_unitid(unitid, &unit_data);
+
+		/* FIXME */
+		rc = conn->ccm_cb(conn, msg, &tlvp, &unit_data);
+		if (rc < 0)
+			goto err;
+		break;
+	default:
+		LOGP(DLINP, LOGL_ERROR, "Unknown IPA message type\n");
+		break;
+	}
+	return 0;
+err:
+	/* in case of any error, we close the connection */
+	ipa_server_conn_destroy(conn);
+	return -1;
+}
+
 void ipa_server_conn_destroy(struct ipa_server_conn *conn)
 {
 	close(conn->ofd.fd);
