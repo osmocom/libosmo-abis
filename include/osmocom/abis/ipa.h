@@ -38,6 +38,9 @@ struct ipa_server_conn {
 	int (*cb)(struct ipa_server_conn *peer, struct msgb *msg);
 	void				*data;
 	struct msgb			*pending_msg;
+	/* remote address information */
+	const char			*addr;
+	uint16_t			port;
 };
 
 struct ipa_server_conn *

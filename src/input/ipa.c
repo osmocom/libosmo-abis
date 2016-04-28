@@ -401,6 +401,8 @@ ipa_server_conn_create(void *ctx, struct ipa_server_link *link, int fd,
 		int (*closed_cb)(struct ipa_server_conn *conn), void *data)
 {
 	struct ipa_server_conn *conn;
+	struct sockaddr_in sa;
+	socklen_t sa_len = sizeof(sa);
 
 	conn = talloc_zero(ctx, struct ipa_server_conn);
 	if (conn == NULL) {
@@ -417,6 +419,12 @@ ipa_server_conn_create(void *ctx, struct ipa_server_link *link, int fd,
 	conn->closed_cb = closed_cb;
 	conn->data = data;
 	INIT_LLIST_HEAD(&conn->tx_queue);
+
+	if (!getpeername(fd, (struct sockaddr *)&sa, &sa_len)) {
+		char *str = inet_ntoa(sa.sin_addr);
+		conn->addr = talloc_strdup(conn, str);
+		conn->port = ntohs(sa.sin_port);
+	}
 
 	if (osmo_fd_register(&conn->ofd) < 0) {
 		LOGP(DLINP, LOGL_ERROR, "could not register FD\n");
