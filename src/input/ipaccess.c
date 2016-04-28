@@ -570,6 +570,8 @@ ipa_bts_id_resp(struct ipaccess_unit *dev, uint8_t *data, int len, int trx_nr)
 	char str[IPA_STRING_MAX];
 	uint8_t *tag;
 
+	memset(str, 0, sizeof(str));
+
 	nmsg = ipa_msg_alloc(0);
 	if (!nmsg)
 		return NULL;
@@ -595,16 +597,20 @@ ipa_bts_id_resp(struct ipaccess_unit *dev, uint8_t *data, int len, int trx_nr)
 				 dev->mac_addr[4], dev->mac_addr[5]);
 			break;
 		case IPAC_IDTAG_LOCATION1:
-			strncpy(str, dev->location1, IPA_STRING_MAX);
+			if (dev->location1)
+				strncpy(str, dev->location1, IPA_STRING_MAX);
 			break;
 		case IPAC_IDTAG_LOCATION2:
-			strncpy(str, dev->location2, IPA_STRING_MAX);
+			if (dev->location2)
+				strncpy(str, dev->location2, IPA_STRING_MAX);
 			break;
 		case IPAC_IDTAG_EQUIPVERS:
-			strncpy(str, dev->equipvers, IPA_STRING_MAX);
+			if (dev->equipvers)
+				strncpy(str, dev->equipvers, IPA_STRING_MAX);
 			break;
 		case IPAC_IDTAG_SWVERSION:
-			strncpy(str, dev->swversion, IPA_STRING_MAX);
+			if (dev->swversion)
+				strncpy(str, dev->swversion, IPA_STRING_MAX);
 			break;
 		case IPAC_IDTAG_UNITNAME:
 			snprintf(str, sizeof(str),
@@ -615,7 +621,8 @@ ipa_bts_id_resp(struct ipaccess_unit *dev, uint8_t *data, int len, int trx_nr)
 				 dev->mac_addr[4], dev->mac_addr[5]);
 			break;
 		case IPAC_IDTAG_SERNR:
-			strncpy(str, dev->serno, IPA_STRING_MAX);
+			if (dev->serno)
+				strncpy(str, dev->serno, IPA_STRING_MAX);
 			break;
 		default:
 			LOGP(DLINP, LOGL_NOTICE,
