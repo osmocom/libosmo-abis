@@ -33,15 +33,7 @@ AM_CONFIG_HEADER(config.h)
 PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 0.3.0)
 PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 0.3.0)
 PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 0.3.10)
-PKG_CHECK_MODULES([ORTP], [ortp >= 0.13.1],
-	[
-		PKG_CHECK_MODULES([ORTP_VERSION], [ortp >= 0.21],
-				  [AC_DEFINE(HAVE_ORTP_021, 1,
-				   	     [libortp >= 0.21])],
-				  [AC_DEFINE(HAVE_ORTP_021, 0,
-				   	     [libortp < 0.21])])
-	]
-)
+PKG_CHECK_MODULES(ORTP, ortp >= 0.22.0)
 
 AC_CHECK_HEADERS(dahdi/user.h,,AC_MSG_WARN(DAHDI input driver will not be built))
 

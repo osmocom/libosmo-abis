@@ -357,13 +357,9 @@ struct osmo_rtp_socket *osmo_rtp_socket_create(void *talloc_ctx, unsigned int fl
  */
 int osmo_rtp_socket_bind(struct osmo_rtp_socket *rs, const char *ip, int port)
 {
-	int rc;
-#if HAVE_ORTP_021
-	int rtcp = (-1 != port) ? port + 1 : -1;
+	int rc, rtcp = (-1 != port) ? port + 1 : -1;
 	rc = rtp_session_set_local_addr(rs->sess, ip, port, rtcp);
-#else
-	rc = rtp_session_set_local_addr(rs->sess, ip, port);
-#endif
+
 	if (rc < 0)
 		return rc;
 
@@ -600,11 +596,9 @@ void osmo_rtp_socket_stats(struct osmo_rtp_socket *rs,
 		*recv_lost = stats->cum_packet_loss;
 	}
 
-#if HAVE_ORTP_021
 	const jitter_stats_t *jitter;
 
 	jitter = rtp_session_get_jitter_stats(rs->sess);
 	if (jitter)
 		*last_jitter = jitter->jitter;
-#endif
 }
