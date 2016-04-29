@@ -357,7 +357,8 @@ int osmo_rtp_socket_bind(struct osmo_rtp_socket *rs, const char *ip, int port)
 {
 	int rc;
 #if HAVE_ORTP_021
-	rc = rtp_session_set_local_addr(rs->sess, ip, port, port+1);
+	int rtcp = (-1 != port) ? port + 1 : -1;
+	rc = rtp_session_set_local_addr(rs->sess, ip, port, rtcp);
 #else
 	rc = rtp_session_set_local_addr(rs->sess, ip, port);
 #endif
