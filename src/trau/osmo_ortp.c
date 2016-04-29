@@ -149,6 +149,8 @@ static void ortp_sig_cb_ts(RtpSession *rs, void *data)
 int osmo_rtp_socket_poll(struct osmo_rtp_socket *rs)
 {
 	mblk_t *mblk;
+	if (rs->flags & OSMO_RTP_F_DISABLED)
+		return 0;
 
 	mblk = rtp_session_recvm_with_ts(rs->sess, rs->rx_user_ts);
 	if (mblk) {
@@ -313,7 +315,7 @@ struct osmo_rtp_socket *osmo_rtp_socket_create(void *talloc_ctx, unsigned int fl
 	if (!rs)
 		return NULL;
 
-	rs->flags = flags;
+	rs->flags = OSMO_RTP_F_DISABLED | flags;
 	rs->sess = rtp_session_new(RTP_SESSION_SENDRECV);
 	if (!rs->sess) {
 		talloc_free(rs);
@@ -382,11 +384,16 @@ int osmo_rtp_socket_bind(struct osmo_rtp_socket *rs, const char *ip, int port)
 int osmo_rtp_socket_connect(struct osmo_rtp_socket *rs, const char *ip, uint16_t port)
 {
 	int rc;
-
+	if (!port) {
+		LOGP(DLMIB, LOGL_INFO, "osmo_rtp_socket_connect() refused to "
+		     "set remote %s:%u\n", ip, port);
+		return 0;
+	}
 	/* enable the use of connect() so later getsockname() will
 	 * actually return the IP address that was chosen for the local
 	 * sid of the connection */
 	rtp_session_set_connected_mode(rs->sess, 1);
+	rs->flags &= ~OSMO_RTP_F_DISABLED;
 
 	rc = rtp_session_set_remote_addr(rs->sess, ip, port);
 	if (rc < 0)
@@ -410,6 +417,9 @@ int osmo_rtp_send_frame(struct osmo_rtp_socket *rs, const uint8_t *payload,
 {
 	mblk_t *mblk;
 	int rc;
+
+	if (rs->flags & OSMO_RTP_F_DISABLED)
+		return 0;
 
 	mblk = rtp_session_create_packet(rs->sess, RTP_FIXED_HEADER_SIZE,
 					 payload, payload_len);

@@ -29,6 +29,7 @@ enum osmo_rtp_param {
 
 /*! \brief Flag to indicate the socket is in polling-only mode */
 #define OSMO_RTP_F_POLL		0x0001
+#define OSMO_RTP_F_DISABLED	0x0002
 
 /*! \brief A structure representing one RTP socket */
 struct osmo_rtp_socket {
