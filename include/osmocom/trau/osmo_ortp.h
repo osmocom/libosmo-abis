@@ -2,6 +2,7 @@
 #define _OSMO_ORTP_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/select.h>
@@ -67,6 +68,9 @@ int osmo_rtp_socket_set_pt(struct osmo_rtp_socket *rs, int payload_type);
 int osmo_rtp_socket_free(struct osmo_rtp_socket *rs);
 int osmo_rtp_send_frame(struct osmo_rtp_socket *rs, const uint8_t *payload,
 			unsigned int payload_len, unsigned int duration);
+int osmo_rtp_send_frame_ext(struct osmo_rtp_socket *rs, const uint8_t *payload,
+			    unsigned int payload_len, unsigned int duration,
+			    bool marker);
 int osmo_rtp_socket_poll(struct osmo_rtp_socket *rs);
 
 int osmo_rtp_get_bound_ip_port(struct osmo_rtp_socket *rs,

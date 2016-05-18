@@ -23,6 +23,7 @@
  */
 
 #include <stdint.h>
+#include <stdbool.h>
 #include <inttypes.h>
 #include <netdb.h>
 
@@ -417,6 +418,22 @@ int osmo_rtp_socket_connect(struct osmo_rtp_socket *rs, const char *ip, uint16_t
 int osmo_rtp_send_frame(struct osmo_rtp_socket *rs, const uint8_t *payload,
 			unsigned int payload_len, unsigned int duration)
 {
+	return osmo_rtp_send_frame_ext(rs, payload, payload_len, duration,
+				       false);
+}
+
+/*! \brief Send one RTP frame via a RTP socket
+ *  \param[in] rs OsmoRTP socket
+ *  \param[in] payload pointer to buffer with RTP payload data
+ *  \param[in] payload_len length of \a payload in bytes
+ *  \param[in] duration duration in number of RTP clock ticks
+ *  \param[in] marker the status of Marker bit in RTP header
+ *  \returns 0 on success, <0 in case of error.
+ */
+int osmo_rtp_send_frame_ext(struct osmo_rtp_socket *rs, const uint8_t *payload,
+			unsigned int payload_len, unsigned int duration,
+			bool marker)
+{
 	mblk_t *mblk;
 	int rc;
 
@@ -428,6 +445,7 @@ int osmo_rtp_send_frame(struct osmo_rtp_socket *rs, const uint8_t *payload,
 	if (!mblk)
 		return -ENOMEM;
 
+	rtp_set_markbit(mblk, marker);
 	rc = rtp_session_sendm_with_ts(rs->sess, mblk,
 				       rs->tx_timestamp);
 	rs->tx_timestamp += duration;
