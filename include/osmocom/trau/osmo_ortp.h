@@ -28,8 +28,8 @@ struct _RtpSession;
 #define GSM_RTP_FRAME_DURATION_MS 20
 #define GSM_SAMPLES_PER_RTP_FRAME (GSM_RTP_FRAME_DURATION_MS * GSM_VOICE_SAMPLES_PER_MS)
 #define GSM_TDMA_FRAME_MS (120 / GSM_VOICE_MULTIFRAME)
-#define GSM_MS_TO_SAMPLES(ms) (ms * GSM_VOICE_SAMPLES_PER_MS)
-#define GSM_FN_TO_MS(fn) (fn * GSM_TDMA_FRAME_MS)
+#define GSM_MS_TO_SAMPLES(ms) ((ms) * GSM_VOICE_SAMPLES_PER_MS)
+#define GSM_FN_TO_MS(fn) ((fn) * GSM_TDMA_FRAME_MS)
 
 /*! \brief Parameter to osmo_rtp_socket_param_set() */
 enum osmo_rtp_param {
