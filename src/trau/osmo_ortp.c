@@ -392,14 +392,15 @@ int osmo_rtp_socket_connect(struct osmo_rtp_socket *rs, const char *ip, uint16_t
 		return 0;
 	}
 
-	rc = rtp_session_set_remote_addr(rs->sess, ip, port);
-	if (rc < 0)
-		return rc;
-
 	/* enable the use of connect() so later getsockname() will
 	 * actually return the IP address that was chosen for the local
 	 * sid of the connection */
 	rtp_session_set_connected_mode(rs->sess, 1);
+
+	rc = rtp_session_set_remote_addr(rs->sess, ip, port);
+	if (rc < 0)
+		return rc;
+
 	rs->flags &= ~OSMO_RTP_F_DISABLED;
 
 	if (rs->flags & OSMO_RTP_F_POLL)
