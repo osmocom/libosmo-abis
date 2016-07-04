@@ -75,10 +75,9 @@ osmo_static_assert(offsetof(struct pcap_lapdhdr, addr) == 6, addr_offset);
 osmo_static_assert(offsetof(struct pcap_lapdhdr, protocol) == 14, proto_offset);
 osmo_static_assert(sizeof(struct pcap_lapdhdr) == 16, lapd_header_size);
 
-int osmo_pcap_lapd_open(char *filename, mode_t mode)
+int osmo_pcap_lapd_set_fd(int fd)
 {
-	int fd;
-	struct pcap_hdr pcap_header = {
+		struct pcap_hdr pcap_header = {
 		.magic_number	= 0xa1b2c3d4,
 		.version_major	= 2,
 		.version_minor	= 4,
@@ -88,6 +87,21 @@ int osmo_pcap_lapd_open(char *filename, mode_t mode)
 		.network	= DLT_LINUX_LAPD,
 	};
 
+	if (write(fd, &pcap_header, sizeof(pcap_header))
+					!= sizeof(pcap_header)) {
+		LOGP(DLLAPD, LOGL_ERROR, "cannot write PCAP header: %s\n",
+			strerror(errno));
+		close(fd);
+		return -1;
+	}
+
+	return 0;
+}
+
+int osmo_pcap_lapd_open(char *filename, mode_t mode)
+{
+	int fd, rc;
+
 	LOGP(DLLAPD, LOGL_NOTICE, "opening LAPD pcap file `%s'\n", filename);
 
 	fd = open(filename, O_WRONLY|O_TRUNC|O_CREAT, mode);
@@ -96,13 +110,13 @@ int osmo_pcap_lapd_open(char *filename, mode_t mode)
 			strerror(errno));
 		return -1;
 	}
-	if (write(fd, &pcap_header, sizeof(pcap_header))
-					!= sizeof(pcap_header)) {
-		LOGP(DLLAPD, LOGL_ERROR, "cannot write PCAP header: %s\n",
-			strerror(errno));
+
+	rc = osmo_pcap_lapd_set_fd(fd);
+	if (rc < 0) {
 		close(fd);
-		return -1;
+		return rc;
 	}
+
 	return fd;
 }
 
