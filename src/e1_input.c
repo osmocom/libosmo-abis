@@ -249,8 +249,14 @@ int abis_sendmsg(struct msgb *msg)
 	}
 	msgb_enqueue(&sign_link->tx_list, msg);
 
-	/* dump it */
-	write_pcap_packet(PCAP_OUTPUT, sign_link->sapi, sign_link->tei, msg);
+	/* we only need to write a 'Fake LAPD' packet here, if the
+	 * underlying driver hides LAPD from us.  If we use the
+	 * libosmocore LAPD implementation, it will take care of writing
+	 * the _actual_ LAPD packet */
+	if (!e1i_ts->lapd) {
+		write_pcap_packet(PCAP_OUTPUT, sign_link->sapi,
+				  sign_link->tei, msg);
+	}
 
 	return 0;
 }
@@ -499,8 +505,13 @@ int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
 
 	switch (ts->type) {
 	case E1INP_TS_TYPE_SIGN:
+		/* we only need to write a 'Fake LAPD' packet here, if
+		 * the underlying driver hides LAPD from us.  If we use
+		 * the libosmocore LAPD implementation, it will take
+		 * care of writing the _actual_ LAPD packet */
+		if (!ts->lapd)
+			write_pcap_packet(PCAP_INPUT, sapi, tei, msg);
 		/* consult the list of signalling links */
-		write_pcap_packet(PCAP_INPUT, sapi, tei, msg);
 		link = e1inp_lookup_sign_link(ts, tei, sapi);
 		if (!link) {
 			LOGP(DLMI, LOGL_ERROR, "didn't find signalling link for "
@@ -712,7 +723,7 @@ struct e1inp_driver *e1inp_driver_find(const char *name)
 int e1inp_line_update(struct e1inp_line *line)
 {
 	struct input_signal_data isd;
-	int rc;
+	int i, rc;
 
 	e1inp_line_get(line);
 
@@ -720,6 +731,15 @@ int e1inp_line_update(struct e1inp_line *line)
 		rc = line->driver->line_update(line);
 	} else
 		rc = 0;
+
+	/* Set the PCAP file descriptor for all timeslots that have
+	 * software LAPD instances, to ensure the osmo_lapd_pcap code is
+	 * used to write PCAP files (if requested) */
+	for (i = 0; i < ARRAY_SIZE(line->ts); i++) {
+		struct e1inp_ts *e1i_ts = &line->ts[i];
+		if (e1i_ts->lapd)
+			e1i_ts->lapd->pcap_fd = pcap_fd;
+	}
 
 	/* Send a signal to anyone who is interested in new lines being
 	 * configured */
