@@ -43,6 +43,8 @@
  * pcap format is from http://wiki.wireshark.org/Development/LibpcapFileFormat
  */
 #define DLT_LINUX_LAPD		177
+#define LINUX_SLL_HOST		0
+#define LINUX_SLL_OUTGOING	4
 
 struct pcap_hdr {
 	uint32_t magic_number;
@@ -65,7 +67,7 @@ struct pcap_lapdhdr {
 	uint16_t pkttype;
 	uint16_t hatype;
 	uint16_t halen;
-	uint64_t addr;
+	uint8_t addr[8];
 	int16_t protocol;
 } __attribute__((packed));
 
@@ -139,10 +141,13 @@ int osmo_pcap_lapd_write(int fd, int direction, struct msgb *msg)
 	pcap_rechdr.incl_len   = msg->len + sizeof(struct pcap_lapdhdr);
 	pcap_rechdr.orig_len   = msg->len + sizeof(struct pcap_lapdhdr);
 
-	header.pkttype		= 4;
+	if (direction == OSMO_LAPD_PCAP_OUTPUT)
+		header.pkttype		= htons(LINUX_SLL_OUTGOING);
+	else
+		header.pkttype		= htons(LINUX_SLL_HOST);
 	header.hatype		= 0;
 	header.halen		= 0;
-	header.addr		= direction == OSMO_LAPD_PCAP_OUTPUT ? 0x0 : 0x1;
+	header.addr[0]		= 0x01;	/* we are the network side */
 	header.protocol		= ntohs(48);
 
 	gettimeofday(&tv, NULL);
