@@ -360,6 +360,79 @@ static int handle_tsX_read(struct osmo_fd *bfd)
 	return ret;
 }
 
+/* write to a raw channel TS */
+static int handle_ts_raw_write(struct osmo_fd *bfd)
+{
+	struct e1inp_line *line = bfd->data;
+	unsigned int ts_nr = bfd->priv_nr;
+	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
+	struct msgb *msg;
+	int ret;
+
+	/* get the next msg for this timeslot */
+	msg = e1inp_tx_ts(e1i_ts, NULL);
+	if (!msg)
+		return 0;
+
+	if (msg->len != D_BCHAN_TX_GRAN) {
+		/* This might lead to a transmit underrun, as we call tx
+		 * from the rx path, as there's no select/poll on dahdi
+		 * */
+		LOGP(DLINP, LOGL_NOTICE, "unexpected msg->len = %u, "
+		     "expected %u\n", msg->len, D_BCHAN_TX_GRAN);
+	}
+
+	DEBUGP(DLMIB, "RAW CHAN TX: %s\n",
+		osmo_hexdump(msg->data, msg->len));
+
+	if (0/*invertbits*/) {
+		flip_buf_bits(msg->data, msg->len);
+	}
+
+	ret = write(bfd->fd, msg->data, msg->len);
+	if (ret < msg->len)
+		LOGP(DLINP, LOGL_DEBUG, "send returns %d instead of %d\n",
+			ret, msg->len);
+	msgb_free(msg);
+
+	return ret;
+}
+
+static int handle_ts_raw_read(struct osmo_fd *bfd)
+{
+	struct e1inp_line *line = bfd->data;
+	unsigned int ts_nr = bfd->priv_nr;
+	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
+	struct msgb *msg = msgb_alloc(D_TSX_ALLOC_SIZE, "DAHDI Raw TS");
+	int ret;
+
+	if (!msg)
+		return -ENOMEM;
+
+	ret = read(bfd->fd, msg->data, D_TSX_ALLOC_SIZE);
+	if (ret < 0 || ret != D_TSX_ALLOC_SIZE) {
+		LOGP(DLINP, LOGL_DEBUG, "read error  %d %s\n",
+			ret, strerror(errno));
+		return ret;
+	}
+
+	if (0/*invertbits*/) {
+		flip_buf_bits(msg->data, ret);
+	}
+
+	msgb_put(msg, ret);
+
+	msg->l2h = msg->data;
+	DEBUGP(DLMIB, "RAW CHAN RX: %s\n",
+		osmo_hexdump(msgb_l2(msg), ret));
+	ret = e1inp_rx_ts(e1i_ts, msg, 0, 0);
+	/* physical layer indicates that data has been sent,
+	 * we thus can send some more data */
+	ret = handle_ts_raw_write(bfd);
+
+	return ret;
+}
+
 /* callback from select.c in case one of the fd's can be read/written */
 static int dahdi_fd_cb(struct osmo_fd *bfd, unsigned int what)
 {
@@ -385,6 +458,17 @@ static int dahdi_fd_cb(struct osmo_fd *bfd, unsigned int what)
 			rc = handle_tsX_read(bfd);
 		if (what & BSC_FD_WRITE)
 			rc = handle_tsX_write(bfd);
+		/* We never include the DAHDI B-Channel FD into the
+		 * writeset, since it doesn't support poll() based
+		 * write flow control */
+		break;
+	case E1INP_TS_TYPE_RAW:
+		if (what & BSC_FD_EXCEPT)
+			handle_dahdi_exception(e1i_ts);
+		if (what & BSC_FD_READ)
+			rc = handle_ts_raw_read(bfd);
+		if (what & BSC_FD_WRITE)
+			rc = handle_ts_raw_write(bfd);
 		/* We never include the DAHDI B-Channel FD into the
 		 * writeset, since it doesn't support poll() based
 		 * write flow control */
@@ -537,6 +621,7 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 					e1i_ts, &lapd_profile_abis);
 			break;
 		case E1INP_TS_TYPE_TRAU:
+		case E1INP_TS_TYPE_RAW:
 			/* close/release LAPD instance, if any */
 			if (e1i_ts->lapd) {
 				lapd_instance_free(e1i_ts->lapd);

@@ -391,6 +391,92 @@ static int handle_tsX_read(struct osmo_fd *bfd)
 	return ret;
 }
 
+/* write to a raw channel TS */
+static int handle_ts_raw_write(struct osmo_fd *bfd, unsigned int len)
+{
+	struct e1inp_line *line = bfd->data;
+	unsigned int ts_nr = bfd->priv_nr;
+	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
+	struct msgb *msg;
+	struct mISDNhead *hh;
+	int ret;
+
+	/* get the next msg for this timeslot */
+	msg = e1inp_tx_ts(e1i_ts, NULL);
+	if (!msg)
+		return 0;
+
+	if (msg->len != len) {
+		/* This might lead to a transmit underrun, as we call tx
+		 * from the rx path, as there's no select/poll on dahdi
+		 * */
+		LOGP(DLINP, LOGL_NOTICE, "unexpected msg->len = %u, "
+		     "expected %u\n", msg->len, len);
+	}
+
+	DEBUGP(DLMIB, "RAW CHAN TX: %s\n",
+		osmo_hexdump(msg->data, msg->len));
+
+	hh = (struct mISDNhead *) msgb_push(msg, sizeof(*hh));
+	hh->prim = PH_DATA_REQ;
+	hh->id = 0;
+
+	ret = write(bfd->fd, msg->data, msg->len);
+	if (ret < msg->len)
+		LOGP(DLINP, LOGL_DEBUG, "send returns %d instead of %d\n",
+			ret, msg->len);
+	msgb_free(msg);
+
+	return ret;
+}
+
+static int handle_ts_raw_read(struct osmo_fd *bfd)
+{
+	struct e1inp_line *line = bfd->data;
+	unsigned int ts_nr = bfd->priv_nr;
+	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
+	struct msgb *msg = msgb_alloc(TSX_ALLOC_SIZE, "mISDN Tx RAW");
+	struct mISDNhead *hh;
+	int ret;
+
+	if (!msg)
+		return -ENOMEM;
+
+	hh = (struct mISDNhead *) msg->data;
+
+	ret = recv(bfd->fd, msg->data, TSX_ALLOC_SIZE, 0);
+	if (ret < 0) {
+		fprintf(stderr, "recvfrom error  %s\n", strerror(errno));
+		return ret;
+	}
+
+	msgb_put(msg, ret);
+
+	if (hh->prim != PH_CONTROL_IND)
+		DEBUGP(DLMIB, "<= RAW CHAN len = %d, prim(0x%x) id(0x%x): %s\n",
+			ret, hh->prim, hh->id,
+			get_value_string(prim_names, hh->prim));
+
+	switch (hh->prim) {
+	case PH_DATA_IND:
+		msg->l2h = msg->data + MISDN_HEADER_LEN;
+		DEBUGP(DLMIB, "RAW CHAN RX: %s\n",
+			osmo_hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN));
+		/* the number of bytes received indicates that data to send */
+		handle_ts_raw_write(bfd, msgb_l2len(msg));
+		return e1inp_rx_ts(e1i_ts, msg, 0, 0);
+	case PH_ACTIVATE_IND:
+	case PH_DATA_CNF:
+		break;
+	default:
+		break;
+	}
+	/* FIXME: why do we free signalling msgs in the caller, and trau not? */
+	msgb_free(msg);
+
+	return ret;
+}
+
 /* callback from select.c in case one of the fd's can be read/written */
 static int misdn_fd_cb(struct osmo_fd *bfd, unsigned int what)
 {
@@ -413,6 +499,13 @@ static int misdn_fd_cb(struct osmo_fd *bfd, unsigned int what)
 		/* We never include the mISDN B-Channel FD into the
 		 * writeset, since it doesn't support poll() based
 		 * write flow control */		
+		break;
+	case E1INP_TS_TYPE_RAW:
+		if (what & BSC_FD_READ)
+			rc = handle_ts_raw_read(bfd);
+		/* We never include the mISDN B-Channel FD into the
+		 * writeset, since it doesn't support poll() based
+		 * write flow control */
 		break;
 	default:
 		fprintf(stderr, "unknown E1 TS type %u\n", e1i_ts->type);
@@ -524,6 +617,7 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 			bfd->when = BSC_FD_READ;
 			break;
 		case E1INP_TS_TYPE_TRAU:
+		case E1INP_TS_TYPE_RAW:
 			bfd->fd = socket(PF_ISDN, SOCK_DGRAM, ISDN_P_B_RAW);
 			/* We never include the mISDN B-Channel FD into the
 	 		* writeset, since it doesn't support poll() based

@@ -64,6 +64,7 @@ enum e1inp_ts_type {
 	E1INP_TS_TYPE_NONE,
 	E1INP_TS_TYPE_SIGN,
 	E1INP_TS_TYPE_TRAU,
+	E1INP_TS_TYPE_RAW,
 };
 const char *e1inp_tstype_name(enum e1inp_ts_type tp);
 const struct value_string e1inp_ts_type_names[5];
@@ -94,6 +95,12 @@ struct e1inp_ts {
 			/* subchannel muxer for frames to E1 */
 			struct subch_mux mux;
 		} trau;
+		struct {
+			/* call-back for every received frame */
+			void (*recv_cb)(struct e1inp_ts *ts, struct msgb *msg);
+			/* queue of pending to-be-transmitted msgbs */
+			struct llist_head tx_queue;
+		} raw;
 	};
 	union {
 		struct {
@@ -203,9 +210,6 @@ int e1inp_driver_register(struct e1inp_driver *drv);
 /* fine a previously registered driver */
 struct e1inp_driver *e1inp_driver_find(const char *name);
 
-/* register a line with the E1 core */
-int e1inp_line_register(struct e1inp_line *line);
-
 /* get a line by its ID */
 struct e1inp_line *e1inp_line_find(uint8_t e1_nr);
 
@@ -242,6 +246,11 @@ int e1inp_ts_config_sign(struct e1inp_ts *ts, struct e1inp_line *line);
 int e1inp_ts_config_trau(struct e1inp_ts *ts, struct e1inp_line *line,
                          int (*trau_rcv_cb)(struct subch_demux *dmx, int ch,
 					uint8_t *data, int len, void *_priv));
+
+/* configure and initialize one timeslot dedicated to RAW frames */
+int e1inp_ts_config_raw(struct e1inp_ts *ts, struct e1inp_line *line,
+			void (*raw_recv_cb)(struct e1inp_ts *ts,
+					    struct msgb *msg));
 
 /* Receive a packet from the E1 driver */
 int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,

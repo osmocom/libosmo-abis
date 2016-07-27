@@ -217,6 +217,7 @@ const struct value_string e1inp_ts_type_names[5] = {
 	{ E1INP_TS_TYPE_NONE,	"None" },
 	{ E1INP_TS_TYPE_SIGN,	"Signalling" },
 	{ E1INP_TS_TYPE_TRAU,	"TRAU" },
+	{ E1INP_TS_TYPE_RAW,	"RAW" },
 	{ 0, NULL }
 };
 
@@ -296,6 +297,21 @@ int e1inp_ts_config_sign(struct e1inp_ts *ts, struct e1inp_line *line)
 	else
 		ts->sign.delay = 100000;
 	INIT_LLIST_HEAD(&ts->sign.sign_links);
+	return 0;
+}
+
+int e1inp_ts_config_raw(struct e1inp_ts *ts, struct e1inp_line *line,
+			void (*raw_recv_cb)(struct e1inp_ts *ts,
+					    struct msgb *msg))
+{
+	if (ts->type == E1INP_TS_TYPE_RAW && ts->line && line)
+		return 0;
+
+	ts->type = E1INP_TS_TYPE_RAW;
+	ts->line = line;
+	ts->raw.recv_cb = raw_recv_cb;
+	INIT_LLIST_HEAD(&ts->raw.tx_queue);
+
 	return 0;
 }
 
@@ -531,6 +547,9 @@ int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
 		ret = subch_demux_in(&ts->trau.demux, msg->l2h, msgb_l2len(msg));
 		msgb_free(msg);
 		break;
+	case E1INP_TS_TYPE_RAW:
+		ts->raw.recv_cb(ts, msg);
+		break;
 	default:
 		ret = -EINVAL;
 		LOGP(DLMI, LOGL_ERROR, "unknown TS type %u\n", ts->type);
@@ -653,6 +672,10 @@ struct msgb *e1inp_tx_ts(struct e1inp_ts *e1i_ts,
 			return NULL;
 		}
 		msgb_put(msg, 40);
+		break;
+	case E1INP_TS_TYPE_RAW:
+		/* Get msgb from tx_queue */
+		msg = msgb_dequeue(&e1i_ts->raw.tx_queue);
 		break;
 	default:
 		LOGP(DLMI, LOGL_ERROR, "unsupported E1 TS type %u\n", e1i_ts->type);
