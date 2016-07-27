@@ -241,9 +241,6 @@ int e1inp_ts_config_trau(struct e1inp_ts *ts, struct e1inp_line *line,
                          int (*trau_rcv_cb)(struct subch_demux *dmx, int ch,
 					uint8_t *data, int len, void *_priv));
 
-/* Call from the Stack: configuration of this TS has changed */
-int e1inp_update_ts(struct e1inp_ts *ts);
-
 /* Receive a packet from the E1 driver */
 int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
 		uint8_t tei, uint8_t sapi);
