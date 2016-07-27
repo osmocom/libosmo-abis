@@ -200,30 +200,29 @@ static void write_pcap_packet(int direction, int sapi, int tei,
 	write(pcap_fd, msg->l2h, msgb_l2len(msg));
 }
 
-static const char *sign_types[] = {
-	[E1INP_SIGN_NONE]	= "None",
-	[E1INP_SIGN_OML]	= "OML",
-	[E1INP_SIGN_RSL]	= "RSL",
-	[E1INP_SIGN_OSMO]	= "OSMO",
+const struct value_string e1inp_sign_type_names[5] = {
+	{ E1INP_SIGN_NONE,	"None" },
+	{ E1INP_SIGN_OML,	"OML" },
+	{ E1INP_SIGN_RSL,	"RSL" },
+	{ E1INP_SIGN_OSMO,	"OSMO" },
+	{ 0, NULL }
 };
+
 const char *e1inp_signtype_name(enum e1inp_sign_type tp)
 {
-	if (tp >= ARRAY_SIZE(sign_types))
-		return "undefined";
-	return sign_types[tp];
+	return get_value_string(e1inp_sign_type_names, tp);
 }
 
-static const char *ts_types[] = {
-	[E1INP_TS_TYPE_NONE]	= "None",
-	[E1INP_TS_TYPE_SIGN]	= "Signalling",
-	[E1INP_TS_TYPE_TRAU]	= "TRAU",
+const struct value_string e1inp_ts_type_names[5] = {
+	{ E1INP_TS_TYPE_NONE,	"None" },
+	{ E1INP_TS_TYPE_SIGN,	"Signalling" },
+	{ E1INP_TS_TYPE_TRAU,	"TRAU" },
+	{ 0, NULL }
 };
 
 const char *e1inp_tstype_name(enum e1inp_ts_type tp)
 {
-	if (tp >= ARRAY_SIZE(ts_types))
-		return "undefined";
-	return ts_types[tp];
+	return get_value_string(e1inp_ts_type_names, tp);
 }
 
 int abis_sendmsg(struct msgb *msg)
