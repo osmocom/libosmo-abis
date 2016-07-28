@@ -65,9 +65,10 @@ enum e1inp_ts_type {
 	E1INP_TS_TYPE_SIGN,
 	E1INP_TS_TYPE_TRAU,
 	E1INP_TS_TYPE_RAW,
+	E1INP_TS_TYPE_HDLC,
 };
 const char *e1inp_tstype_name(enum e1inp_ts_type tp);
-const struct value_string e1inp_ts_type_names[5];
+const struct value_string e1inp_ts_type_names[6];
 
 /* A timeslot in the E1 interface */
 struct e1inp_ts {
@@ -101,6 +102,12 @@ struct e1inp_ts {
 			/* queue of pending to-be-transmitted msgbs */
 			struct llist_head tx_queue;
 		} raw;
+		struct {
+			/* call-back for every received frame */
+			void (*recv_cb)(struct e1inp_ts *ts, struct msgb *msg);
+			/* queue of pending to-be-transmitted msgbs */
+			struct llist_head tx_queue;
+		} hdlc;
 	};
 	union {
 		struct {
@@ -251,6 +258,11 @@ int e1inp_ts_config_trau(struct e1inp_ts *ts, struct e1inp_line *line,
 int e1inp_ts_config_raw(struct e1inp_ts *ts, struct e1inp_line *line,
 			void (*raw_recv_cb)(struct e1inp_ts *ts,
 					    struct msgb *msg));
+
+/* configure and initialize one timeslot dedicated to HDLC frames */
+int e1inp_ts_config_hdlc(struct e1inp_ts *ts, struct e1inp_line *line,
+			 void (*hdlc_recv_cb)(struct e1inp_ts *ts,
+					      struct msgb *msg));
 
 /* Receive a packet from the E1 driver */
 int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,

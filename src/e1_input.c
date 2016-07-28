@@ -213,11 +213,12 @@ const char *e1inp_signtype_name(enum e1inp_sign_type tp)
 	return get_value_string(e1inp_sign_type_names, tp);
 }
 
-const struct value_string e1inp_ts_type_names[5] = {
+const struct value_string e1inp_ts_type_names[6] = {
 	{ E1INP_TS_TYPE_NONE,	"None" },
 	{ E1INP_TS_TYPE_SIGN,	"Signalling" },
 	{ E1INP_TS_TYPE_TRAU,	"TRAU" },
 	{ E1INP_TS_TYPE_RAW,	"RAW" },
+	{ E1INP_TS_TYPE_HDLC,	"HDLC" },
 	{ 0, NULL }
 };
 
@@ -311,6 +312,21 @@ int e1inp_ts_config_raw(struct e1inp_ts *ts, struct e1inp_line *line,
 	ts->line = line;
 	ts->raw.recv_cb = raw_recv_cb;
 	INIT_LLIST_HEAD(&ts->raw.tx_queue);
+
+	return 0;
+}
+
+int e1inp_ts_config_hdlc(struct e1inp_ts *ts, struct e1inp_line *line,
+			 void (*hdlc_recv_cb)(struct e1inp_ts *ts,
+					      struct msgb *msg))
+{
+	if (ts->type == E1INP_TS_TYPE_HDLC && ts->line && line)
+		return 0;
+
+	ts->type = E1INP_TS_TYPE_HDLC;
+	ts->line = line;
+	ts->hdlc.recv_cb = hdlc_recv_cb;
+	INIT_LLIST_HEAD(&ts->hdlc.tx_queue);
 
 	return 0;
 }
@@ -550,6 +566,9 @@ int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
 	case E1INP_TS_TYPE_RAW:
 		ts->raw.recv_cb(ts, msg);
 		break;
+	case E1INP_TS_TYPE_HDLC:
+		ts->hdlc.recv_cb(ts, msg);
+		break;
 	default:
 		ret = -EINVAL;
 		LOGP(DLMI, LOGL_ERROR, "unknown TS type %u\n", ts->type);
@@ -676,6 +695,10 @@ struct msgb *e1inp_tx_ts(struct e1inp_ts *e1i_ts,
 	case E1INP_TS_TYPE_RAW:
 		/* Get msgb from tx_queue */
 		msg = msgb_dequeue(&e1i_ts->raw.tx_queue);
+		break;
+	case E1INP_TS_TYPE_HDLC:
+		/* Get msgb from tx_queue */
+		msg = msgb_dequeue(&e1i_ts->hdlc.tx_queue);
 		break;
 	default:
 		LOGP(DLMI, LOGL_ERROR, "unsupported E1 TS type %u\n", e1i_ts->type);

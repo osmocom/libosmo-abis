@@ -607,6 +607,11 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 		case E1INP_TS_TYPE_NONE:
 			continue;
 			break;
+		case E1INP_TS_TYPE_HDLC:
+			bfd->fd = socket(PF_ISDN, SOCK_DGRAM,
+				ISDN_P_B_HDLC);
+			bfd->when = BSC_FD_READ;
+			break;
 		case E1INP_TS_TYPE_SIGN:
 			if (mline->use_userspace_lapd)
 				bfd->fd = socket(PF_ISDN, SOCK_DGRAM,
@@ -650,6 +655,7 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 				addr.tei = GROUP_TEI;
 			}
 			break;
+		case E1INP_TS_TYPE_HDLC:
 		case E1INP_TS_TYPE_TRAU:
 			addr.channel = ts;
 			break;

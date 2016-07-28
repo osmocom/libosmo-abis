@@ -259,6 +259,51 @@ static int handle_ts1_write(struct osmo_fd *bfd)
 	return 0;
 }
 
+static void handle_hdlc_write(struct osmo_fd *bfd)
+{
+	struct e1inp_line *line = bfd->data;
+	unsigned int ts_nr = bfd->priv_nr;
+	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
+	struct msgb *msg;
+	int ret;
+
+	/* get the next msg for this timeslot */
+	msg = e1inp_tx_ts(e1i_ts, NULL);
+	if (!msg)
+		return;
+
+	ret = write(bfd->fd, msg->data, msg->len + 2);
+	msgb_free(msg);
+	if (ret == -1)
+		handle_dahdi_exception(e1i_ts);
+	else if (ret < 0)
+		LOGP(DLMI, LOGL_NOTICE, "%s write failed %d\n", __func__, ret);
+}
+
+static int handle_hdlc_read(struct osmo_fd *bfd)
+{
+	struct e1inp_line *line = bfd->data;
+	unsigned int ts_nr = bfd->priv_nr;
+	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
+	struct msgb *msg = msgb_alloc(TS1_ALLOC_SIZE, "DAHDI HDLC Rx");
+	int ret;
+
+	if (!msg)
+		return -ENOMEM;
+
+	ret = read(bfd->fd, msg->data, TS1_ALLOC_SIZE - 16);
+	if (ret == -1)
+		handle_dahdi_exception(e1i_ts);
+	else if (ret < 0) {
+		perror("read ");
+	}
+	msgb_put(msg, ret - 2);
+	if (ret <= 3) {
+		perror("read ");
+	}
+
+	return e1inp_rx_ts(e1i_ts, msg, 0, 0);
+}
 
 static int invertbits = 1;
 
@@ -451,6 +496,14 @@ static int dahdi_fd_cb(struct osmo_fd *bfd, unsigned int what)
 		if (what & BSC_FD_WRITE)
 			rc = handle_ts1_write(bfd);
 		break;
+	case E1INP_TS_TYPE_HDLC:
+		if (what & BSC_FD_EXCEPT)
+			handle_dahdi_exception(e1i_ts);
+		if (what & BSC_FD_READ)
+			rc = handle_hdlc_read(bfd);
+		if (what & BSC_FD_WRITE)
+			handle_hdlc_write(bfd);
+		break;
 	case E1INP_TS_TYPE_TRAU:
 		if (what & BSC_FD_EXCEPT)
 			handle_dahdi_exception(e1i_ts);
@@ -619,6 +672,20 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 				e1i_ts->lapd = lapd_instance_alloc(1,
 					dahdi_write_msg, bfd, e1inp_dlsap_up,
 					e1i_ts, &lapd_profile_abis);
+			break;
+		case E1INP_TS_TYPE_HDLC:
+			if (!bfd->fd)
+				bfd->fd = open(openstr, O_RDWR | O_NONBLOCK);
+			if (bfd->fd == -1) {
+				LOGP(DLINP, LOGL_ERROR,
+					"%s could not open %s %s\n",
+					__func__, openstr, strerror(errno));
+				return -EIO;
+			}
+			bfd->when = BSC_FD_READ | BSC_FD_EXCEPT;
+			ret = dahdi_set_bufinfo(bfd->fd, 1);
+			if (ret < 0)
+				return ret;
 			break;
 		case E1INP_TS_TYPE_TRAU:
 		case E1INP_TS_TYPE_RAW:
