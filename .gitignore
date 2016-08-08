@@ -21,9 +21,11 @@ missing
 ltmain.sh
 install-sh
 stamp-h1
-libtool
 #libosmo-abis-*
 tests/*_test
+
+# libtool and e.g. arm-poky-linux-gnueabi-libtool
+*libtool
 
 .tarball-version
 .version
