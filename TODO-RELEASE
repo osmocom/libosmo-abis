@@ -1,1 +1,2 @@
 #library	what		description / commit summary line
+libosmo-abis	API change	major: add parameter to rx_cb() callack in osmo_ortp.h

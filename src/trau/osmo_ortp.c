@@ -159,7 +159,8 @@ int osmo_rtp_socket_poll(struct osmo_rtp_socket *rs)
 		/* hand into receiver */
 		if (rs->rx_cb)
 			rs->rx_cb(rs, mblk->b_rptr,
-				  mblk->b_wptr - mblk->b_rptr);
+				  mblk->b_wptr - mblk->b_rptr,
+				  rtp_get_markbit(mblk));
 		//rs->rx_user_ts += 160;
 		freemsg(mblk);
 		return 1;
@@ -189,7 +190,8 @@ static int osmo_rtp_fd_cb(struct osmo_fd *fd, unsigned int what)
 			/* hand into receiver */
 			if (rs->rx_cb)
 				rs->rx_cb(rs, mblk->b_rptr,
-					  mblk->b_wptr - mblk->b_rptr);
+					  mblk->b_wptr - mblk->b_rptr,
+					  rtp_get_markbit(mblk));
 			freemsg(mblk);
 		} else
 			LOGP(DLMIB, LOGL_INFO, "recvm_with_ts(%u): ERROR!\n",
