@@ -17,6 +17,13 @@ AC_PROG_CC
 AC_PROG_INSTALL
 LT_INIT([pic-only])
 
+dnl check for pkg-config (explained in detail in libosmocore/configure.ac)
+AC_PATH_PROG(PKG_CONFIG_INSTALLED, pkg-config, no)
+if test "x$PKG_CONFIG_INSTALLED" = "xno"; then
+        AC_MSG_WARN([You need to install pkg-config])
+fi
+PKG_PROG_PKG_CONFIG([0.20])
+
 AC_CONFIG_MACRO_DIR([m4])
 
 # The following test is taken from WebKit's webkit.m4
