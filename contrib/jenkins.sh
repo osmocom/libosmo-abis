@@ -2,20 +2,28 @@
 
 set -ex
 
-rm -rf deps/install
-mkdir deps || true
-cd deps
-osmo-deps.sh libosmocore
+base="$PWD"
+deps="$base/deps"
+inst="$deps/install"
+export deps inst
 
-cd libosmocore
-autoreconf --install --force
-./configure --prefix=$PWD/../install
-$MAKE $PARALLEL_MAKE install
+mkdir "$deps" || true
+rm -rf "$inst"
 
-cd ../../
+osmo-build-dep.sh libosmocore
+
+export PKG_CONFIG_PATH="$inst/lib/pkgconfig:$PKG_CONFIG_PATH"
+export LD_LIBRARY_PATH="$inst/lib"
+
+set +x
+echo
+echo
+echo
+echo " =============================== libosmo-abis ==============================="
+echo
+set -x
+
 autoreconf --install --force
-export PKG_CONFIG_PATH=$PWD/deps/install/lib/pkgconfig:$PKG_CONFIG_PATH
-export LD_LIBRARY_PATH=$PWD/deps/install/lib
 ./configure
 $MAKE $PARALLEL_MAKE
 $MAKE distcheck
