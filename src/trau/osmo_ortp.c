@@ -389,17 +389,23 @@ int osmo_rtp_socket_connect(struct osmo_rtp_socket *rs, const char *ip, uint16_t
 		return 0;
 	}
 
+	/* We don't want the connected mode enabled during
+	 * rtp_session_set_remote_addr(), because that will already setup a
+	 * connection and updating the remote address will no longer have an
+	 * effect. Contrary to what one may expect, this must be 0 at first,
+	 * and we're setting to 1 further down to establish a connection once
+	 * the first RTP packet is received (OS#1661). */
+	rtp_session_set_connected_mode(rs->sess, 0);
+
+	rc = rtp_session_set_remote_addr(rs->sess, ip, port);
+	if (rc < 0)
+		return rc;
+
 	/* enable the use of connect() so later getsockname() will
 	 * actually return the IP address that was chosen for the local
 	 * sid of the connection */
 	rtp_session_set_connected_mode(rs->sess, 1);
 	rs->flags &= ~OSMO_RTP_F_DISABLED;
-
-	/* This call attempts to connect to the remote address, so make sure to
-	 * set all other rtp session configuration before this call. */
-	rc = rtp_session_set_remote_addr(rs->sess, ip, port);
-	if (rc < 0)
-		return rc;
 
 	if (rs->flags & OSMO_RTP_F_POLL)
 		return rc;
