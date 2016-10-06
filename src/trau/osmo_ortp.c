@@ -139,7 +139,8 @@ static void ortp_sig_cb_ts(RtpSession *rs, void *data)
 	uint32_t ts = rtp_session_get_current_recv_ts(rs);
 
 	LOGP(DLMIB, LOGL_NOTICE,
-	     "osmo-ortp(%d): timestamp_jump, new TS %d\n", port, ts);
+	     "osmo-ortp(%d): timestamp_jump, new TS %d, resyncing\n", port, ts);
+	rtp_session_resync(rs);
 }
 
 
