@@ -26,4 +26,5 @@ set -x
 autoreconf --install --force
 ./configure
 $MAKE $PARALLEL_MAKE
-$MAKE distcheck
+$MAKE distcheck \
+  || cat-testlogs.sh
