@@ -288,6 +288,7 @@ struct input_signal_data {
 	int link_type;
 	uint8_t tei;
 	uint8_t sapi;
+	uint8_t ts_nr;
 	struct gsm_bts_trx *trx;
 	struct e1inp_line *line;
 };

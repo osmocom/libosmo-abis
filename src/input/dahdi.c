@@ -139,6 +139,7 @@ static void handle_dahdi_exception(struct e1inp_ts *ts)
 		get_value_string(dahdi_evt_names, evt));
 
 	isd.line = ts->line;
+	isd.ts_nr = ts->num;
 
 	switch (evt) {
 	case DAHDI_EVENT_ALARM:

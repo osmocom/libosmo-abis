@@ -667,6 +667,7 @@ static int e1inp_int_snd_event(struct e1inp_ts *ts,
 {
 	struct input_signal_data isd;
 	isd.line = ts->line;
+	isd.ts_nr = ts->num;
 	isd.link_type = link->type;
 	isd.trx = link->trx;
 	isd.tei = link->tei;
