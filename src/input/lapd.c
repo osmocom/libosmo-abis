@@ -95,6 +95,27 @@ const struct lapd_profile lapd_profile_abis = {
 	.short_address	= 0
 };
 
+/* Ericssons OM2000 lapd dialect requires a sabm frame retransmission
+ * timeout of exactly 300 msek. Shorter or longer retransmission will
+ * cause the link establishment to fail permanently. Since the BTS is
+ * periodically scanning through all timeslots to find the timeslot
+ * where the bsc is transmitting its sabm frames the normal maximum
+ * retransmission (n200) of 3 is not enough. In order not to miss
+ * the bts, n200 has been increased to 300, which is an educated
+ * guess. */
+
+const struct lapd_profile lapd_profile_abis_ericsson = {
+	.k		= LAPD_SET_K(2,1),
+	.n200		= 300,
+	.n201		= 260,
+	.n202		= 0, /* infinite */
+	.t200_sec	= 0,	.t200_usec	= 300000,
+	.t201_sec	= 1,	.t201_usec	= 0,
+	.t202_sec	= 2,	.t202_usec	= 0,
+	.t203_sec	= 10,	.t203_usec	= 0,
+	.short_address	= 0
+};
+
 const struct lapd_profile lapd_profile_sat = {
 	.k		= LAPD_SET_K(15,15),
 	.n200		= 5,
@@ -662,6 +683,13 @@ struct lapd_instance *lapd_instance_alloc(int network_side,
 	INIT_LLIST_HEAD(&li->tei_list);
 
 	return li;
+}
+
+/* Change lapd-profile on the fly (use with caution!) */
+void lapd_instance_set_profile(struct lapd_instance *li,
+			       const struct lapd_profile *profile)
+{
+	memcpy(&li->profile, profile, sizeof(li->profile));
 }
 
 void lapd_instance_free(struct lapd_instance *li)

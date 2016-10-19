@@ -18,8 +18,10 @@ struct lapd_profile {
 	int short_address;
 };
 
+/* predefined lapd profiles (see lapd.c for definition) */
 extern const struct lapd_profile lapd_profile_isdn;
 extern const struct lapd_profile lapd_profile_abis;
+extern const struct lapd_profile lapd_profile_abis_ericsson;
 extern const struct lapd_profile lapd_profile_sat;
 
 struct lapd_instance {
@@ -62,6 +64,13 @@ struct lapd_instance *lapd_instance_alloc(int network_side,
 	void (*rx_cb)(struct osmo_dlsap_prim *odp, uint8_t tei, uint8_t sapi, 
 			void *rx_cbdata), void *rx_cbdata,
 	const struct lapd_profile *profile);
+
+/* In rare cases (e.g. Ericsson's lapd dialect), it may be necessary to
+ * exchange the lapd profile on the fly. lapd_instance_set_profile()
+ * allwos to set the lapd profile on a lapd instance danymically to
+ * one of the lapd profiles define above. */
+void lapd_instance_set_profile(struct lapd_instance *li,
+			       const struct lapd_profile *profile);
 
 void lapd_instance_free(struct lapd_instance *li);
 
