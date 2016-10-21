@@ -161,6 +161,8 @@ int osmo_rtp_socket_poll(struct osmo_rtp_socket *rs)
 		if (rs->rx_cb)
 			rs->rx_cb(rs, mblk->b_rptr,
 				  mblk->b_wptr - mblk->b_rptr,
+				  rtp_get_seqnumber(mblk),
+				  rtp_get_timestamp(mblk),
 				  rtp_get_markbit(mblk));
 		//rs->rx_user_ts += 160;
 		freemsg(mblk);
@@ -192,6 +194,8 @@ static int osmo_rtp_fd_cb(struct osmo_fd *fd, unsigned int what)
 			if (rs->rx_cb)
 				rs->rx_cb(rs, mblk->b_rptr,
 					  mblk->b_wptr - mblk->b_rptr,
+					  rtp_get_seqnumber(mblk),
+					  rtp_get_timestamp(mblk),
 					  rtp_get_markbit(mblk));
 			freemsg(mblk);
 		} else

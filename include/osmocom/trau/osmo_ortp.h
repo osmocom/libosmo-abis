@@ -55,7 +55,8 @@ struct osmo_rtp_socket {
 
 	/*! \brief callback for incoming data */
 	void (*rx_cb)(struct osmo_rtp_socket *rs, const uint8_t *payload,
-		      unsigned int payload_len, bool marker);
+		      unsigned int payload_len, uint16_t seq_number,
+		      uint32_t timestamp, bool marker);
 
 	/*! \brief Receive user timestamp, to be incremented by user */
 	uint32_t rx_user_ts;
