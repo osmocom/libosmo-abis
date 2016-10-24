@@ -143,6 +143,22 @@ static void ortp_sig_cb_ts(RtpSession *rs, void *data)
 	rtp_session_resync(rs);
 }
 
+static inline bool recv_with_cb(struct osmo_rtp_socket *rs)
+{
+	mblk_t *mblk = rtp_session_recvm_with_ts(rs->sess, rs->rx_user_ts);
+	if (!mblk)
+		return false;
+
+	int plen = rtp_get_payload(mblk, &mblk->b_rptr);
+	/* hand into receiver */
+	if (rs->rx_cb && plen > 0)
+		rs->rx_cb(rs, mblk->b_rptr, plen, rtp_get_seqnumber(mblk),
+			  rtp_get_timestamp(mblk), rtp_get_markbit(mblk));
+	freemsg(mblk);
+	if (plen > 0)
+		return true;
+	return false;
+}
 
 /*! \brief poll the socket for incoming data
  *  \param[in] rs the socket to be polled
@@ -150,28 +166,14 @@ static void ortp_sig_cb_ts(RtpSession *rs, void *data)
  */
 int osmo_rtp_socket_poll(struct osmo_rtp_socket *rs)
 {
-	mblk_t *mblk;
 	if (rs->flags & OSMO_RTP_F_DISABLED)
 		return 0;
 
-	mblk = rtp_session_recvm_with_ts(rs->sess, rs->rx_user_ts);
-	if (mblk) {
-		rtp_get_payload(mblk, &mblk->b_rptr);
-		/* hand into receiver */
-		if (rs->rx_cb)
-			rs->rx_cb(rs, mblk->b_rptr,
-				  mblk->b_wptr - mblk->b_rptr,
-				  rtp_get_seqnumber(mblk),
-				  rtp_get_timestamp(mblk),
-				  rtp_get_markbit(mblk));
-		//rs->rx_user_ts += 160;
-		freemsg(mblk);
+	if (recv_with_cb(rs))
 		return 1;
-	} else {
-		LOGP(DLMIB, LOGL_INFO, "osmo_rtp_poll(%u): ERROR!\n",
-		     rs->rx_user_ts);
-		return 0;
-	}
+
+	LOGP(DLMIB, LOGL_INFO, "osmo_rtp_poll(%u): ERROR!\n", rs->rx_user_ts);
+	return 0;
 }
 
 /* Osmo FD callbacks */
@@ -179,7 +181,6 @@ int osmo_rtp_socket_poll(struct osmo_rtp_socket *rs)
 static int osmo_rtp_fd_cb(struct osmo_fd *fd, unsigned int what)
 {
 	struct osmo_rtp_socket *rs = fd->data;
-	mblk_t *mblk;
 
 	if (what & BSC_FD_READ) {
 		/* in polling mode, we don't want to be called here */
@@ -187,18 +188,7 @@ static int osmo_rtp_fd_cb(struct osmo_fd *fd, unsigned int what)
 			fd->when &= ~BSC_FD_READ;
 			return 0;
 		}
-		mblk = rtp_session_recvm_with_ts(rs->sess, rs->rx_user_ts);
-		if (mblk) {
-			rtp_get_payload(mblk, &mblk->b_rptr);
-			/* hand into receiver */
-			if (rs->rx_cb)
-				rs->rx_cb(rs, mblk->b_rptr,
-					  mblk->b_wptr - mblk->b_rptr,
-					  rtp_get_seqnumber(mblk),
-					  rtp_get_timestamp(mblk),
-					  rtp_get_markbit(mblk));
-			freemsg(mblk);
-		} else
+		if (!recv_with_cb(rs))
 			LOGP(DLMIB, LOGL_INFO, "recvm_with_ts(%u): ERROR!\n",
 			     rs->rx_user_ts);
 		rs->rx_user_ts += 160;
