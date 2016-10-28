@@ -145,14 +145,15 @@ static void ortp_sig_cb_ts(RtpSession *rs, void *data)
 
 static inline bool recv_with_cb(struct osmo_rtp_socket *rs)
 {
+	uint8_t *payload;
 	mblk_t *mblk = rtp_session_recvm_with_ts(rs->sess, rs->rx_user_ts);
 	if (!mblk)
 		return false;
 
-	int plen = rtp_get_payload(mblk, &mblk->b_rptr);
+	int plen = rtp_get_payload(mblk, &payload);
 	/* hand into receiver */
 	if (rs->rx_cb && plen > 0)
-		rs->rx_cb(rs, mblk->b_rptr, plen, rtp_get_seqnumber(mblk),
+		rs->rx_cb(rs, payload, plen, rtp_get_seqnumber(mblk),
 			  rtp_get_timestamp(mblk), rtp_get_markbit(mblk));
 	freemsg(mblk);
 	if (plen > 0)
