@@ -38,12 +38,13 @@
 
 /* CONFIG */
 
-#define E1_DRIVER_NAMES		"(misdn|misdn_lapd|dahdi|ipa)"
+#define E1_DRIVER_NAMES		"(misdn|misdn_lapd|dahdi|ipa|unixsocket)"
 #define E1_DRIVER_HELP		"mISDN supported E1 Card (kernel LAPD)\n" \
 				"mISDN supported E1 Card (userspace LAPD)\n" \
 				"DAHDI supported E1/T1/J1 Card\n" \
 				"IPA TCP/IP input\n" \
-				"HSL TCP/IP input"
+				"HSL TCP/IP input\n" \
+				"Unix socket input\n"
 
 #define E1_LINE_HELP		"Configure E1/T1/J1 Line\n" "Line Number\n"
 
@@ -84,6 +85,25 @@ DEFUN(cfg_e1line_port, cfg_e1_line_port_cmd,
 	}
 
 	line->port_nr = atoi(argv[1]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_e1line_socket, cfg_e1_line_socket_cmd,
+	"e1_line <0-255> socket .SOCKET",
+	E1_LINE_HELP "Set socket path for unixsocket\n"
+	"socket path\n")
+{
+	struct e1inp_line *line;
+	int e1_nr = atoi(argv[0]);
+
+	line = e1inp_line_find(e1_nr);
+	if (!line) {
+		vty_out(vty, "%% Line %d doesn't exist%s", e1_nr, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	line->sock_path = talloc_strdup(line, argv[1]);
 
 	return CMD_SUCCESS;
 }
@@ -363,6 +383,7 @@ int e1inp_vty_init(void)
 	vty_install_default(L_E1INP_NODE);
 	install_element(L_E1INP_NODE, &cfg_e1_line_driver_cmd);
 	install_element(L_E1INP_NODE, &cfg_e1_line_port_cmd);
+	install_element(L_E1INP_NODE, &cfg_e1_line_socket_cmd);
 	install_element(L_E1INP_NODE, &cfg_e1_line_name_cmd);
 	install_element(L_E1INP_NODE, &cfg_e1_line_keepalive_cmd);
 	install_element(L_E1INP_NODE, &cfg_e1_line_keepalive_params_cmd);
