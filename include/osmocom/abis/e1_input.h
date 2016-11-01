@@ -183,6 +183,7 @@ struct e1inp_line {
 	unsigned int num;
 	const char *name;
 	unsigned int port_nr;
+	char *sock_path;
 	struct rate_ctr_group *rate_ctr;
 
 	/* keepalive configuration */
@@ -302,6 +303,9 @@ int e1inp_vty_init(void);
 
 struct gsm_network;
 int ipaccess_setup(struct gsm_network *gsmnet);
+
+/* activate superchannel or deactive to use timeslots. only valid for unixsocket driver */
+void e1inp_ericsson_set_altc(struct e1inp_line *unixlinue, int superchannel);
 
 extern struct llist_head e1inp_driver_list;
 extern struct llist_head e1inp_line_list;

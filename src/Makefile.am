@@ -24,7 +24,8 @@ libosmoabis_la_SOURCES = init.c \
 			 input/lapd.c \
 			 input/lapd_pcap.c \
 			 input/misdn.c \
-			 input/rs232.c
+			 input/rs232.c \
+			 input/unixsocket.c
 
 libosmotrau_la_CFLAGS = $(AM_CFLAGS) $(ORTP_CFLAGS)
 libosmotrau_la_LDFLAGS = $(AM_LDFLAGS) -version-info $(TRAU_LIBVERSION)
