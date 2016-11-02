@@ -21,7 +21,7 @@ enum e1inp_sign_type {
 	E1INP_SIGN_OSMO,	/* IPA CCM OSMO sub-type */
 };
 const char *e1inp_signtype_name(enum e1inp_sign_type tp);
-const struct value_string e1inp_sign_type_names[5];
+extern const struct value_string e1inp_sign_type_names[5];
 
 enum e1inp_ctr {
 	E1I_CTR_HDLC_ABORT,
@@ -68,7 +68,7 @@ enum e1inp_ts_type {
 	E1INP_TS_TYPE_HDLC,
 };
 const char *e1inp_tstype_name(enum e1inp_ts_type tp);
-const struct value_string e1inp_ts_type_names[6];
+extern const struct value_string e1inp_ts_type_names[6];
 
 /* A timeslot in the E1 interface */
 struct e1inp_ts {
