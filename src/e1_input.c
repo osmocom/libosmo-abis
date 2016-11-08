@@ -232,7 +232,7 @@ int abis_sendmsg(struct msgb *msg)
 	struct e1inp_sign_link *sign_link = msg->dst;
 	struct e1inp_driver *e1inp_driver;
 	struct e1inp_ts *e1i_ts;
-;
+
 	msg->l2h = msg->data;
 
 	/* don't know how to route this message. */
