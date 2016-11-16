@@ -209,6 +209,9 @@ static int unixsocket_line_update(struct e1inp_line *line)
 				e1i_ts, &lapd_profile_abis);
 	}
 
+	/* Ensure Superchannel is turned of when a new connection is made */
+	e1inp_ericsson_set_altc(line, 0);
+
 	return ret;
 }
 
