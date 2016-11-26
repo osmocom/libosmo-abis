@@ -270,7 +270,7 @@ rs232_setup(struct e1inp_line *line, const char *serial_port, unsigned int delay
 	if (rc < 0) {
 		close(bfd->fd);
 		LOGP(DLMI, LOGL_ERROR, "rs232: could not register FD: %s\n",
-			strerror(rc));
+			strerror(-rc));
 		return rc;
 	}
 
