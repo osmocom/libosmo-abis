@@ -213,10 +213,8 @@ int ipa_client_conn_open(struct ipa_client_conn *link)
 	ret = osmo_sock_init(AF_INET, SOCK_STREAM, IPPROTO_TCP,
 			     link->addr, link->port,
 			     OSMO_SOCK_F_CONNECT|OSMO_SOCK_F_NONBLOCK);
-	if (ret < 0) {
-		if (errno != EINPROGRESS)
-			return ret;
-	}
+	if (ret < 0)
+		return ret;
 	link->ofd->fd = ret;
 	link->ofd->when |= BSC_FD_WRITE;
 	if (osmo_fd_register(link->ofd) < 0) {
