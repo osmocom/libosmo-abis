@@ -691,7 +691,7 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 		ret = osmo_fd_register(bfd);
 		if (ret < 0) {
 			fprintf(stderr, "could not register FD: %s\n",
-				strerror(ret));
+				strerror(-ret));
 			return ret;
 		}
 	}
