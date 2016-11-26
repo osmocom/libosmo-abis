@@ -196,7 +196,12 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 			newbfd->priv_nr = E1INP_SIGN_RSL + unit_data.trx_id;
 			osmo_fd_unregister(bfd);
 			bfd->fd = -1;
-			osmo_fd_register(newbfd);
+			ret = osmo_fd_register(newbfd);
+			if (ret < 0) {
+				LOGP(DLINP, LOGL_ERROR,
+				     "could not register FD\n");
+				goto err;
+			}
 			/* now we can release the dummy RSL line. */
 			e1inp_line_put(line);
 		}
