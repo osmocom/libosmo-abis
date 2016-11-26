@@ -211,6 +211,8 @@ static int osmo_rtcp_fd_cb(struct osmo_fd *fd, unsigned int what)
 
 static int osmo_rtp_socket_fdreg(struct osmo_rtp_socket *rs)
 {
+	int rc;
+
 	rs->rtp_bfd.fd = rtp_session_get_rtp_socket(rs->sess);
 	rs->rtcp_bfd.fd = rtp_session_get_rtcp_socket(rs->sess);
 	rs->rtp_bfd.when = rs->rtcp_bfd.when = BSC_FD_READ;
@@ -218,8 +220,15 @@ static int osmo_rtp_socket_fdreg(struct osmo_rtp_socket *rs)
 	rs->rtp_bfd.cb = osmo_rtp_fd_cb;
 	rs->rtcp_bfd.cb = osmo_rtcp_fd_cb;
 
-	osmo_fd_register(&rs->rtp_bfd);
-	osmo_fd_register(&rs->rtcp_bfd);
+	rc = osmo_fd_register(&rs->rtp_bfd);
+	if (rc < 0)
+		return rc;
+
+	rc = osmo_fd_register(&rs->rtcp_bfd);
+	if (rc < 0) {
+		osmo_fd_unregister(&rs->rtp_bfd);
+		return rc;
+	}
 
 	return 0;
 }
