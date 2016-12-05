@@ -46,16 +46,32 @@ void *tall_unixsocket_ctx;
 
 struct unixsocket_line {
 	struct osmo_fd fd;
+	struct osmo_timer_list timer;
 };
 
+static int unixsocket_line_update(struct e1inp_line *line);
 static int ts_want_write(struct e1inp_ts *e1i_ts);
 
 static int unixsocket_exception_cb(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
-	LOGP(DLINP, LOGL_ERROR, "unixsocket: closing socket. Exception cb called.\n");
 
+	LOGP(DLINP, LOGL_ERROR,
+	     "Socket connection failure, reconnecting... (line=%p, fd=%d)\n",
+	     line, bfd->fd);
+
+	/* Unregister faulty file descriptor from select loop */
+	if(osmo_fd_is_registered(bfd)) {
+		LOGP(DLINP, LOGL_DEBUG,
+		     "removing inactive socket from select loop... (line=%p, fd=%d)\n",
+		     line, bfd->fd);
+		osmo_fd_unregister(bfd);
+	}
+
+	/* Close faulty file descriptor */
 	close(bfd->fd);
+
+	unixsocket_line_update(line);
 
 	return 0;
 }
@@ -78,6 +94,9 @@ static int unixsocket_read_cb(struct osmo_fd *bfd)
 		return ret;
 	}
 	msgb_put(msg, ret);
+
+	LOGP(DLMI, LOGL_DEBUG, "rx msg: %s (fd=%d)\n",
+	     osmo_hexdump_nospc(msg->data, msg->len), bfd->fd);
 
 	return e1inp_rx_ts_lapd(&line->ts[0], msg);
 }
@@ -103,7 +122,8 @@ static int unixsocket_write_cb(struct osmo_fd *bfd)
 	msg = e1inp_tx_ts(e1i_ts, &sign_link);
 	if (!msg) {
 		/* no message after tx delay timer */
-		LOGP(DLINP, LOGL_INFO, "unixsocket: no message available");
+		LOGP(DLINP, LOGL_INFO,
+		     "no message available (line=%p)\n", line);
 		return 0;
 	}
 
@@ -113,7 +133,8 @@ static int unixsocket_write_cb(struct osmo_fd *bfd)
 
 	osmo_timer_schedule(&e1i_ts->sign.tx_timer, 0, e1i_ts->sign.delay);
 
-	LOGP(DLINP, LOGL_INFO, "unixsocket: sending: %s", msgb_hexdump(msg));
+	LOGP(DLINP, LOGL_INFO, "sending: %s (line=%p)\n",
+	     msgb_hexdump(msg), line);
 	lapd_transmit(e1i_ts->lapd, sign_link->tei,
 			sign_link->sapi, msg);
 
@@ -151,6 +172,9 @@ static void unixsocket_write_msg(struct msgb *msg, void *cbdata)
 	struct osmo_fd *bfd = cbdata;
 	int ret;
 
+	LOGP(DLMI, LOGL_DEBUG, "tx msg: %s (fd=%d)\n",
+	     osmo_hexdump_nospc(msg->data, msg->len), bfd->fd);
+
 	ret = write(bfd->fd, msg->data, msg->len);
 	msgb_free(msg);
 	if (ret == -1)
@@ -178,38 +202,55 @@ static int unixsocket_line_update(struct e1inp_line *line)
 		line->driver_data = talloc_zero(line, struct unixsocket_line);
 
 	if (!line->driver_data) {
-		LOGP(DLINP, LOGL_ERROR, "unixsocket: OOM in line update\n");
+		LOGP(DLINP, LOGL_ERROR,
+		     "OOM in line update (line=%p)\n", line);
 		return -ENOMEM;
 	}
 
 	config = line->driver_data;
-
 	config->fd.data = line;
 	config->fd.when = BSC_FD_READ;
 	config->fd.cb = unixsocket_cb;
-	ret = osmo_sock_unix_init(SOCK_SEQPACKET, 0, sock_path, OSMO_SOCK_F_CONNECT);
 
+	/* Open unix domain socket */
+	ret = osmo_sock_unix_init(SOCK_SEQPACKET, 0, sock_path,
+				  OSMO_SOCK_F_CONNECT);
 	if (ret < 0) {
-		talloc_free(config);
+		/* Note: We will not free the allocated driver_data memory if
+		 * opening the socket fails. The caller may want to call this
+		 * function multiple times using config->fd.data as line
+		 * parameter. Freeing now would destroy that reference. */
+		LOGP(DLINP, LOGL_ERROR,
+		     "unable to open socket: %s (line=%p, fd=%d)\n", sock_path,
+		     line, config->fd.fd);
 		return ret;
 	}
-
+	LOGP(DLINP, LOGL_DEBUG,
+	     "successfully opend (new) socket: %s (line=%p, fd=%d, ret=%d)\n",
+	     sock_path, line, config->fd.fd, ret);
 	config->fd.fd = ret;
+
+	/* Register socket in select loop */
 	if (osmo_fd_register(&config->fd) < 0) {
+		LOGP(DLINP, LOGL_ERROR,
+		     "error registering new socket (line=%p, fd=%d)\n",
+		     line, config->fd.fd);
 		close(config->fd.fd);
 		return -EIO;
 	}
 
+	/* Set line parameter */
 	for (i = 0; i < ARRAY_SIZE(line->ts); i++) {
 		struct e1inp_ts *e1i_ts = &line->ts[i];
-
-		if (!e1i_ts->lapd)
+		if (!e1i_ts->lapd) {
 			e1i_ts->lapd = lapd_instance_alloc(1,
-				unixsocket_write_msg, &config->fd, e1inp_dlsap_up,
-				e1i_ts, &lapd_profile_abis);
+				unixsocket_write_msg, &config->fd,
+				e1inp_dlsap_up, e1i_ts, &lapd_profile_abis);
+		}
 	}
 
-	/* Ensure Superchannel is turned of when a new connection is made */
+	/* Ensure ericsson-superchannel is turned of when
+	 * a new connection is made */
 	e1inp_ericsson_set_altc(line, 0);
 
 	return ret;
@@ -256,3 +297,4 @@ void e1inp_ericsson_set_altc(struct e1inp_line *unixline, int superchannel)
 
 	unixsocket_write_msg(msg, &config->fd);
 }
+
