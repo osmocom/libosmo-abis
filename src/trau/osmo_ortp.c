@@ -130,7 +130,7 @@ static void ortp_sig_cb_net(RtpSession *rs, void *data)
 	int port = rtp_session_get_local_port(rs);
 
 	LOGP(DLMIB, LOGL_ERROR,
-	     "osmo-ortp(%d): network_error\n", port);
+	     "osmo-ortp(%d): network_error %s\n", port, (char *)data);
 }
 
 static void ortp_sig_cb_ts(RtpSession *rs, void *data)
