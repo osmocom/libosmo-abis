@@ -173,7 +173,8 @@ int osmo_rtp_socket_poll(struct osmo_rtp_socket *rs)
 	if (recv_with_cb(rs))
 		return 1;
 
-	LOGP(DLMIB, LOGL_INFO, "osmo_rtp_poll(%u): ERROR!\n", rs->rx_user_ts);
+	LOGP(DLMIB, LOGL_INFO, "osmo_rtp_socket_poll(%u): ERROR!\n",
+	     rs->rx_user_ts);
 	return 0;
 }
 
