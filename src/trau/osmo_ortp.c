@@ -278,28 +278,35 @@ void osmo_rtp_init(void *ctx)
 	create_payload_types();
 }
 
+/*! \brief Set Osmocom RTP socket parameters
+ *  \param[in] rs OsmoRTP socket
+ *  \param[in] param defined which parameter to set
+                     OSMO_RTP_P_JITBUF - enables regular jitter buffering
+                     OSMO_RTP_P_JIT_ADAP - enables adaptive jitter buffering
+ *  \param[in] val Size of jitter buffer (in ms), 0 means disable buffering
+ *  \returns negative value on error, 0 or 1 otherwise
+                      (depending on whether given jitter buffering is enabled)
+ */
 int osmo_rtp_socket_set_param(struct osmo_rtp_socket *rs,
 			      enum osmo_rtp_param param, int val)
 {
-	int rc = 0;
-
 	switch (param) {
+	case OSMO_RTP_P_JIT_ADAP:
+		rtp_session_enable_adaptive_jitter_compensation(rs->sess,
+								(bool)val);
+		/* fall-through on-purpose - we have to set val anyway */
 	case OSMO_RTP_P_JITBUF:
 		rtp_session_enable_jitter_buffer(rs->sess,
 			(val) ? TRUE : FALSE);
 		if (val)
 			rtp_session_set_jitter_compensation(rs->sess, val);
 		break;
-#if 0
-	case OSMO_RTP_P_JIT_ADAP:
-		rc = jitter_control_enable_adaptive(rs->sess, val);
-		break;
-#endif
 	default:
 		return -EINVAL;
 	}
-
-	return rc;
+	if (param == OSMO_RTP_P_JIT_ADAP)
+		return rtp_session_adaptive_jitter_compensation_enabled(rs->sess);
+	return rtp_session_jitter_buffer_enabled(rs->sess);
 }
 
 /*! \brief Create a new RTP socket
@@ -328,7 +335,6 @@ struct osmo_rtp_socket *osmo_rtp_socket_create(void *talloc_ctx, unsigned int fl
 	rtp_session_set_data(rs->sess, rs);
 	rtp_session_set_profile(rs->sess, osmo_pt_profile);
 	rtp_session_set_jitter_compensation(rs->sess, 100);
-	//jitter_control_enable_adaptive(rs->sess, 0);
 
 	rtp_session_signal_connect(rs->sess, "ssrc_changed",
 				   (RtpCallback) ortp_sig_cb_ssrc,
