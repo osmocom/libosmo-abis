@@ -106,11 +106,7 @@ static void my_ortp_logfn(OrtpLogLevel lev, const char *fmt,
 static void ortp_sig_cb_ssrc(RtpSession *rs, void *data)
 {
 	int port = rtp_session_get_local_port(rs);
-#if 0	/* post 0.20.0 ORTP has this function */
 	uint32_t ssrc = rtp_session_get_recv_ssrc(rs);
-#else
-	uint32_t ssrc = rs->rcv.ssrc;
-#endif
 
 	LOGP(DLMIB, LOGL_INFO,
 	     "osmo-ortp(%d): ssrc_changed to 0x%08x\n", port, ssrc);
