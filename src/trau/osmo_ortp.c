@@ -534,6 +534,8 @@ void osmo_rtp_socket_log_stats(struct osmo_rtp_socket *rs,
 				const char *pfx)
 {
 	char jitter_stats_str[1024] = "";
+	const char *addr = NULL;
+	int port = 0;
 #if HAVE_ORTP_021
 	const jitter_stats_t *jitter;
 
@@ -554,10 +556,15 @@ void osmo_rtp_socket_log_stats(struct osmo_rtp_socket *rs,
 		return;
 	}
 
-	LOGP(subsys, level, "%sRTP Tx(%"PRIu64" pkts, %"PRIu64" bytes) "
+	if (osmo_rtp_get_bound_addr(rs, &addr, &port) != 0) {
+		LOGP(subsys, level, "Failed to obtain RTP socket IP and port!");
+		return;
+	}
+
+	LOGP(subsys, level, "%sRTP IP %s port %d Tx(%"PRIu64" pkts, %"PRIu64" bytes) "
 		"Rx(%"PRIu64" pkts, %"PRIu64" bytes, %"PRIu64" late, "
 		"%"PRIu64" loss, %"PRIu64" qmax)%s\n",
-		pfx, stats->packet_sent, stats->sent,
+		pfx, addr, port, stats->packet_sent, stats->sent,
 		stats->packet_recv, stats->hw_recv, stats->outoftime,
 		stats->cum_packet_loss, stats->discarded,
 		jitter_stats_str);
