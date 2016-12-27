@@ -549,8 +549,10 @@ void osmo_rtp_socket_log_stats(struct osmo_rtp_socket *rs,
 	const rtp_stats_t *stats;
 
 	stats = rtp_session_get_stats(rs->sess);
-	if (!stats)
+	if (!stats) {
+		LOGP(subsys, level, "Failed to obtain RTP jitter stats!");
 		return;
+	}
 
 	LOGP(subsys, level, "%sRTP Tx(%"PRIu64" pkts, %"PRIu64" bytes) "
 		"Rx(%"PRIu64" pkts, %"PRIu64" bytes, %"PRIu64" late, "
