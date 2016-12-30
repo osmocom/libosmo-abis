@@ -839,11 +839,13 @@ static int ipaccess_line_update(struct e1inp_line *line)
 	switch(line->ops->cfg.ipa.role) {
 	case E1INP_LINE_R_BSC: {
 		struct ipa_server_link *oml_link, *rsl_link;
+		const char *ipa = e1inp_ipa_get_bind_addr();
 
-		LOGP(DLINP, LOGL_NOTICE, "enabling ipaccess BSC mode\n");
+		LOGP(DLINP, LOGL_NOTICE, "enabling ipaccess BSC mode on %s "
+		     "with OML %u and RSL %u TCP ports\n", ipa,
+		     IPA_TCP_PORT_OML, IPA_TCP_PORT_RSL);
 
-		oml_link = ipa_server_link_create(tall_ipa_ctx, line,
-						  e1inp_ipa_get_bind_addr(),
+		oml_link = ipa_server_link_create(tall_ipa_ctx, line, ipa,
 						  IPA_TCP_PORT_OML,
 						  ipaccess_bsc_oml_cb, NULL);
 		if (oml_link == NULL) {
@@ -857,8 +859,7 @@ static int ipaccess_line_update(struct e1inp_line *line)
 			ipa_server_link_destroy(oml_link);
 			return -EIO;
 		}
-		rsl_link = ipa_server_link_create(tall_ipa_ctx, line,
-						  e1inp_ipa_get_bind_addr(),
+		rsl_link = ipa_server_link_create(tall_ipa_ctx, line, ipa,
 						  IPA_TCP_PORT_RSL,
 						  ipaccess_bsc_rsl_cb, NULL);
 		if (rsl_link == NULL) {
@@ -878,7 +879,9 @@ static int ipaccess_line_update(struct e1inp_line *line)
 	case E1INP_LINE_R_BTS: {
 		struct ipa_client_conn *link;
 
-		LOGP(DLINP, LOGL_NOTICE, "enabling ipaccess BTS mode\n");
+		LOGP(DLINP, LOGL_NOTICE, "enabling ipaccess BTS mode, "
+		     "OML connecting to %s:%u\n", line->ops->cfg.ipa.addr,
+		     IPA_TCP_PORT_OML);
 
 		link = ipa_client_conn_create(tall_ipa_ctx,
 					      &line->ts[E1INP_SIGN_OML-1],
