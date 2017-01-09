@@ -228,7 +228,7 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 	struct e1inp_sign_link *link;
 	struct ipaccess_head *hh;
 	struct msgb *msg = NULL;
-	int ret;
+	int ret, rc;
 
 	ret = ipa_msg_recv_buffered(bfd->fd, &msg, &e1i_ts->pending_msg);
 	if (ret < 0) {
@@ -273,13 +273,14 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 		ret = -EINVAL;
 		goto err_msg;
 	}
-	if (e1i_ts->line->ops->sign_link(msg) < 0) {
+	rc = e1i_ts->line->ops->sign_link(msg);
+	if (rc < 0) {
 		/* Don't close the signalling link if the upper layers report
 		 * an error, that's too strict. BTW, the signalling layer is
 		 * resposible for releasing the message.
 		 */
 		LOGP(DLINP, LOGL_ERROR, "Bad signalling message,"
-			"sign_link returned error\n");
+		     " sign_link returned error: %s.\n", strerror(-rc));
 	}
 
 	return 0;
