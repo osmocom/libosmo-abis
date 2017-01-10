@@ -289,17 +289,6 @@ int subchan_mux_out(struct subch_mux *mx, uint8_t *data, int len)
 	return i;
 }
 
-static int llist_len(struct llist_head *head)
-{
-	struct llist_head *entry;
-	int i = 0;
-
-	llist_for_each(entry, head)
-		i++;
-
-	return i;
-}
-
 /* evict the 'num_evict' number of oldest entries in the queue */
 static void tx_queue_evict(struct mux_subch *sch, int num_evict)
 {
@@ -327,7 +316,7 @@ int subchan_mux_enqueue(struct subch_mux *mx, int s_nr, const uint8_t *data,
 			int len)
 {
 	struct mux_subch *sch = &mx->subch[s_nr];
-	int list_len = llist_len(&sch->tx_queue);
+	unsigned int list_len = llist_count(&sch->tx_queue);
 	struct subch_txq_entry *tqe = talloc_zero_size(tall_tqe_ctx,
 							sizeof(*tqe) + len);
 	if (!tqe)
