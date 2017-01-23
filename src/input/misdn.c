@@ -41,8 +41,8 @@
 #include <errno.h>
 #include <string.h>
 #include <time.h>
-#include <sys/fcntl.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <sys/ioctl.h>
 #include <arpa/inet.h>
 #include <mISDNif.h>

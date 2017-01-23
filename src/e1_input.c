@@ -28,20 +28,12 @@
 #include <errno.h>
 #include <string.h>
 #include <time.h>
-#include <sys/fcntl.h>
+#include <fcntl.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <arpa/inet.h>
-#include <mISDNif.h>
 
 #include <osmocom/abis/lapd.h>
-
-//#define AF_COMPATIBILITY_FUNC
-//#include <compat_af_isdn.h>
-#ifndef AF_ISDN
-#define AF_ISDN 34
-#define PF_ISDN AF_ISDN
-#endif
 
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/talloc.h>
