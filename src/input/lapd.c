@@ -101,12 +101,12 @@ const struct lapd_profile lapd_profile_abis = {
  * periodically scanning through all timeslots to find the timeslot
  * where the bsc is transmitting its sabm frames the normal maximum
  * retransmission (n200) of 3 is not enough. In order not to miss
- * the bts, n200 has been increased to 300, which is an educated
+ * the bts, n200 has been increased to 50, which is an educated
  * guess. */
 
 const struct lapd_profile lapd_profile_abis_ericsson = {
 	.k		= LAPD_SET_K(2,1),
-	.n200		= 300,
+	.n200		= 50,
 	.n201		= 260,
 	.n202		= 0, /* infinite */
 	.t200_sec	= 0,	.t200_usec	= 300000,
