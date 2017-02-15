@@ -1,3 +1,9 @@
+libosmo-abis (0.3.3-fw.1) UNRELEASED; urgency=medium
+
+  * New release of libosmo-abis for fairwaves build.
+
+ -- Ivan Klyuchnikov <kluchnikovi@gmail.com>  Tue, 14 Feb 2017 13:15:40 +0200
+
 libosmo-abis (0.3.3) UNRELEASED; urgency=medium
 
   * Move forward towards a new release.
