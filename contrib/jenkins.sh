@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 set -ex
 
@@ -24,7 +24,7 @@ echo
 set -x
 
 autoreconf --install --force
-./configure
+./configure --enable-sanitize
 $MAKE $PARALLEL_MAKE
 $MAKE distcheck \
   || cat-testlogs.sh

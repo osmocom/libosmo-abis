@@ -47,6 +47,18 @@ PKG_CHECK_MODULES(ORTP, ortp >= 0.22.0)
 
 AC_CHECK_HEADERS(dahdi/user.h,,AC_MSG_WARN(DAHDI input driver will not be built))
 
+AC_ARG_ENABLE(sanitize,
+	[AS_HELP_STRING(
+		[--enable-sanitize],
+		[Compile with address sanitizer enabled],
+	)],
+	[sanitize=$enableval], [sanitize="no"])
+if test x"$sanitize" = x"yes"
+then
+	CFLAGS+=" -fsanitize=address -fsanitize=undefined"
+	CPPFLAGS+=" -fsanitize=address -fsanitize=undefined"
+fi
+
 AC_OUTPUT(
 	libosmoabis.pc
 	libosmotrau.pc
