@@ -171,26 +171,12 @@ static void unixsocket_write_msg(struct msgb *msg, void *cbdata)
 {
 	struct osmo_fd *bfd = cbdata;
 	int ret;
-	struct msgb *hdr_msg = msgb_alloc(msg->data_len + 2, "unixsocket_write_msg");
-
-
-	msgb_put(hdr_msg,2);
-
-	memcpy(hdr_msg->tail,msg->data,msg->len);
-	msgb_put(hdr_msg,msg->len);
-
-
-	printf("==BEFORE===> %s (len=%i)\n",osmo_hexdump_nospc(msg->data, msg->len), msg->len);
-	printf("==AFTER====> %s (len=%i)\n",osmo_hexdump_nospc(hdr_msg->data, hdr_msg->len), hdr_msg->len);
-	printf("msg->len=%i, hdr_msg=%i\n",msg->len, hdr_msg->len);
 
 	LOGP(DLMI, LOGL_DEBUG, "tx msg: %s (fd=%d)\n",
 	     osmo_hexdump_nospc(msg->data, msg->len), bfd->fd);
 
-	ret = write(bfd->fd, hdr_msg->data, hdr_msg->len);
+	ret = write(bfd->fd, msg->data, msg->len);
 	msgb_free(msg);
-	msgb_free(hdr_msg);
-
 	if (ret == -1)
 		unixsocket_exception_cb(bfd);
 	else if (ret < 0)
