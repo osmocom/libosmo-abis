@@ -39,6 +39,7 @@
 #include <osmocom/abis/e1_input.h>
 
 #include "internal.h"
+#include "unixsocket_proto.h"
 
 void *tall_unixsocket_ctx;
 #define UNIXSOCKET_ALLOC_SIZE 1600
@@ -80,6 +81,8 @@ static int unixsocket_read_cb(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
 	struct msgb *msg = msgb_alloc(UNIXSOCKET_ALLOC_SIZE, "UNIXSOCKET TS");
+	uint8_t version;
+	uint8_t controldata;
 	int ret;
 
 	if (!msg)
@@ -88,17 +91,44 @@ static int unixsocket_read_cb(struct osmo_fd *bfd)
 	ret = read(bfd->fd, msg->data, UNIXSOCKET_ALLOC_SIZE - 16);
 	if (ret == 0) {
 		unixsocket_exception_cb(bfd);
-		return ret;
+		goto fail;
 	} else if (ret < 0) {
 		perror("read ");
-		return ret;
+		goto fail;
+	} else if (ret < 2) {
+		/* packet must be at least 2 byte long to hold version + control/data header */
+		LOGP(DLMI, LOGL_ERROR, "received to small packet: %d < 2", ret);
+		ret = -1;
+		goto fail;
 	}
 	msgb_put(msg, ret);
 
 	LOGP(DLMI, LOGL_DEBUG, "rx msg: %s (fd=%d)\n",
 	     osmo_hexdump_nospc(msg->data, msg->len), bfd->fd);
 
-	return e1inp_rx_ts_lapd(&line->ts[0], msg);
+	/* check version header */
+	version = msgb_pull_u8(msg);
+	controldata = msgb_pull_u8(msg);
+
+	if (version != UNIXSOCKET_PROTO_VERSION) {
+		LOGP(DLMI, LOGL_ERROR, "received message with invalid version %d. valid: %d",
+		     ret, UNIXSOCKET_PROTO_VERSION);
+		ret = -1;
+		goto fail;
+	}
+
+	if (controldata == UNIXSOCKET_PROTO_DATA) {
+		return e1inp_rx_ts_lapd(&line->ts[0], msg);
+	} else if (controldata == UNIXSOCKET_PROTO_CONTROL) {
+		LOGP(DLMI, LOGL_ERROR, "received (invalid) control message.");
+		ret = -1;
+	} else {
+		LOGP(DLMI, LOGL_ERROR, "received invalid message.");
+		ret = -1;
+	}
+fail:
+	msgb_free(msg);
+	return ret;
 }
 
 static void timeout_ts1_write(void *data)
@@ -162,14 +192,7 @@ static int ts_want_write(struct e1inp_ts *e1i_ts)
 	return 0;
 }
 
-/*!
- * \brief unixsocket_write_msg lapd callback for data to unixsocket
- * \param msg
- * \param cbdata
- */
-static void unixsocket_write_msg(struct msgb *msg, void *cbdata)
-{
-	struct osmo_fd *bfd = cbdata;
+static void unixsocket_write_msg(struct msgb *msg, struct osmo_fd *bfd) {
 	int ret;
 
 	LOGP(DLMI, LOGL_DEBUG, "tx msg: %s (fd=%d)\n",
@@ -181,6 +204,23 @@ static void unixsocket_write_msg(struct msgb *msg, void *cbdata)
 		unixsocket_exception_cb(bfd);
 	else if (ret < 0)
 		LOGP(DLMI, LOGL_NOTICE, "%s write failed %d\n", __func__, ret);
+}
+
+/*!
+ * \brief unixsocket_write_msg lapd callback for data to unixsocket
+ * \param msg
+ * \param cbdata
+ */
+static void unixsocket_write_msg_lapd_cb(struct msgb *msg, void *cbdata)
+{
+	struct osmo_fd *bfd = cbdata;
+
+	/* data|control */
+	msgb_push_u8(msg, UNIXSOCKET_PROTO_DATA);
+	/* add version header */
+	msgb_push_u8(msg, UNIXSOCKET_PROTO_VERSION);
+
+	unixsocket_write_msg(msg, bfd);
 }
 
 static int unixsocket_line_update(struct e1inp_line *line)
@@ -244,7 +284,7 @@ static int unixsocket_line_update(struct e1inp_line *line)
 		struct e1inp_ts *e1i_ts = &line->ts[i];
 		if (!e1i_ts->lapd) {
 			e1i_ts->lapd = lapd_instance_alloc(1,
-				unixsocket_write_msg, &config->fd,
+				unixsocket_write_msg_lapd_cb, &config->fd,
 				e1inp_dlsap_up, e1i_ts, &lapd_profile_abis);
 		}
 	}
@@ -290,6 +330,11 @@ void e1inp_ericsson_set_altc(struct e1inp_line *unixline, int superchannel)
 
 
 	msg = msgb_alloc_headroom(200, 100, "ALTC");
+
+	/* version header */
+	msgb_put_u8(msg, UNIXSOCKET_PROTO_VERSION);
+	/* data|control */
+	msgb_put_u8(msg, UNIXSOCKET_PROTO_CONTROL);
 
 	/* magic */
 	msgb_put_u32(msg, 0x23004200);
