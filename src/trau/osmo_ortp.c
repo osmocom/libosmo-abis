@@ -467,9 +467,9 @@ int osmo_rtp_send_frame_ext(struct osmo_rtp_socket *rs, const uint8_t *payload,
 		return -ENOMEM;
 
 	rtp_set_markbit(mblk, marker);
+	rs->tx_timestamp += duration;
 	rc = rtp_session_sendm_with_ts(rs->sess, mblk,
 				       rs->tx_timestamp);
-	rs->tx_timestamp += duration;
 	if (rc < 0) {
 		/* no need to free() the mblk, as rtp_session_rtp_send()
 		 * unconditionally free()s the mblk even in case of
