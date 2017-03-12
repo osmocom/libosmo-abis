@@ -233,7 +233,7 @@ static int unixsocket_line_update(struct e1inp_line *line)
 	int i;
 
 	if (line->sock_path)
-		strcpy(sock_path, line->sock_path);
+		osmo_strlcpy(sock_path, line->sock_path, PATH_MAX);
 	else
 		sprintf(sock_path, "%s%d", UNIXSOCKET_SOCK_PATH_DEFAULT,
 			line->num);
