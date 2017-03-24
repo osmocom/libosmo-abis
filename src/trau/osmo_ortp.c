@@ -94,8 +94,11 @@ static int ortp_to_osmo_lvl(OrtpLogLevel lev)
 	return LOGL_ERROR;
 }
 
-static void my_ortp_logfn(OrtpLogLevel lev, const char *fmt,
-			  va_list args)
+static void my_ortp_logfn(
+#if HAVE_ORTP_LOG_DOMAIN
+	const char *domain,
+#endif
+	OrtpLogLevel lev, const char *fmt, va_list args)
 {
 	osmo_vlogp(DLMIB, ortp_to_osmo_lvl(lev), __FILE__, 0,
 		   0, fmt, args);
@@ -273,7 +276,12 @@ void osmo_rtp_init(void *ctx)
 	tall_rtp_ctx = ctx;
 	ortp_set_memory_functions(&osmo_ortp_memfn);
 	ortp_init();
-	ortp_set_log_level_mask(0xffff);
+	ortp_set_log_level_mask(
+#if HAVE_ORTP_LOG_DOMAIN
+		ORTP_LOG_DOMAIN,
+#endif
+		0xffff);
+
 	ortp_set_log_handler(my_ortp_logfn);
 	create_payload_types();
 }

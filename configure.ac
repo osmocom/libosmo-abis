@@ -59,6 +59,16 @@ then
 	CPPFLAGS+=" -fsanitize=address -fsanitize=undefined"
 fi
 
+AC_COMPILE_IFELSE(
+	[AC_LANG_PROGRAM(
+		[[#include <ortp/ortp.h>]],
+		[[ortp_set_log_level_mask(NULL, 0xffff);]]
+	)],
+	[AC_DEFINE([HAVE_ORTP_LOG_DOMAIN], [1],
+		[ortp_set_log_level_mask requires domain parameter])],
+	[AC_DEFINE([HAVE_ORTP_LOG_DOMAIN], [0],
+		[ortp_set_log_level_mask has no domain parameter])])
+
 AC_OUTPUT(
 	libosmoabis.pc
 	libosmotrau.pc
