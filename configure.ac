@@ -59,6 +59,8 @@ then
 	CPPFLAGS+=" -fsanitize=address -fsanitize=undefined"
 fi
 
+_cflags_save=$CFLAGS
+CFLAGS="$CFLAGS $ORTP_CFLAGS"
 AC_COMPILE_IFELSE(
 	[AC_LANG_PROGRAM(
 		[[#include <ortp/ortp.h>]],
@@ -68,6 +70,7 @@ AC_COMPILE_IFELSE(
 		[ortp_set_log_level_mask requires domain parameter])],
 	[AC_DEFINE([HAVE_ORTP_LOG_DOMAIN], [0],
 		[ortp_set_log_level_mask has no domain parameter])])
+CFLAGS=$_cflags_save
 
 AC_OUTPUT(
 	libosmoabis.pc
