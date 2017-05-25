@@ -803,6 +803,17 @@ static int e1i_sig_cb(unsigned int subsys, unsigned int signal,
 	return 0;
 }
 
+const struct value_string e1inp_signal_names[] = {
+	{ S_L_INP_NONE,		"NONE" },
+	{ S_L_INP_TEI_UP,	"TEI-UP" },
+	{ S_L_INP_TEI_DN,	"TEI-DOWN" },
+	{ S_L_INP_TEI_UNKNOWN,	"TEI-UNKNOWN" },
+	{ S_L_INP_LINE_INIT,	"LINE-INIT" },
+	{ S_L_INP_LINE_ALARM,	"LINE-ALARM" },
+	{ S_L_INP_LINE_NOALARM,	"LINE-NOALARM" },
+	{ 0, NULL }
+};
+
 void e1inp_misdn_init(void);
 void e1inp_dahdi_init(void);
 void e1inp_ipaccess_init(void);

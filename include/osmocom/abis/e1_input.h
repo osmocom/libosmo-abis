@@ -212,6 +212,8 @@ enum e1inp_signal_input {
 	S_L_INP_LINE_NOALARM,
 };
 
+extern const struct value_string e1inp_signal_names[];
+
 /* register a driver with the E1 core */
 int e1inp_driver_register(struct e1inp_driver *drv);
 
