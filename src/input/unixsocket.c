@@ -160,8 +160,7 @@ static int unixsocket_write_cb(struct osmo_fd *bfd)
 	}
 
 	/* set tx delay timer for next event */
-	e1i_ts->sign.tx_timer.cb = timeout_ts1_write;
-	e1i_ts->sign.tx_timer.data = e1i_ts;
+	osmo_timer_setup(&e1i_ts->sign.tx_timer, timeout_ts1_write, e1i_ts);
 
 	osmo_timer_schedule(&e1i_ts->sign.tx_timer, 0, e1i_ts->sign.delay);
 
