@@ -199,6 +199,10 @@ static int osmo_rtp_fd_cb(struct osmo_fd *fd, unsigned int what)
 	return 0;
 }
 
+/* Internal API coming from rtpsession_priv.h, used in osmo_rtcp_fd_cb */
+#pragma message ("Using internal ortp API: rtp_session_rtcp_rec")
+int rtp_session_rtcp_recv(RtpSession * session);
+
 static int osmo_rtcp_fd_cb(struct osmo_fd *fd, unsigned int what)
 {
 	struct osmo_rtp_socket *rs = fd->data;
@@ -360,7 +364,7 @@ struct osmo_rtp_socket *osmo_rtp_socket_create(void *talloc_ctx, unsigned int fl
 	/* initialize according to the RFC */
 	rtp_session_set_seq_number(rs->sess, random());
 	rs->tx_timestamp = random();
-	
+
 
 	return rs;
 }
