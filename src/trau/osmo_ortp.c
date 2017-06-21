@@ -350,16 +350,19 @@ struct osmo_rtp_socket *osmo_rtp_socket_create(void *talloc_ctx, unsigned int fl
 
 	rtp_session_signal_connect(rs->sess, "ssrc_changed",
 				   (RtpCallback) ortp_sig_cb_ssrc,
-				   (unsigned long) rs);
+				   RTP_SIGNAL_PTR_CAST(rs));
+
 	rtp_session_signal_connect(rs->sess, "payload_type_changed",
 				   (RtpCallback) ortp_sig_cb_pt,
-				   (unsigned long) rs);
+				   RTP_SIGNAL_PTR_CAST(rs));
+
 	rtp_session_signal_connect(rs->sess, "network_error",
 				   (RtpCallback) ortp_sig_cb_net,
-				   (unsigned long) rs);
+				   RTP_SIGNAL_PTR_CAST(rs));
+
 	rtp_session_signal_connect(rs->sess, "timestamp_jump",
 				   (RtpCallback) ortp_sig_cb_ts,
-				   (unsigned long) rs);
+				   RTP_SIGNAL_PTR_CAST(rs));
 
 	/* initialize according to the RFC */
 	rtp_session_set_seq_number(rs->sess, random());

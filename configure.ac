@@ -72,6 +72,20 @@ AC_COMPILE_IFELSE(
 		[ortp_set_log_level_mask has no domain parameter])])
 CFLAGS=$_cflags_save
 
+_cflags_save=$CFLAGS
+CFLAGS="$CFLAGS $ORTP_CFLAGS"
+AC_COMPILE_IFELSE(
+	[AC_LANG_PROGRAM(
+		[[#include <ortp/ortp.h>]],
+		[[void fake_cb(struct _RtpSession *r, void *arg1, void *arg2, void *arg3) { return; } rtp_session_signal_connect(NULL, "", fake_cb, (void*) fake_cb);]]
+	)],
+	[AC_DEFINE([RTP_SIGNAL_PTR_CAST(arg)], [(void*)(arg)],
+		[rtp_session_signal_connect requires pointer parameter])],
+	[AC_DEFINE([RTP_SIGNAL_PTR_CAST(arg)], [(unsigned long)(arg)],
+		[rtp_session_signal_connect requires ulong parameter])])
+CFLAGS=$_cflags_save
+
+
 AC_OUTPUT(
 	libosmoabis.pc
 	libosmotrau.pc
