@@ -26,8 +26,8 @@ PKG_PROG_PKG_CONFIG([0.20])
 
 AC_CONFIG_MACRO_DIR([m4])
 
-CFLAGS+=" -Wall -Werror"
-CPPFLAGS+=" -Wall -Werror"
+CFLAGS+=" -Wall"
+CPPFLAGS+=" -Wall"
 
 # The following test is taken from WebKit's webkit.m4
 saved_CFLAGS="$CFLAGS"
