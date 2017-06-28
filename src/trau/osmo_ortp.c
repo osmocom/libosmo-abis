@@ -436,6 +436,28 @@ int osmo_rtp_socket_connect(struct osmo_rtp_socket *rs, const char *ip, uint16_t
 		return osmo_rtp_socket_fdreg(rs);
 }
 
+/*! \brief Increment timestamp on a RTP socket without sending any packet
+ *  \param[in] rs OsmoRTP socket
+ *  \param[in] duration duration in number of RTP clock ticks
+ *
+ * Useful to keep the RTP internal clock up to date if an RTP frame should be
+ * send at a given time but no audio content is available. When next packet is
+ * sent, the receiver will see a different increase on the sequence number and
+ * the timestamp, and it should then take it as a synchronization point. For
+ * that same reason, it is advisable to enable the marker bit on the next RTP
+ * packet to be sent after calling this function.
+ *
+ *  \returns 0 on success, <0 in case of error.
+ */
+int osmo_rtp_skipped_frame(struct osmo_rtp_socket *rs, unsigned int duration)
+{
+	if (rs->flags & OSMO_RTP_F_DISABLED)
+		return 0;
+
+	rs->tx_timestamp += duration;
+	return 0;
+}
+
 /*! \brief Send one RTP frame via a RTP socket
  *  \param[in] rs OsmoRTP socket
  *  \param[in] payload pointer to buffer with RTP payload data
