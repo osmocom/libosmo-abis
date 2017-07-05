@@ -32,7 +32,7 @@ echo
 set -x
 
 autoreconf --install --force
-./configure --enable-sanitize
+./configure --enable-sanitize CFLAGS="-Werror" CPPFLAGS="-Werror"
 $MAKE $PARALLEL_MAKE
 $MAKE distcheck \
   || cat-testlogs.sh
