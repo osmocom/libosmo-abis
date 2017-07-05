@@ -26,8 +26,8 @@ PKG_PROG_PKG_CONFIG([0.20])
 
 AC_CONFIG_MACRO_DIR([m4])
 
-CFLAGS+=" -Wall"
-CPPFLAGS+=" -Wall"
+CFLAGS="$CFLAGS -Wall"
+CPPFLAGS="$CPPFLAGS -Wall"
 
 # The following test is taken from WebKit's webkit.m4
 saved_CFLAGS="$CFLAGS"
@@ -58,8 +58,8 @@ AC_ARG_ENABLE(sanitize,
 	[sanitize=$enableval], [sanitize="no"])
 if test x"$sanitize" = x"yes"
 then
-	CFLAGS+=" -fsanitize=address -fsanitize=undefined"
-	CPPFLAGS+=" -fsanitize=address -fsanitize=undefined"
+	CFLAGS="$CFLAGS -fsanitize=address -fsanitize=undefined"
+	CPPFLAGS="$CPPFLAGS -fsanitize=address -fsanitize=undefined"
 fi
 
 _cflags_save=$CFLAGS
