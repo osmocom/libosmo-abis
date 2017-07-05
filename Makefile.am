@@ -13,3 +13,5 @@ dist-hook:
 	echo $(VERSION) > $(distdir)/.tarball-version
 
 EXTRA_DIST = .version README.md
+
+@RELMAKE@
