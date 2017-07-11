@@ -364,6 +364,11 @@ e1inp_line_create(uint8_t e1_nr, const char *driver_name)
 	line->num = e1_nr;
 
 	line->rate_ctr = rate_ctr_group_alloc(line, &e1inp_ctr_g_d, line->num);
+	if (!line->rate_ctr) {
+		LOGP(DLINP, LOGL_ERROR, "Cannot allocate counter group\n");
+		talloc_free(line);
+		return NULL;
+	}
 
 	line->num_ts = NUM_E1_TS;
 	for (i = 0; i < line->num_ts; i++) {
