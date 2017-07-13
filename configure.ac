@@ -79,8 +79,9 @@ _cflags_save=$CFLAGS
 CFLAGS="$CFLAGS $ORTP_CFLAGS"
 AC_COMPILE_IFELSE(
 	[AC_LANG_PROGRAM(
-		[[#include <ortp/ortp.h>]],
-		[[void fake_cb(struct _RtpSession *r, void *arg1, void *arg2, void *arg3) { return; } rtp_session_signal_connect(NULL, "", fake_cb, (void*) fake_cb);]]
+		[[#include <ortp/ortp.h>
+		void fake_cb(struct _RtpSession *r, void *arg1, void *arg2, void *arg3) { return; }]],
+		[[rtp_session_signal_connect(NULL, "", fake_cb, (void*) fake_cb);]]
 	)],
 	[AC_DEFINE([RTP_SIGNAL_PTR_CAST(arg)], [(void*)(arg)],
 		[rtp_session_signal_connect requires pointer parameter])],
