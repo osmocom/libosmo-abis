@@ -1,8 +1,12 @@
-libosmo-abis (0.3.3) UNRELEASED; urgency=medium
+libosmo-abis (0.4.0) unstable; urgency=medium
 
   * Move forward towards a new release.
+  * libosmo-abis   API change      major: add parameter to struct
+    input_signal_data
+  * libosmo-trau   API change      major: add parameters to rx_cb()
+    callack in osmo_ortp.h
 
- -- Holger Hans Peter Freyther <holger@moiji-mobile.com>  Tue, 24 May 2016 23:02:47 +0200
+ -- Holger Hans Peter Freyther <holger@moiji-mobile.com>  Fri, 25 Aug 2017 16:09:46 +0200
 
 libosmo-abis (0.3.2) unstable; urgency=medium
 
