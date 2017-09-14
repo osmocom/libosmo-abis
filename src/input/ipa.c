@@ -358,20 +358,16 @@ static void ipa_server_conn_read(struct ipa_server_conn *conn)
 
 static void ipa_server_conn_write(struct ipa_server_conn *conn)
 {
-	struct osmo_fd *ofd = &conn->ofd;
 	struct msgb *msg;
-	struct llist_head *lh;
 	int ret;
 
 	LOGP(DLINP, LOGL_DEBUG, "sending data\n");
+	msg = msgb_dequeue(&conn->tx_queue);
 
-	if (llist_empty(&conn->tx_queue)) {
-		ofd->when &= ~BSC_FD_WRITE;
+	if (!msg) {
+		conn->ofd.when &= ~BSC_FD_WRITE;
 		return;
 	}
-	lh = conn->tx_queue.next;
-	llist_del(lh);
-	msg = llist_entry(lh, struct msgb, list);
 
 	ret = send(conn->ofd.fd, msg->data, msg->len, 0);
 	if (ret < 0) {
