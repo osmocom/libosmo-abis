@@ -21,3 +21,6 @@ override_dh_autoreconf:
 override_dh_clean:
 	dh_clean
 	rm -f tests/package.m4 tests/testsuite .version .tarball-version
+
+override_dh_auto_test:
+	dh_auto_test || (find . -name testsuite.log -exec cat {} \; ; false)
