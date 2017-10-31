@@ -380,7 +380,6 @@ int e1inp_vty_init(void)
 	install_element(CONFIG_NODE, &cfg_e1inp_cmd);
 	install_node(&e1inp_node, e1inp_config_write);
 
-	vty_install_default(L_E1INP_NODE);
 	install_element(L_E1INP_NODE, &cfg_e1_line_driver_cmd);
 	install_element(L_E1INP_NODE, &cfg_e1_line_port_cmd);
 	install_element(L_E1INP_NODE, &cfg_e1_line_socket_cmd);

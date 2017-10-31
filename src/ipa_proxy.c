@@ -652,7 +652,6 @@ void ipa_proxy_vty_init(void)
 
 	install_element(CONFIG_NODE, &ipa_cfg_cmd);
 	install_node(&ipa_node, ipa_cfg_write);
-	vty_install_default(L_IPA_NODE);
 	install_element(L_IPA_NODE, &ipa_instance_cfg_add_cmd);
 	install_element(L_IPA_NODE, &ipa_route_cfg_add_cmd);
 }
