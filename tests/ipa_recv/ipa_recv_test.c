@@ -2,9 +2,11 @@
 
 /*
  * (C) 2014 by On-Waves
- * (C) 2014 by sysmocom s.f.m.c. GmbH
+ * (C) 2014 by sysmocom - s.f.m.c. GmbH
  *
  * All Rights Reserved
+ *
+ * SPDX-License-Identifier: AGPL-3.0+
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by

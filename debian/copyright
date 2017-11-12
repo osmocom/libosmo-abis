@@ -9,7 +9,7 @@ Copyright: 2008      Daniel Willmann <daniel@totalueberwachung.de>
            2010,2014 On-Waves
            2011-2014 Pablo Neira Ayuso <pablo@gnumonks.org>
            2012      Tobias Engel
-           2014      Sysmocom s.f.m.c. GmBH
+           2014      sysmocom - s.f.m.c. GmBH
 License: AGPL-3+
 
 Files: src/input/lapd.c

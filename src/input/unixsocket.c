@@ -1,11 +1,12 @@
 /* OpenBSC Abis receive lapd over a unix socket */
 
-/* (C) 2016 by sysmocom s.f.m.c. GmbH
- *
+/* (C) 2016 by sysmocom - s.f.m.c. GmbH
  * Author: Alexander Couzens <lynxis@fe80.eu>
  * Based on other e1_input drivers.
  *
  * All Rights Reserved
+ *
+ * SPDX-License-Identifier: GPL-2.0+
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
