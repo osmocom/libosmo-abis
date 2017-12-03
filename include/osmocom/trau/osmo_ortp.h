@@ -100,5 +100,8 @@ void osmo_rtp_socket_stats(struct osmo_rtp_socket *rs,
 				uint32_t *recv_packets, uint32_t *recv_octets,
 				uint32_t *recv_lost, uint32_t *last_jitter);
 
+void osmo_rtp_set_source_desc(struct osmo_rtp_socket *rs, const char *cname,
+				const char *name, const char *email, const char *phone,
+				const char *loc, const char *tool, const char *note);
 
 #endif /* _OSMO_ORTP_H */

@@ -655,3 +655,10 @@ void osmo_rtp_socket_stats(struct osmo_rtp_socket *rs,
 	if (jitter)
 		*last_jitter = jitter->jitter;
 }
+
+void osmo_rtp_set_source_desc(struct osmo_rtp_socket *rs, const char *cname,
+				const char *name, const char *email, const char *phone,
+				const char *loc, const char *tool, const char *note)
+{
+	rtp_session_set_source_description(rs->sess, cname, name, email, phone, loc, tool, note);
+}
