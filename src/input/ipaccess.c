@@ -571,7 +571,7 @@ err_line:
 #define IPA_STRING_MAX 64
 
 static struct msgb *
-ipa_bts_id_resp(struct ipaccess_unit *dev, uint8_t *data, int len, int trx_nr)
+ipa_bts_id_resp(const struct ipaccess_unit *dev, uint8_t *data, int len, int trx_nr)
 {
 	struct msgb *nmsg;
 	char str[IPA_STRING_MAX];
@@ -704,7 +704,8 @@ int ipaccess_bts_handle_ccm(struct ipa_client_conn *link,
 			if (link->ofd->priv_nr >= E1INP_SIGN_RSL)
 				trx_nr = link->ofd->priv_nr - E1INP_SIGN_RSL;
 
-			LOGP(DLINP, LOGL_NOTICE, "received ID get\n");
+			LOGP(DLINP, LOGL_NOTICE, "received ID get from %u/%u/%u\n",
+			     dev->site_id, dev->bts_id, dev->trx_id);
 			rmsg = ipa_bts_id_resp(dev, data + 1, len - 1, trx_nr);
 			ret = ipa_send(link->ofd->fd, rmsg->data, rmsg->len);
 			if (ret != rmsg->len) {
