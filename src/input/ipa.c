@@ -23,6 +23,8 @@
 
 #include <osmocom/abis/ipa.h>
 
+#define LOGIPA(link, level, fmt, args...) LOGP(DLINP, level, "%s:%u " fmt, link->addr, link->port, ## args)
+
 void ipa_msg_push_header(struct msgb *msg, uint8_t proto)
 {
 	struct ipaccess_head *hh;
@@ -51,20 +53,20 @@ static void ipa_client_read(struct ipa_client_conn *link)
 	struct msgb *msg;
 	int ret;
 
-	LOGP(DLINP, LOGL_DEBUG, "message received\n");
+	LOGIPA(link, LOGL_DEBUG, "message received\n");
 
 	ret = ipa_msg_recv_buffered(ofd->fd, &msg, &link->pending_msg);
 	if (ret < 0) {
 		if (ret == -EAGAIN)
 			return;
 		if (ret == -EPIPE || ret == -ECONNRESET)
-			LOGP(DLINP, LOGL_ERROR, "lost connection with server\n");
+			LOGIPA(link, LOGL_ERROR, "lost connection with server\n");
 		ipa_client_conn_close(link);
 		if (link->updown_cb)
 			link->updown_cb(link, 0);
 		return;
 	} else if (ret == 0) {
-		LOGP(DLINP, LOGL_ERROR, "connection closed with server\n");
+		LOGIPA(link, LOGL_ERROR, "connection closed with server\n");
 		ipa_client_conn_close(link);
 		if (link->updown_cb)
 			link->updown_cb(link, 0);
@@ -87,7 +89,7 @@ static int ipa_client_write_default_cb(struct ipa_client_conn *link)
 	struct llist_head *lh;
 	int ret;
 
-	LOGP(DLINP, LOGL_DEBUG, "sending data\n");
+	LOGIPA(link, LOGL_DEBUG, "sending data\n");
 
 	if (llist_empty(&link->tx_queue)) {
 		ofd->when &= ~BSC_FD_WRITE;
@@ -104,7 +106,7 @@ static int ipa_client_write_default_cb(struct ipa_client_conn *link)
 			if (link->updown_cb)
 				link->updown_cb(link, 0);
 		}
-		LOGP(DLINP, LOGL_ERROR, "error to send\n");
+		LOGIPA(link, LOGL_ERROR, "error to send\n");
 	}
 	msgb_free(msg);
 	return 0;
@@ -126,18 +128,18 @@ static int ipa_client_fd_cb(struct osmo_fd *ofd, unsigned int what)
 			return 0;
 		}
 		ofd->when &= ~BSC_FD_WRITE;
-		LOGP(DLINP, LOGL_NOTICE, "connection done.\n");
+		LOGIPA(link, LOGL_NOTICE, "connection done\n");
 		link->state = IPA_CLIENT_LINK_STATE_CONNECTED;
 		if (link->updown_cb)
 			link->updown_cb(link, 1);
 		break;
 	case IPA_CLIENT_LINK_STATE_CONNECTED:
 		if (what & BSC_FD_READ) {
-			LOGP(DLINP, LOGL_DEBUG, "connected read\n");
+			LOGIPA(link, LOGL_DEBUG, "connected read\n");
 			ipa_client_read(link);
 		}
 		if (what & BSC_FD_WRITE) {
-			LOGP(DLINP, LOGL_DEBUG, "connected write\n");
+			LOGIPA(link, LOGL_DEBUG, "connected write\n");
 			ipa_client_write(link);
 		}
 		break;
@@ -335,18 +337,18 @@ static void ipa_server_conn_read(struct ipa_server_conn *conn)
 	struct msgb *msg;
 	int ret;
 
-	LOGP(DLINP, LOGL_DEBUG, "message received\n");
+	LOGIPA(conn, LOGL_DEBUG, "message received\n");
 
 	ret = ipa_msg_recv_buffered(ofd->fd, &msg, &conn->pending_msg);
 	if (ret < 0) {
 		if (ret == -EAGAIN)
 			return;
 		if (ret == -EPIPE || ret == -ECONNRESET)
-			LOGP(DLINP, LOGL_ERROR, "lost connection with server\n");
+			LOGIPA(conn, LOGL_ERROR, "lost connection with server\n");
 		ipa_server_conn_destroy(conn);
 		return;
 	} else if (ret == 0) {
-		LOGP(DLINP, LOGL_ERROR, "connection closed with server\n");
+		LOGIPA(conn, LOGL_ERROR, "connection closed with server\n");
 		ipa_server_conn_destroy(conn);
 		return;
 	}
@@ -361,7 +363,7 @@ static void ipa_server_conn_write(struct ipa_server_conn *conn)
 	struct msgb *msg;
 	int ret;
 
-	LOGP(DLINP, LOGL_DEBUG, "sending data\n");
+	LOGIPA(conn, LOGL_DEBUG, "sending data\n");
 	msg = msgb_dequeue(&conn->tx_queue);
 
 	if (!msg) {
@@ -371,7 +373,7 @@ static void ipa_server_conn_write(struct ipa_server_conn *conn)
 
 	ret = send(conn->ofd.fd, msg->data, msg->len, 0);
 	if (ret < 0) {
-		LOGP(DLINP, LOGL_ERROR, "error to send\n");
+		LOGIPA(conn, LOGL_ERROR, "error to send\n");
 	}
 	msgb_free(msg);
 }
@@ -450,7 +452,7 @@ int ipa_server_conn_ccm(struct ipa_server_conn *conn, struct msgb *msg)
 		break;
 	default:
 		/* Error */
-		LOGP(DLINP, LOGL_ERROR, "Unexpected return from "
+		LOGIPA(conn, LOGL_ERROR, "Unexpected return from "
 		     "ipa_ccm_rcvmsg_base: %d\n", rc);
 		goto err;
 	}
@@ -460,18 +462,18 @@ int ipa_server_conn_ccm(struct ipa_server_conn *conn, struct msgb *msg)
 		rc = ipa_ccm_idtag_parse(&tlvp, (uint8_t *)msg->l2h + 2,
 					 msgb_l2len(msg)-2);
 		if (rc < 0) {
-			LOGP(DLINP, LOGL_ERROR, "IPA CCM RESPonse with "
+			LOGIPA(conn, LOGL_ERROR, "IPA CCM RESPonse with "
 				"malformed TLVs\n");
 			goto err;
 		}
 		if (!TLVP_PRESENT(&tlvp, IPAC_IDTAG_UNIT)) {
-			LOGP(DLINP, LOGL_ERROR, "IPA CCM RESP without "
+			LOGIPA(conn, LOGL_ERROR, "IPA CCM RESP without "
 				"unit ID\n");
 			goto err;
 		}
 		len = TLVP_LEN(&tlvp, IPAC_IDTAG_UNIT);
 		if (len < 1) {
-			LOGP(DLINP, LOGL_ERROR, "IPA CCM RESP with short"
+			LOGIPA(conn, LOGL_ERROR, "IPA CCM RESP with short"
 				"unit ID\n");
 			goto err;
 		}
@@ -485,7 +487,7 @@ int ipa_server_conn_ccm(struct ipa_server_conn *conn, struct msgb *msg)
 			goto err;
 		break;
 	default:
-		LOGP(DLINP, LOGL_ERROR, "Unknown IPA message type\n");
+		LOGIPA(conn, LOGL_ERROR, "Unknown IPA message type\n");
 		break;
 	}
 	return 0;
