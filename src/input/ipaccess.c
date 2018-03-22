@@ -194,7 +194,11 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 			newbfd = &ts->driver.ipaccess.fd;
 
 			/* get rid of our old temporary bfd */
-			memcpy(newbfd, bfd, sizeof(*newbfd));
+			memcpy(&newbfd->list, &bfd->list, sizeof(newbfd->list));
+			newbfd->fd = bfd->fd;
+			newbfd->when |= bfd->when; /* preserve 'newbfd->when' flags potentially set by sign_link_up() */
+			newbfd->cb = bfd->cb;
+			newbfd->data = bfd->data;
 			newbfd->priv_nr = E1INP_SIGN_RSL + unit_data.trx_id;
 			osmo_fd_unregister(bfd);
 			bfd->fd = -1;
