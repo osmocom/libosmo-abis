@@ -110,7 +110,7 @@ AC_COMPILE_IFELSE(
 CFLAGS=$_cflags_save
 
 _cflags_save=$CFLAGS
-CFLAGS="$CFLAGS $ORTP_CFLAGS"
+CFLAGS="$CFLAGS $ORTP_CFLAGS -Werror"
 AC_COMPILE_IFELSE(
 	[AC_LANG_PROGRAM(
 		[[#include <ortp/ortp.h>
