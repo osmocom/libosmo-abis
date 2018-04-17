@@ -39,8 +39,8 @@ int main(void)
 {
 	tall_test = talloc_named_const(NULL, 1, "ipa proxy test");
 	libosmo_abis_init(tall_test);
-
-	osmo_init_logging(&ipa_proxy_test_log_info);
+	msgb_talloc_ctx_init(tall_test, 0);
+	osmo_init_logging2(tall_test, &ipa_proxy_test_log_info);
 
 	vty_init(&vty_info);
 	ipa_proxy_vty_init();

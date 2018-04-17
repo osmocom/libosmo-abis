@@ -234,7 +234,9 @@ static struct log_info info = {};
 
 int main(int argc, char **argv)
 {
-	osmo_init_logging(&info);
+	void *tall_ctx = talloc_named_const(NULL, 1, "Root context");
+	msgb_talloc_ctx_init(tall_ctx, 0);
+	osmo_init_logging2(tall_ctx, &info);
 	log_set_all_filter(osmo_stderr_target, 1);
 	log_set_log_level(osmo_stderr_target, LOGL_INFO);
 

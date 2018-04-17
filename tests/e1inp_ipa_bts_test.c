@@ -265,8 +265,8 @@ int main(void)
 
 	tall_test = talloc_named_const(NULL, 1, "e1inp_test");
 	libosmo_abis_init(tall_test);
-
-	osmo_init_logging(&bts_test_log_info);
+	msgb_talloc_ctx_init(tall_test, 0);
+	osmo_init_logging2(tall_test, &bts_test_log_info);
 
 	struct e1inp_line_ops ops = {
 		.cfg = {
