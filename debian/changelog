@@ -1,3 +1,40 @@
+libosmo-abis (0.5.0) unstable; urgency=medium
+
+  [ Max ]
+  * Use value string check from osmo-ci
+  * cosmetic: update ipaccess_bts_handle_ccm()
+  * IPA: log remote address
+
+  [ Neels Hofmeyr ]
+  * cosmetic: ipa.c: use msgb_dequeue(), drop local var
+  * jenkins: use osmo-clean-workspace.sh before and after build
+  * vty: skip installing cmds now always installed by default
+  * add --enable-sanitize config option
+  * configure: add --enable-werror
+  * jenkins.sh: use --enable-werror configure flag, not CFLAGS
+
+  [ Alexander Couzens ]
+  * debian/rules: show testsuite.log when tests are failing
+  * unixsocket: fix a potential string overflow
+
+  [ Harald Welte ]
+  * debian/copyright: fix upstream-name
+  * Add SPDX-License-Identifier to all source files
+  * Add a new osmo_rtp_set_source_desc() function to set the RTCP SDES items
+  * debian/control: Fix Vcs-Browser
+
+  [ Pau Espin Pedrol ]
+  * contrib: jenkins.sh: Disable doxygen in libosmocore build
+  * e1_input.h: Remove dead declaration of unexistent API ipaccess_setup
+  * configure.ac: Fix condition check for RTP_SIGNAL_PTR_CAST define
+  * use osmo_init_logging2
+  * git-version-gen: Check first for new tag format
+
+  [ Stefan Sperling ]
+  * preserve 'when' flags of new osmo_fd in ipaccess_rcvmsg()
+
+ -- Pau Espin Pedrol <pespin@sysmocom.de>  Thu, 03 May 2018 16:12:04 +0200
+
 libosmo-abis (0.4.0) unstable; urgency=medium
 
   * Move forward towards a new release.
