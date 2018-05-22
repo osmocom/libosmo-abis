@@ -394,6 +394,25 @@ e1inp_line_clone(void *ctx, struct e1inp_line *line)
 	        return NULL;
 
 	memcpy(clone, line, sizeof(struct e1inp_line));
+
+	if (line->name) {
+		clone->name = talloc_strdup(clone, line->name);
+		OSMO_ASSERT(clone->name);
+	}
+	if (line->sock_path) {
+		clone->sock_path = talloc_strdup(clone, line->sock_path);
+		OSMO_ASSERT(clone->sock_path);
+	}
+
+	/*
+	 * Rate counters and driver data are shared between clones. These are pointers
+	 * to dynamic memory so we use reference counting to avoid a double-free (see OS#3137).
+	 */
+	OSMO_ASSERT(line->rate_ctr);
+	clone->rate_ctr = talloc_reference(clone, line->rate_ctr);
+	if (line->driver_data)
+		clone->driver_data = talloc_reference(clone, line->driver_data);
+
 	clone->refcnt = 1;
 	return clone;
 }
@@ -406,8 +425,28 @@ void e1inp_line_get(struct e1inp_line *line)
 void e1inp_line_put(struct e1inp_line *line)
 {
 	line->refcnt--;
-	if (line->refcnt == 0)
+	if (line->refcnt == 0) {
+		/* Remove our counter group from libosmocore's global counter
+		 * list if we are freeing the last remaining talloc context.
+		 * Otherwise we get a use-after-free when libosmocore's timer
+		 * ticks again and attempts to update these counters (OS#3011).
+		 *
+		 * Note that talloc internally counts "secondary" references
+		 * _in addition to_ the initial allocation context, so yes,
+		 * we must check for *zero* remaining secondary contexts here. */
+		if (talloc_reference_count(line->rate_ctr) == 0) {
+			rate_ctr_group_free(line->rate_ctr);
+		} else {
+			/* We are not freeing the last talloc context.
+			 * Instead of calling talloc_free(), unlink this 'line' pointer
+			 * which serves as one of several talloc contexts for the rate
+			 * counters and driver private state. */
+			talloc_unlink(line, line->rate_ctr);
+			if (line->driver_data)
+				talloc_unlink(line, line->driver_data);
+		}
 		talloc_free(line);
+	}
 }
 
 void
