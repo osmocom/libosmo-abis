@@ -84,6 +84,8 @@ static int ipaccess_drop(struct osmo_fd *bfd, struct e1inp_line *line)
 	return ret;
 }
 
+/* Returns -1 on error, and 0 or 1 on success. If -1 or 1 is returned, line has
+ * been released and should not be used anymore by the caller. */
 static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 			   struct osmo_fd *bfd)
 {
@@ -123,13 +125,11 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 		if (ret < 0) {
 			LOGP(DLINP, LOGL_ERROR, "IPA response message "
 				"with malformed TLVs\n");
-			ret = -EINVAL;
 			goto err;
 		}
 		if (!TLVP_PRESENT(&tlvp, IPAC_IDTAG_UNIT)) {
 			LOGP(DLINP, LOGL_ERROR, "IPA response message "
 				"without unit ID\n");
-			ret = -EINVAL;
 			goto err;
 
 		}
@@ -137,7 +137,6 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 		if (len < 1) {
 			LOGP(DLINP, LOGL_ERROR, "IPA response message "
 				"with too small unit ID\n");
-			ret = -EINVAL;
 			goto err;
 		}
 		unitid = (char *) TLVP_VAL(&tlvp, IPAC_IDTAG_UNIT);
@@ -147,7 +146,6 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 		if (!line->ops->sign_link_up) {
 			LOGP(DLINP, LOGL_ERROR,
 			     "Unable to set signal link, closing socket.\n");
-			ret = -EINVAL;
 			goto err;
 		}
 		/* the BSC creates the new sign links at this stage. */
@@ -159,7 +157,6 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 				LOGP(DLINP, LOGL_ERROR,
 					"Unable to set signal link, "
 					"closing socket.\n");
-				ret = -EINVAL;
 				goto err;
 			}
 		} else if (bfd->priv_nr == E1INP_SIGN_RSL) {
@@ -174,7 +171,6 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 				LOGP(DLINP, LOGL_ERROR,
 					"Unable to set signal link, "
 					"closing socket.\n");
-				ret = -EINVAL;
 				goto err;
 			}
 			/* this is a bugtrap, the BSC should be using the
@@ -209,11 +205,11 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 			}
 			/* now we can release the dummy RSL line. */
 			e1inp_line_put(line);
+			return 1;
 		}
 		break;
 	default:
 		LOGP(DLINP, LOGL_ERROR, "Unknown IPA message type\n");
-		ret = -EINVAL;
 		goto err;
 	}
 	return 0;
@@ -222,9 +218,10 @@ err:
 	close(bfd->fd);
 	bfd->fd = -1;
 	e1inp_line_put(line);
-	return ret;
+	return -1;
 }
 
+/* Returns -EBADF if bfd cannot be used by the caller anymore after return. */
 static int handle_ts1_read(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
@@ -250,23 +247,21 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 
 	hh = (struct ipaccess_head *) msg->data;
 	if (hh->proto == IPAC_PROTO_IPACCESS) {
-		ipaccess_rcvmsg(line, msg, bfd);
+		ret = ipaccess_rcvmsg(line, msg, bfd);
+		/* BIG FAT WARNING: bfd might no longer exist here (ret != 0),
+		 * since ipaccess_rcvmsg() might have free'd it !!! */
 		msgb_free(msg);
-		return 0;
+		return ret != 0 ? -EBADF : 0;
 	} else if (e1i_ts->type == E1INP_TS_TYPE_NONE) {
 		/* this sign link is not know yet.. complain. */
 		LOGP(DLINP, LOGL_ERROR, "Timeslot is not configured.\n");
-		ret = -EINVAL;
 		goto err_msg;
 	}
-	/* BIG FAT WARNING: bfd might no longer exist here, since ipaccess_rcvmsg()
-	 * might have free'd it !!! */
 
 	link = e1inp_lookup_sign_link(e1i_ts, hh->proto, 0);
 	if (!link) {
 		LOGP(DLINP, LOGL_ERROR, "no matching signalling link for "
 			"hh->proto=0x%02x\n", hh->proto);
-		ret = -EINVAL;
 		goto err_msg;
 	}
 	msg->dst = link;
@@ -275,7 +270,6 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 	if (!e1i_ts->line->ops->sign_link) {
 		LOGP(DLINP, LOGL_ERROR, "Fix your application, "
 			"no action set for signalling messages.\n");
-		ret = -EINVAL;
 		goto err_msg;
 	}
 	rc = e1i_ts->line->ops->sign_link(msg);
@@ -293,7 +287,7 @@ err_msg:
 	msgb_free(msg);
 err:
 	ipaccess_drop(bfd, line);
-	return ret;
+	return -EBADF;
 }
 
 static int ts_want_write(struct e1inp_ts *e1i_ts)
@@ -394,7 +388,7 @@ int ipaccess_fd_cb(struct osmo_fd *bfd, unsigned int what)
 
 	if (what & BSC_FD_READ)
 		rc = handle_ts1_read(bfd);
-	if (what & BSC_FD_WRITE)
+	if (rc != -EBADF && (what & BSC_FD_WRITE))
 		rc = handle_ts1_write(bfd);
 
 	return rc;
