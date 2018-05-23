@@ -194,7 +194,6 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 			newbfd = &ts->driver.ipaccess.fd;
 
 			/* get rid of our old temporary bfd */
-			memcpy(&newbfd->list, &bfd->list, sizeof(newbfd->list));
 			newbfd->fd = bfd->fd;
 			newbfd->when |= bfd->when; /* preserve 'newbfd->when' flags potentially set by sign_link_up() */
 			newbfd->cb = bfd->cb;
