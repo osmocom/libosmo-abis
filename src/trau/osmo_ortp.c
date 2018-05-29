@@ -290,6 +290,7 @@ void osmo_rtp_init(void *ctx)
 
 	ortp_set_log_handler(my_ortp_logfn);
 	create_payload_types();
+	ortp_scheduler_init();
 }
 
 /*! \brief Set Osmocom RTP socket parameters
