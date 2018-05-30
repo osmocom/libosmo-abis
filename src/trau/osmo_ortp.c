@@ -372,6 +372,8 @@ struct osmo_rtp_socket *osmo_rtp_socket_create(void *talloc_ctx, unsigned int fl
 	rtp_session_set_seq_number(rs->sess, random());
 	rs->tx_timestamp = random();
 
+	/* Make sure ssrc changes are detected immediately */
+	rtp_session_set_ssrc_changed_threshold(rs->sess, 0);
 
 	return rs;
 }
