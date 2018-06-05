@@ -350,7 +350,6 @@ struct osmo_rtp_socket *osmo_rtp_socket_create(void *talloc_ctx, unsigned int fl
 	rtp_session_set_data(rs->sess, rs);
 	rtp_session_set_profile(rs->sess, osmo_pt_profile);
 	rtp_session_set_jitter_compensation(rs->sess, 100);
-	rtp_session_set_scheduling_mode(rs->sess, TRUE);
 
 	rtp_session_signal_connect(rs->sess, "ssrc_changed",
 				   (RtpCallback) ortp_sig_cb_ssrc,
