@@ -602,19 +602,19 @@ ipa_bts_id_resp(const struct ipaccess_unit *dev, uint8_t *data, int len, int trx
 			break;
 		case IPAC_IDTAG_LOCATION1:
 			if (dev->location1)
-				strncpy(str, dev->location1, IPA_STRING_MAX);
+				osmo_strlcpy(str, dev->swversion, sizeof(str));
 			break;
 		case IPAC_IDTAG_LOCATION2:
 			if (dev->location2)
-				strncpy(str, dev->location2, IPA_STRING_MAX);
+				osmo_strlcpy(str, dev->swversion, sizeof(str));
 			break;
 		case IPAC_IDTAG_EQUIPVERS:
 			if (dev->equipvers)
-				strncpy(str, dev->equipvers, IPA_STRING_MAX);
+				osmo_strlcpy(str, dev->swversion, sizeof(str));
 			break;
 		case IPAC_IDTAG_SWVERSION:
 			if (dev->swversion)
-				strncpy(str, dev->swversion, IPA_STRING_MAX);
+				osmo_strlcpy(str, dev->swversion, sizeof(str));
 			break;
 		case IPAC_IDTAG_UNITNAME:
 			snprintf(str, sizeof(str),
@@ -626,7 +626,7 @@ ipa_bts_id_resp(const struct ipaccess_unit *dev, uint8_t *data, int len, int trx
 			break;
 		case IPAC_IDTAG_SERNR:
 			if (dev->serno)
-				strncpy(str, dev->serno, IPA_STRING_MAX);
+				osmo_strlcpy(str, dev->swversion, sizeof(str));
 			break;
 		default:
 			LOGP(DLINP, LOGL_NOTICE,
@@ -634,7 +634,6 @@ ipa_bts_id_resp(const struct ipaccess_unit *dev, uint8_t *data, int len, int trx
 			msgb_free(nmsg);
 			return NULL;
 		}
-		str[IPA_STRING_MAX-1] = '\0';
 
 		LOGP(DLINP, LOGL_INFO, " tag %d: %s\n", data[1], str);
 		tag = msgb_put(nmsg, 3 + strlen(str) + 1);

@@ -245,8 +245,7 @@ static int __ipa_instance_add(struct vty *vty, int argc, const char *argv[])
 			VTY_NEWLINE);
 		return CMD_WARNING;
 	}
-	strncpy(ipi->name, argv[0], IPA_INSTANCE_NAME);
-	ipi->name[IPA_INSTANCE_NAME - 1] = '\0';
+	osmo_strlcpy(ipi->name, argv[0], sizeof(ipi->name));
 	ipi->net.type = type;
 	ipi->net.addr = talloc_strdup(tall_ipa_proxy_ctx, argv[2]);
 	ipi->net.port = port;
