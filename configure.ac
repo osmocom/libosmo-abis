@@ -59,9 +59,9 @@ AC_SUBST(SYMBOL_VISIBILITY)
 dnl Generate the output
 AM_CONFIG_HEADER(config.h)
 
-PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 0.11.0)
-PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 0.11.0)
-PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 0.11.0)
+PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 0.12.0)
+PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 0.12.0)
+PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 0.12.0)
 PKG_CHECK_MODULES(ORTP, ortp >= 0.22.0)
 
 AC_CHECK_HEADERS(dahdi/user.h,,AC_MSG_WARN(DAHDI input driver will not be built))
