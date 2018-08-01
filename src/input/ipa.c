@@ -459,8 +459,7 @@ int ipa_server_conn_ccm(struct ipa_server_conn *conn, struct msgb *msg)
 
 	switch (msg_type) {
 	case IPAC_MSGT_ID_RESP:
-		rc = ipa_ccm_idtag_parse(&tlvp, (uint8_t *)msg->l2h + 2,
-					 msgb_l2len(msg)-2);
+		rc = ipa_ccm_id_resp_parse(&tlvp, (const uint8_t *)msg->l2h+1, msgb_l2len(msg)-1);
 		if (rc < 0) {
 			LOGIPA(conn, LOGL_ERROR, "IPA CCM RESPonse with "
 				"malformed TLVs\n");
