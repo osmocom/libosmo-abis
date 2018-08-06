@@ -14,13 +14,9 @@ export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 override_dh_strip:
 	dh_strip --dbg-package=libosmo-abis-dbg
 
-override_dh_autoreconf:
-	echo $(VERSION) > .tarball-version
-	dh_autoreconf
-
 override_dh_clean:
 	dh_clean
-	rm -f tests/package.m4 tests/testsuite .version .tarball-version
+	rm -f tests/package.m4 tests/testsuite .version
 
 override_dh_auto_test:
 	dh_auto_test || (find . -name testsuite.log -exec cat {} \; ; false)
