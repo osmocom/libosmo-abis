@@ -272,7 +272,7 @@ static int ipa_server_fd_cb(struct osmo_fd *ofd, unsigned int what)
 	ret = link->accept_cb(link, fd);
 	if (ret < 0) {
 		LOGP(DLINP, LOGL_ERROR,
-		     "failed to processs accept()ed new link, "
+		     "failed to process accept()ed new link, "
 		     "reason=`%s'\n", strerror(-ret));
 		close(fd);
 		return ret;
