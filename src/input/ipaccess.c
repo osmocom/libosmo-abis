@@ -189,11 +189,9 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 			newbfd = &ts->driver.ipaccess.fd;
 
 			/* get rid of our old temporary bfd */
-			newbfd->fd = bfd->fd;
-			newbfd->when |= bfd->when; /* preserve 'newbfd->when' flags potentially set by sign_link_up() */
-			newbfd->cb = bfd->cb;
-			newbfd->data = bfd->data;
-			newbfd->priv_nr = E1INP_SIGN_RSL + unit_data.trx_id;
+			/* preserve 'newbfd->when' flags potentially set by sign_link_up() */
+			osmo_fd_setup(newbfd, bfd->fd, bfd->when, bfd->cb,
+				      bfd->data, E1INP_SIGN_RSL + unit_data.trx_id);
 			osmo_fd_unregister(bfd);
 			bfd->fd = -1;
 			ret = osmo_fd_register(newbfd);
@@ -479,11 +477,7 @@ static int ipaccess_bsc_oml_cb(struct ipa_server_link *link, int fd)
 	e1i_ts = &line->ts[idx];
 
 	bfd = &e1i_ts->driver.ipaccess.fd;
-	bfd->fd = fd;
-	bfd->data = line;
-	bfd->priv_nr = E1INP_SIGN_OML;
-	bfd->cb = ipaccess_fd_cb;
-	bfd->when = BSC_FD_READ;
+	osmo_fd_setup(bfd, fd, BSC_FD_READ, ipaccess_fd_cb, line, E1INP_SIGN_OML);
 	ret = osmo_fd_register(bfd);
 	if (ret < 0) {
 		LOGP(DLINP, LOGL_ERROR, "could not register FD\n");
@@ -535,11 +529,7 @@ static int ipaccess_bsc_rsl_cb(struct ipa_server_link *link, int fd)
 	e1i_ts = &line->ts[E1INP_SIGN_RSL-1];
 
 	bfd = &e1i_ts->driver.ipaccess.fd;
-	bfd->fd = fd;
-	bfd->data = line;
-	bfd->priv_nr = E1INP_SIGN_RSL;
-	bfd->cb = ipaccess_fd_cb;
-	bfd->when = BSC_FD_READ;
+	osmo_fd_setup(bfd, fd, BSC_FD_READ, ipaccess_fd_cb, line, E1INP_SIGN_RSL);
 	ret = osmo_fd_register(bfd);
 	if (ret < 0) {
 		LOGP(DLINP, LOGL_ERROR, "could not register FD\n");
