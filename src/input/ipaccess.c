@@ -190,7 +190,7 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 
 			/* get rid of our old temporary bfd */
 			/* preserve 'newbfd->when' flags potentially set by sign_link_up() */
-			osmo_fd_setup(newbfd, bfd->fd, bfd->when, bfd->cb,
+			osmo_fd_setup(newbfd, bfd->fd, newbfd->when | bfd->when, bfd->cb,
 				      bfd->data, E1INP_SIGN_RSL + unit_data.trx_id);
 			osmo_fd_unregister(bfd);
 			bfd->fd = -1;
