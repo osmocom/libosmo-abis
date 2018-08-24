@@ -727,12 +727,11 @@ static int ipaccess_bts_read_cb(struct ipa_client_conn *link, struct msgb *msg)
 	struct ipaccess_head *hh = (struct ipaccess_head *) msg->data;
 	struct e1inp_ts *e1i_ts = NULL;
 	struct e1inp_sign_link *sign_link;
+	uint8_t msg_type = *(msg->l2h);
 	int ret = 0;
 
 	/* special handling for IPA CCM. */
 	if (hh->proto == IPAC_PROTO_IPACCESS) {
-		uint8_t msg_type = *(msg->l2h);
-
 		/* this is a request for identification from the BSC. */
 		if (msg_type == IPAC_MSGT_ID_GET) {
 			if (!link->line->ops->sign_link_up) {
@@ -751,8 +750,6 @@ static int ipaccess_bts_read_cb(struct ipa_client_conn *link, struct msgb *msg)
 		goto err;
 
 	if (ret == 1 && hh->proto == IPAC_PROTO_IPACCESS) {
-		uint8_t msg_type = *(msg->l2h);
-
 		if (msg_type == IPAC_MSGT_ID_GET) {
 			sign_link = link->line->ops->sign_link_up(msg,
 					link->line,
@@ -774,6 +771,13 @@ static int ipaccess_bts_read_cb(struct ipa_client_conn *link, struct msgb *msg)
 
 	OSMO_ASSERT(e1i_ts != NULL);
 
+	if (e1i_ts->type == E1INP_TS_TYPE_NONE) {
+		LOGP(DLINP, LOGL_ERROR, "Signalling link not initialized. Discarding."
+		     " port=%u msg_type=%u\n", link->port, msg_type);
+		ret = -EIO;
+		goto err;
+	}
+	
 	/* look up for some existing signaling link. */
 	sign_link = e1inp_lookup_sign_link(e1i_ts, hh->proto, 0);
 	if (sign_link == NULL) {
