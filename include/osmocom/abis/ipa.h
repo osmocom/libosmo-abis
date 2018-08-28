@@ -71,6 +71,7 @@ struct ipa_client_conn {
 	const char			*addr;
 	uint16_t			port;
 	void (*updown_cb)(struct ipa_client_conn *link, int up);
+	/* Callback when ofd has something to be read. -EBADF must be returned if the osmo_fd is destroyed. */
 	int (*read_cb)(struct ipa_client_conn *link, struct msgb *msg);
 	int (*write_cb)(struct ipa_client_conn *link);
 	void				*data;

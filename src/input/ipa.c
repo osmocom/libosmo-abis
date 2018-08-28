@@ -47,7 +47,7 @@ void ipa_client_conn_close(struct ipa_client_conn *link)
 	link->pending_msg = NULL;
 }
 
-static void ipa_client_read(struct ipa_client_conn *link)
+static int ipa_client_read(struct ipa_client_conn *link)
 {
 	struct osmo_fd *ofd = link->ofd;
 	struct msgb *msg;
@@ -58,7 +58,7 @@ static void ipa_client_read(struct ipa_client_conn *link)
 	ret = ipa_msg_recv_buffered(ofd->fd, &msg, &link->pending_msg);
 	if (ret <= 0) {
 		if (ret == -EAGAIN)
-			return;
+			return 0;
 		else if (ret == -EPIPE || ret == -ECONNRESET)
 			LOGIPA(link, LOGL_ERROR, "lost connection with server\n");
 		else if (ret == 0)
@@ -66,10 +66,11 @@ static void ipa_client_read(struct ipa_client_conn *link)
 		ipa_client_conn_close(link);
 		if (link->updown_cb)
 			link->updown_cb(link, 0);
-		return;
+		return -EBADF;
 	}
 	if (link->read_cb)
-		link->read_cb(link, msg);
+		return link->read_cb(link, msg);
+	return 0;
 }
 
 static void ipa_client_write(struct ipa_client_conn *link)
@@ -111,7 +112,7 @@ static int ipa_client_write_default_cb(struct ipa_client_conn *link)
 static int ipa_client_fd_cb(struct osmo_fd *ofd, unsigned int what)
 {
 	struct ipa_client_conn *link = ofd->data;
-	int error, ret;
+	int error, ret = 0;
 	socklen_t len = sizeof(error);
 
 	switch(link->state) {
@@ -132,9 +133,9 @@ static int ipa_client_fd_cb(struct osmo_fd *ofd, unsigned int what)
 	case IPA_CLIENT_LINK_STATE_CONNECTED:
 		if (what & BSC_FD_READ) {
 			LOGIPA(link, LOGL_DEBUG, "connected read\n");
-			ipa_client_read(link);
+			ret = ipa_client_read(link);
 		}
-		if (what & BSC_FD_WRITE) {
+		if (ret != -EBADF && (what & BSC_FD_WRITE)) {
 			LOGIPA(link, LOGL_DEBUG, "connected write\n");
 			ipa_client_write(link);
 		}
