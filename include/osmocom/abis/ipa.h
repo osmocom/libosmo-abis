@@ -37,6 +37,7 @@ struct ipa_server_conn {
 	int (*closed_cb)(struct ipa_server_conn *peer);
 	int (*ccm_cb)(struct ipa_server_conn *peer, struct msgb *msg,
 			struct tlv_parsed *tlvp, struct ipaccess_unit *ud);
+	/* Callback when ofd has something to be read. -EBADF must be returned if the osmo_fd is destroyed. */
 	int (*cb)(struct ipa_server_conn *peer, struct msgb *msg);
 	void				*data;
 	struct msgb			*pending_msg;

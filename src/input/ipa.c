@@ -328,7 +328,7 @@ void ipa_server_link_close(struct ipa_server_link *link)
 	close(link->ofd.fd);
 }
 
-static void ipa_server_conn_read(struct ipa_server_conn *conn)
+static int ipa_server_conn_read(struct ipa_server_conn *conn)
 {
 	struct osmo_fd *ofd = &conn->ofd;
 	struct msgb *msg;
@@ -339,18 +339,18 @@ static void ipa_server_conn_read(struct ipa_server_conn *conn)
 	ret = ipa_msg_recv_buffered(ofd->fd, &msg, &conn->pending_msg);
 	if (ret <= 0) {
 		if (ret == -EAGAIN)
-			return;
+			return 0;
 		else if (ret == -EPIPE || ret == -ECONNRESET)
 			LOGIPA(conn, LOGL_ERROR, "lost connection with server\n");
 		else if (ret == 0)
 			LOGIPA(conn, LOGL_ERROR, "connection closed with server\n");
 		ipa_server_conn_destroy(conn);
-		return;
+		return -EBADF;
 	}
 	if (conn->cb)
-		conn->cb(conn, msg);
+		return conn->cb(conn, msg);
 
-	return;
+	return 0;
 }
 
 static void ipa_server_conn_write(struct ipa_server_conn *conn)
@@ -376,11 +376,12 @@ static void ipa_server_conn_write(struct ipa_server_conn *conn)
 static int ipa_server_conn_cb(struct osmo_fd *ofd, unsigned int what)
 {
 	struct ipa_server_conn *conn = ofd->data;
+	int rc = 0;
 
 	LOGP(DLINP, LOGL_DEBUG, "connected read/write\n");
 	if (what & BSC_FD_READ)
-		ipa_server_conn_read(conn);
-	if (what & BSC_FD_WRITE)
+		rc = ipa_server_conn_read(conn);
+	if (rc != -EBADF && (what & BSC_FD_WRITE))
 		ipa_server_conn_write(conn);
 
 	return 0;
