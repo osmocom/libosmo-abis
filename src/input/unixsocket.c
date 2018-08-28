@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <limits.h>
 #include <string.h>
 
@@ -228,15 +229,10 @@ static void unixsocket_write_msg_lapd_cb(struct msgb *msg, void *cbdata)
 static int unixsocket_line_update(struct e1inp_line *line)
 {
 	struct unixsocket_line *config;
-	char sock_path[PATH_MAX];
+	char default_sock_path[sizeof(struct sockaddr_un) + 1]; /* see unix(7) man page */
+	const char *sock_path;
 	int ret = 0;
 	int i;
-
-	if (line->sock_path)
-		osmo_strlcpy(sock_path, line->sock_path, PATH_MAX);
-	else
-		sprintf(sock_path, "%s%d", UNIXSOCKET_SOCK_PATH_DEFAULT,
-			line->num);
 
 	LOGP(DLINP, LOGL_NOTICE, "line update (line=%p)\n", line);
 
@@ -255,6 +251,12 @@ static int unixsocket_line_update(struct e1inp_line *line)
 	config->fd.cb = unixsocket_cb;
 
 	/* Open unix domain socket */
+	if (line->sock_path == NULL) {
+		snprintf(default_sock_path, sizeof(default_sock_path), "%s%d",
+			 UNIXSOCKET_SOCK_PATH_DEFAULT, line->num);
+		sock_path = default_sock_path;
+	} else
+		sock_path = line->sock_path;
 	ret = osmo_sock_unix_init(SOCK_SEQPACKET, 0, sock_path,
 				  OSMO_SOCK_F_CONNECT);
 	if (ret < 0) {

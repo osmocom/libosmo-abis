@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <sys/un.h>
 
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/talloc.h>
@@ -98,6 +99,14 @@ DEFUN(cfg_e1line_socket, cfg_e1_line_socket_cmd,
 {
 	struct e1inp_line *line;
 	int e1_nr = atoi(argv[0]);
+	struct sockaddr_un sun;
+
+	/* Don't exceed the maximum unix socket path length. See the unix(7) man page.*/
+	if (strlen(argv[1]) > sizeof(sun.sun_path)) {
+		vty_out(vty, "%% Socket path length exceeds %zd bytes: '%s'%s",
+			sizeof(sun.sun_path), argv[1], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
 
 	line = e1inp_line_find(e1_nr);
 	if (!line) {
