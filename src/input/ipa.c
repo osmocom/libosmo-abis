@@ -56,17 +56,13 @@ static void ipa_client_read(struct ipa_client_conn *link)
 	LOGIPA(link, LOGL_DEBUG, "message received\n");
 
 	ret = ipa_msg_recv_buffered(ofd->fd, &msg, &link->pending_msg);
-	if (ret < 0) {
+	if (ret <= 0) {
 		if (ret == -EAGAIN)
 			return;
-		if (ret == -EPIPE || ret == -ECONNRESET)
+		else if (ret == -EPIPE || ret == -ECONNRESET)
 			LOGIPA(link, LOGL_ERROR, "lost connection with server\n");
-		ipa_client_conn_close(link);
-		if (link->updown_cb)
-			link->updown_cb(link, 0);
-		return;
-	} else if (ret == 0) {
-		LOGIPA(link, LOGL_ERROR, "connection closed with server\n");
+		else if (ret == 0)
+			LOGIPA(link, LOGL_ERROR, "connection closed with server\n");
 		ipa_client_conn_close(link);
 		if (link->updown_cb)
 			link->updown_cb(link, 0);
