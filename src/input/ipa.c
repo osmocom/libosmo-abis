@@ -336,15 +336,13 @@ static void ipa_server_conn_read(struct ipa_server_conn *conn)
 	LOGIPA(conn, LOGL_DEBUG, "message received\n");
 
 	ret = ipa_msg_recv_buffered(ofd->fd, &msg, &conn->pending_msg);
-	if (ret < 0) {
+	if (ret <= 0) {
 		if (ret == -EAGAIN)
 			return;
-		if (ret == -EPIPE || ret == -ECONNRESET)
+		else if (ret == -EPIPE || ret == -ECONNRESET)
 			LOGIPA(conn, LOGL_ERROR, "lost connection with server\n");
-		ipa_server_conn_destroy(conn);
-		return;
-	} else if (ret == 0) {
-		LOGIPA(conn, LOGL_ERROR, "connection closed with server\n");
+		else if (ret == 0)
+			LOGIPA(conn, LOGL_ERROR, "connection closed with server\n");
 		ipa_server_conn_destroy(conn);
 		return;
 	}
