@@ -279,7 +279,7 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 		     " sign_link returned error: %s.\n", strerror(-rc));
 	}
 
-	return 0;
+	return rc;
 err_msg:
 	msgb_free(msg);
 err:
@@ -790,8 +790,7 @@ static int ipaccess_bts_read_cb(struct ipa_client_conn *link, struct msgb *msg)
 			"no action set for signalling messages.\n");
 		goto err;
 	}
-	link->line->ops->sign_link(msg);
-	return 0;
+	return link->line->ops->sign_link(msg);
 
 err:
 	ipa_client_conn_close(link);
