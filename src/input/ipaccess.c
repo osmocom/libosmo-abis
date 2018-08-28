@@ -738,7 +738,6 @@ static int ipaccess_bts_read_cb(struct ipa_client_conn *link, struct msgb *msg)
 				LOGP(DLINP, LOGL_ERROR,
 					"Unable to set signal link, "
 					"closing socket.\n");
-				ret = -EINVAL;
 				goto err;
 			}
 		}
@@ -758,7 +757,6 @@ static int ipaccess_bts_read_cb(struct ipa_client_conn *link, struct msgb *msg)
 				LOGP(DLINP, LOGL_ERROR,
 					"Unable to set signal link, "
 					"closing socket.\n");
-				ret = -EINVAL;
 				goto err;
 			}
 		}
@@ -774,16 +772,14 @@ static int ipaccess_bts_read_cb(struct ipa_client_conn *link, struct msgb *msg)
 	if (e1i_ts->type == E1INP_TS_TYPE_NONE) {
 		LOGP(DLINP, LOGL_ERROR, "Signalling link not initialized. Discarding."
 		     " port=%u msg_type=%u\n", link->port, msg_type);
-		ret = -EIO;
 		goto err;
 	}
-	
+
 	/* look up for some existing signaling link. */
 	sign_link = e1inp_lookup_sign_link(e1i_ts, hh->proto, 0);
 	if (sign_link == NULL) {
 		LOGP(DLINP, LOGL_ERROR, "no matching signalling link for "
 			"hh->proto=0x%02x\n", hh->proto);
-		ret = -EIO;
 		goto err;
 	}
 	msg->dst = sign_link;
@@ -792,7 +788,6 @@ static int ipaccess_bts_read_cb(struct ipa_client_conn *link, struct msgb *msg)
 	if (!link->line->ops->sign_link) {
 		LOGP(DLINP, LOGL_ERROR, "Fix your application, "
 			"no action set for signalling messages.\n");
-		ret = -ENOENT;
 		goto err;
 	}
 	link->line->ops->sign_link(msg);
@@ -801,7 +796,7 @@ static int ipaccess_bts_read_cb(struct ipa_client_conn *link, struct msgb *msg)
 err:
 	ipa_client_conn_close(link);
 	msgb_free(msg);
-	return ret;
+	return -EBADF;
 }
 
 struct ipaccess_line {
