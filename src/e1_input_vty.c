@@ -101,10 +101,10 @@ DEFUN(cfg_e1line_socket, cfg_e1_line_socket_cmd,
 	int e1_nr = atoi(argv[0]);
 	struct sockaddr_un sun;
 
-	/* Don't exceed the maximum unix socket path length. See the unix(7) man page.*/
-	if (strlen(argv[1]) > sizeof(sun.sun_path)) {
+	/* Don't exceed the maximum unix socket path length, including a NUL byte. See the unix(7) man page.*/
+	if (strlen(argv[1]) > sizeof(sun.sun_path) - 1) {
 		vty_out(vty, "%% Socket path length exceeds %zd bytes: '%s'%s",
-			sizeof(sun.sun_path), argv[1], VTY_NEWLINE);
+			sizeof(sun.sun_path) - 1, argv[1], VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 

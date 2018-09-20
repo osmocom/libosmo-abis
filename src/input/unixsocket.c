@@ -229,7 +229,7 @@ static void unixsocket_write_msg_lapd_cb(struct msgb *msg, void *cbdata)
 static int unixsocket_line_update(struct e1inp_line *line)
 {
 	struct unixsocket_line *config;
-	char default_sock_path[sizeof(struct sockaddr_un) + 1]; /* see unix(7) man page */
+	struct sockaddr_un un;
 	const char *sock_path;
 	int ret = 0;
 	int i;
@@ -252,9 +252,17 @@ static int unixsocket_line_update(struct e1inp_line *line)
 
 	/* Open unix domain socket */
 	if (line->sock_path == NULL) {
-		snprintf(default_sock_path, sizeof(default_sock_path), "%s%d",
-			 UNIXSOCKET_SOCK_PATH_DEFAULT, line->num);
-		sock_path = default_sock_path;
+		ret = snprintf(un.sun_path, sizeof(un.sun_path), "%s%d",
+		    UNIXSOCKET_SOCK_PATH_DEFAULT, line->num);
+		if (ret == -1) {
+			LOGP(DLINP, LOGL_ERROR, "Cannot create default socket path: %s\n", strerror(errno));
+			return -errno;
+		} else if (ret >= sizeof(un.sun_path)) {
+			LOGP(DLINP, LOGL_ERROR, "Default socket path exceeds %zd bytes: %s%d\n",
+			     sizeof(un.sun_path), UNIXSOCKET_SOCK_PATH_DEFAULT, line->num);
+			return -ENOSPC;
+		}
+		sock_path = un.sun_path;
 	} else
 		sock_path = line->sock_path;
 	ret = osmo_sock_unix_init(SOCK_SEQPACKET, 0, sock_path,
