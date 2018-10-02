@@ -201,6 +201,8 @@ struct e1inp_line {
 	struct e1inp_driver *driver;
 	void *driver_data;
 };
+#define e1inp_line_ipa_oml_ts(line) (&line->ts[0])
+#define e1inp_line_ipa_rsl_ts(line, trx_id) (&line->ts[1 + (trx_id)])
 
 /* SS_L_INPUT signals */
 enum e1inp_signal_input {

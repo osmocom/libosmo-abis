@@ -62,8 +62,11 @@ static void *tall_ipa_ctx;
 static int ipaccess_drop(struct osmo_fd *bfd, struct e1inp_line *line)
 {
 	int ret = 1;
-	unsigned int ts_nr = bfd->priv_nr;
-	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
+	struct e1inp_ts *e1i_ts;
+	if (bfd->priv_nr == E1INP_SIGN_OML)
+		e1i_ts = e1inp_line_ipa_oml_ts(line);
+	else
+		e1i_ts = e1inp_line_ipa_rsl_ts(line, bfd->priv_nr - E1INP_SIGN_RSL);
 
 	/* Error case: we did not see any ID_RESP yet for this socket. */
 	if (bfd->fd != -1) {
@@ -185,7 +188,7 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 			 * this RSL link, attach it to this socket. */
 			bfd->data = new_line = sign_link->ts->line;
 			e1inp_line_get(new_line);
-			ts = &new_line->ts[E1INP_SIGN_RSL+unit_data.trx_id-1];
+			ts = e1inp_line_ipa_rsl_ts(new_line, unit_data.trx_id);
 			newbfd = &ts->driver.ipaccess.fd;
 
 			/* get rid of our old temporary bfd */
@@ -223,11 +226,16 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
-	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
+	struct e1inp_ts *e1i_ts;
 	struct e1inp_sign_link *link;
 	struct ipaccess_head *hh;
 	struct msgb *msg = NULL;
 	int ret, rc;
+
+	if (bfd->priv_nr == E1INP_SIGN_OML)
+		e1i_ts = e1inp_line_ipa_oml_ts(line);
+	else
+		e1i_ts = e1inp_line_ipa_rsl_ts(line, bfd->priv_nr - E1INP_SIGN_RSL);
 
 	ret = ipa_msg_recv_buffered(bfd->fd, &msg, &e1i_ts->pending_msg);
 	if (ret < 0) {
@@ -312,10 +320,15 @@ static void timeout_ts1_write(void *data)
 static int __handle_ts1_write(struct osmo_fd *bfd, struct e1inp_line *line)
 {
 	unsigned int ts_nr = bfd->priv_nr;
-	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
+	struct e1inp_ts *e1i_ts;
 	struct e1inp_sign_link *sign_link;
 	struct msgb *msg;
 	int ret;
+
+	if (bfd->priv_nr == E1INP_SIGN_OML)
+		e1i_ts = e1inp_line_ipa_oml_ts(line);
+	else
+		e1i_ts = e1inp_line_ipa_rsl_ts(line, bfd->priv_nr - E1INP_SIGN_RSL);
 
 	bfd->when &= ~BSC_FD_WRITE;
 
@@ -454,7 +467,6 @@ static void update_fd_settings(struct e1inp_line *line, int fd)
 static int ipaccess_bsc_oml_cb(struct ipa_server_link *link, int fd)
 {
 	int ret;
-	int idx = 0;
 	int i;
 	struct e1inp_line *line;
 	struct e1inp_ts *e1i_ts;
@@ -468,13 +480,13 @@ static int ipaccess_bsc_oml_cb(struct ipa_server_link *link, int fd)
 	}
 
 	/* create virrtual E1 timeslots for signalling */
-	e1inp_ts_config_sign(&line->ts[E1INP_SIGN_OML-1], line);
+	e1inp_ts_config_sign(e1inp_line_ipa_oml_ts(line), line);
 
 	/* initialize the fds */
 	for (i = 0; i < ARRAY_SIZE(line->ts); ++i)
 		line->ts[i].driver.ipaccess.fd.fd = -1;
 
-	e1i_ts = &line->ts[idx];
+	e1i_ts = e1inp_line_ipa_oml_ts(line);
 
 	bfd = &e1i_ts->driver.ipaccess.fd;
 	osmo_fd_setup(bfd, fd, BSC_FD_READ, ipaccess_fd_cb, line, E1INP_SIGN_OML);
@@ -524,9 +536,9 @@ static int ipaccess_bsc_rsl_cb(struct ipa_server_link *link, int fd)
 
 	/* we need this to initialize this in case to avoid crashes in case
 	 * that the socket is closed before we've seen an ID_RESP. */
-	e1inp_ts_config_sign(&line->ts[E1INP_SIGN_OML-1], line);
+	e1inp_ts_config_sign(e1inp_line_ipa_oml_ts(line), line);
 
-	e1i_ts = &line->ts[E1INP_SIGN_RSL-1];
+	e1i_ts = e1inp_line_ipa_rsl_ts(line, 0);
 
 	bfd = &e1i_ts->driver.ipaccess.fd;
 	osmo_fd_setup(bfd, fd, BSC_FD_READ, ipaccess_fd_cb, line, E1INP_SIGN_RSL);
@@ -763,9 +775,9 @@ static int ipaccess_bts_read_cb(struct ipa_client_conn *link, struct msgb *msg)
 		msgb_free(msg);
 		return ret;
 	} else if (link->port == IPA_TCP_PORT_OML)
-		e1i_ts = &link->line->ts[0];
+		e1i_ts = e1inp_line_ipa_oml_ts(link->line);
 	else if (link->port == IPA_TCP_PORT_RSL)
-		e1i_ts = &link->line->ts[link->ofd->priv_nr-1];
+		e1i_ts = e1inp_line_ipa_rsl_ts(link->line, link->ofd->priv_nr - E1INP_SIGN_RSL);
 
 	OSMO_ASSERT(e1i_ts != NULL);
 
@@ -870,7 +882,7 @@ static int ipaccess_line_update(struct e1inp_line *line)
 		     IPA_TCP_PORT_OML);
 
 		link = ipa_client_conn_create(tall_ipa_ctx,
-					      &line->ts[E1INP_SIGN_OML-1],
+					      e1inp_line_ipa_oml_ts(line),
 					      E1INP_SIGN_OML,
 					      line->ops->cfg.ipa.addr,
 					      IPA_TCP_PORT_OML,
@@ -920,7 +932,7 @@ int e1inp_ipa_bts_rsl_connect_n(struct e1inp_line *line,
 	}
 
 	rsl_link = ipa_client_conn_create(tall_ipa_ctx,
-					  &line->ts[E1INP_SIGN_RSL+trx_nr-1],
+					  e1inp_line_ipa_rsl_ts(line, trx_nr),
 					  E1INP_SIGN_RSL+trx_nr,
 					  rem_addr, rem_port,
 					  ipaccess_bts_updown_cb,

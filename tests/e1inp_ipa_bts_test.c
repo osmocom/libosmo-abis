@@ -51,9 +51,9 @@ sign_link_up(void *unit, struct e1inp_line *line, enum e1inp_sign_type type)
 	case E1INP_SIGN_OML:
 		LOGP(DBTSTEST, LOGL_NOTICE, "OML link up request received.\n");
 
-		e1inp_ts_config_sign(&line->ts[E1INP_SIGN_OML - 1], line);
+		e1inp_ts_config_sign(e1inp_line_ipa_oml_ts(line), line);
 		sign_link = oml_sign_link =
-			e1inp_sign_link_create(&line->ts[E1INP_SIGN_OML - 1],
+			e1inp_sign_link_create(e1inp_line_ipa_oml_ts(line),
 						E1INP_SIGN_OML, NULL, 255, 0);
 		if (!oml_sign_link) {
 			LOGP(DBTSTEST, LOGL_ERROR,
@@ -76,10 +76,10 @@ sign_link_up(void *unit, struct e1inp_line *line, enum e1inp_sign_type type)
 	case E1INP_SIGN_RSL:
 		LOGP(DBTSTEST, LOGL_NOTICE, "RSL link up request received.\n");
 
-		e1inp_ts_config_sign(&line->ts[E1INP_SIGN_RSL - 1], line);
+		e1inp_ts_config_sign(e1inp_line_ipa_rsl_ts(line, 0), line);
 
 		sign_link = rsl_sign_link =
-			e1inp_sign_link_create(&line->ts[E1INP_SIGN_RSL - 1],
+			e1inp_sign_link_create(e1inp_line_ipa_rsl_ts(line, 0),
 						E1INP_SIGN_RSL, NULL, 0, 0);
 		if (!rsl_sign_link) {
 			LOGP(DBTSTEST, LOGL_ERROR,

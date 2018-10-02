@@ -30,9 +30,9 @@ sign_link_up(void *dev, struct e1inp_line *line, enum e1inp_sign_type type)
 	switch(type) {
 	case E1INP_SIGN_OML:
 		LOGP(DBSCTEST, LOGL_NOTICE, "OML link up request received.\n");
-		e1inp_ts_config_sign(&line->ts[E1INP_SIGN_OML - 1], line);
+		e1inp_ts_config_sign(e1inp_line_ipa_oml_ts(line), line);
 		sign_link = oml_sign_link =
-			e1inp_sign_link_create(&line->ts[E1INP_SIGN_OML - 1],
+			e1inp_sign_link_create(e1inp_line_ipa_oml_ts(line),
 					       E1INP_SIGN_OML, NULL, 255, 0);
 		break;
 	case E1INP_SIGN_RSL:
@@ -45,10 +45,10 @@ sign_link_up(void *dev, struct e1inp_line *line, enum e1inp_sign_type type)
 
 		/* We have to use the same line that the OML link. */
 		oml_line = oml_sign_link->ts->line;
-		e1inp_ts_config_sign(&oml_line->ts[E1INP_SIGN_RSL - 1],
+		e1inp_ts_config_sign(e1inp_line_ipa_rsl_ts(oml_line, 0),
 				     oml_line);
 		sign_link = rsl_sign_link =
-		     e1inp_sign_link_create(&oml_line->ts[E1INP_SIGN_RSL - 1],
+		     e1inp_sign_link_create(e1inp_line_ipa_rsl_ts(oml_line, 0),
 					    E1INP_SIGN_RSL, NULL, 0, 0);
 		break;
 	default:
