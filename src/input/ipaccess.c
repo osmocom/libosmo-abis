@@ -690,7 +690,7 @@ int ipaccess_bts_handle_ccm(struct ipa_client_conn *link,
 				trx_nr = link->ofd->priv_nr - E1INP_SIGN_RSL;
 
 			LOGP(DLINP, LOGL_NOTICE, "received ID get from %u/%u/%u\n",
-			     dev->site_id, dev->bts_id, dev->trx_id);
+			     dev->site_id, dev->bts_id, trx_nr);
 			rmsg = ipa_bts_id_resp(dev, data + 1, len - 1, trx_nr);
 			ret = ipa_send(link->ofd->fd, rmsg->data, rmsg->len);
 			if (ret != rmsg->len) {
