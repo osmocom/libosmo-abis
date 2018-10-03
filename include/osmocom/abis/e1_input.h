@@ -314,7 +314,7 @@ extern struct llist_head e1inp_line_list;
 
 /* XXX */
 struct input_signal_data {
-	int link_type;
+	enum e1inp_sign_type link_type;
 	uint8_t tei;
 	uint8_t sapi;
 	uint8_t ts_nr;
