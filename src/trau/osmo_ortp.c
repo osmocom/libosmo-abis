@@ -102,8 +102,35 @@ static void my_ortp_logfn(
 #endif
 	OrtpLogLevel lev, const char *fmt, va_list args)
 {
+	/* Some strings coming from ortp are not endline terminated and mangle
+	 * the output. Make sure all strings are endl terminated before
+	 * printing.
+	 */
+	int needs_endl;
+	const char *domain_str;
+	char *str;
+	size_t fmt_len = strlen(fmt);
+#if HAVE_ORTP_LOG_DOMAIN
+	/* domain can be NULL, found experimentally */
+	domain_str = domain ? : "";
+#else
+	domain_str = "";
+#endif
+	size_t  domain_len = strlen(domain_str);
+
+	if (fmt_len == 0)
+		return;
+
+	needs_endl = fmt[fmt_len - 1] != '\n' ? 1 : 0;
+
+	str = osmo_ortp_malloc(domain_len + 2 /*": "*/ + fmt_len + needs_endl + 1);
+	sprintf(str, "%s%s%s%s", domain_str, domain_len ? ": " : "", fmt, needs_endl ? "\n" : "");
+
 	osmo_vlogp(DLMIB, ortp_to_osmo_lvl(lev), __FILE__, 0,
-		   0, fmt, args);
+		   0, str, args);
+
+	osmo_ortp_free(str);
+
 }
 
 /* ORTP signal callbacks */
