@@ -42,6 +42,7 @@
 #include <osmocom/core/rate_ctr.h>
 #include <osmocom/core/logging.h>
 #include <osmocom/core/signal.h>
+#include <osmocom/core/endian.h>
 #include <osmocom/abis/e1_input.h>
 
 #define NUM_E1_TS	32
@@ -115,12 +116,19 @@ struct fake_linux_lapd_header {
 } __attribute__((packed));
 
 struct lapd_header {
+#if OSMO_IS_LITTLE_ENDIAN
 	uint8_t ea1 : 1;
 	uint8_t cr : 1;
 	uint8_t sapi : 6;
 	uint8_t ea2 : 1;
 	uint8_t tei : 7;
 	uint8_t control_foo; /* fake UM's ... */
+#elif OSMO_IS_BIG_ENDIAN
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+	uint8_t sapi:6, cr:1, ea1:1;
+	uint8_t tei:7, ea2:1;
+	uint8_t control_foo;
+#endif
 } __attribute__((packed));
 
 osmo_static_assert(offsetof(struct fake_linux_lapd_header, hatype) == 2,    hatype_offset);
