@@ -603,15 +603,15 @@ ipa_bts_id_resp(const struct ipaccess_unit *dev, uint8_t *data, int len, int trx
 			break;
 		case IPAC_IDTAG_LOCATION1:
 			if (dev->location1)
-				osmo_strlcpy(str, dev->swversion, sizeof(str));
+				osmo_strlcpy(str, dev->location1, sizeof(str));
 			break;
 		case IPAC_IDTAG_LOCATION2:
 			if (dev->location2)
-				osmo_strlcpy(str, dev->swversion, sizeof(str));
+				osmo_strlcpy(str, dev->location2, sizeof(str));
 			break;
 		case IPAC_IDTAG_EQUIPVERS:
 			if (dev->equipvers)
-				osmo_strlcpy(str, dev->swversion, sizeof(str));
+				osmo_strlcpy(str, dev->equipvers, sizeof(str));
 			break;
 		case IPAC_IDTAG_SWVERSION:
 			if (dev->swversion)
@@ -627,7 +627,7 @@ ipa_bts_id_resp(const struct ipaccess_unit *dev, uint8_t *data, int len, int trx
 			break;
 		case IPAC_IDTAG_SERNR:
 			if (dev->serno)
-				osmo_strlcpy(str, dev->swversion, sizeof(str));
+				osmo_strlcpy(str, dev->serno, sizeof(str));
 			break;
 		default:
 			LOGP(DLINP, LOGL_NOTICE,
