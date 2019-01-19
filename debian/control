@@ -10,7 +10,7 @@ Build-Depends: debhelper (>= 9),
                dh-autoreconf,
                libdpkg-perl,
                git,
-               libosmocore-dev (>= 0.6.4),
+               libosmocore-dev (>= 1.0.0),
                pkg-config,
                libortp-dev
 Standards-Version: 3.9.7

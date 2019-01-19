@@ -1,3 +1,35 @@
+libosmo-abis (0.6.0) unstable; urgency=medium
+
+  [ Neels Hofmeyr ]
+  * fix strncpy bugs in ipaccess.c, ipa_proxy.c
+  * ipa: don't crash on missing IPA ID GET message
+
+  [ Harald Welte ]
+  * Migrate from ipa_ccm_idtag_parse to ipa_ccm_id_resp_parse()
+  * debian/rules: Don't overwrite .tarball-version
+
+  [ Pau Espin Pedrol ]
+  * ipaccess: Use osmo_fd_setup to set up callbacks
+  * ipaccess_rcvmsg: Fix bug introduced in previous commit
+  * ipa: Simplify code in ipa_client_read
+  * ipa: Simplify code in ipa_server_conn_read
+  * ipa: Allow signalling fd destroyed in ipa_client_read
+  * ipa: Allow signalling fd destroyed in ipa_server_conn_read
+  * ipaccess: Return -EBADF when closing socket in ipaccess_bts_read_cb
+  * ipaccess: Allow passing return code in e1inp_line_ops->sign_link()
+  * debian: Fix libosmoabis soname package version
+  * debian: Conflict libosmoabis6 with libosmoabis5
+  * ipacces: Log correct trx_nr during IPA GET
+  * ipaccess: Simplify handling of ipaccess e1line ts
+  * e1_input.h: Set correct type for input_signal_data->link_type
+  * osmo_ortp: Log domain and fix strings without endl char
+
+  [ Stefan Sperling ]
+  * Properly deal with sockaddr_un socket path length limitations.
+  * ensure unix socket paths are NUL-terminated for bind/connect
+
+ -- Harald Welte <laforge@gnumonks.org>  Sat, 19 Jan 2019 22:20:46 +0100
+
 libosmo-abis (0.5.1) unstable; urgency=medium
 
   [ Pau Espin Pedrol ]
