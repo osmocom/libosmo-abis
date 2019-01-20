@@ -248,6 +248,7 @@ size_t ipa_client_conn_clear_queue(struct ipa_client_conn *link)
 static int ipa_server_fd_cb(struct osmo_fd *ofd, unsigned int what)
 {
 	int fd, ret;
+	char ipbuf[INET6_ADDRSTRLEN + 1];
 	struct sockaddr_in sa;
 	socklen_t sa_len = sizeof(sa);
 	struct ipa_server_link *link = ofd->data;
@@ -258,6 +259,13 @@ static int ipa_server_fd_cb(struct osmo_fd *ofd, unsigned int what)
 			"peer, reason=`%s'\n", strerror(errno));
 		return fd;
 	}
+
+	if (!link->addr) {
+		ret = osmo_sock_get_local_ip(fd, ipbuf, INET6_ADDRSTRLEN + 1);
+		if (ret == 0)
+			link->addr = talloc_strdup(link, ipbuf);
+	}
+
 	LOGP(DLINP, LOGL_NOTICE, "accept()ed new link from %s to port %u\n",
 		inet_ntoa(sa.sin_addr), link->port);
 
@@ -290,7 +298,8 @@ ipa_server_link_create(void *ctx, struct e1inp_line *line,
 	ipa_link->ofd.when |= BSC_FD_READ | BSC_FD_WRITE;
 	ipa_link->ofd.cb = ipa_server_fd_cb;
 	ipa_link->ofd.data = ipa_link;
-	ipa_link->addr = talloc_strdup(ipa_link, addr);
+	if (addr)
+		ipa_link->addr = talloc_strdup(ipa_link, addr);
 	ipa_link->port = port;
 	ipa_link->accept_cb = accept_cb;
 	ipa_link->line = line;
