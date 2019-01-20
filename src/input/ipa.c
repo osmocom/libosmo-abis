@@ -266,8 +266,8 @@ static int ipa_server_fd_cb(struct osmo_fd *ofd, unsigned int what)
 			link->addr = talloc_strdup(link, ipbuf);
 	}
 
-	LOGP(DLINP, LOGL_NOTICE, "accept()ed new link from %s to port %u\n",
-		inet_ntoa(sa.sin_addr), link->port);
+	LOGIPA(link, LOGL_NOTICE, "accept()ed new link from %s:%u\n",
+		inet_ntoa(sa.sin_addr), ntohs(sa.sin_port));
 
 	ret = link->accept_cb(link, fd);
 	if (ret < 0) {
