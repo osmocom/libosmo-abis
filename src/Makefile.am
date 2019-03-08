@@ -21,6 +21,7 @@ libosmoabis_la_SOURCES = init.c \
 			 trau_frame.c \
 			 input/dahdi.c \
 			 input/ipa.c \
+			 input/ipa_keepalive.c \
 			 input/ipaccess.c \
 			 input/lapd.c \
 			 input/lapd_pcap.c \

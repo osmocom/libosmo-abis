@@ -5,6 +5,7 @@
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/timer.h>
 #include <osmocom/core/select.h>
+#include <osmocom/core/fsm.h>
 #include <osmocom/gsm/ipa.h>
 
 struct e1inp_line;
@@ -98,5 +99,40 @@ int ipaccess_bts_handle_ccm(struct ipa_client_conn *link,
 			    struct ipaccess_unit *dev, struct msgb *msg);
 
 void ipa_msg_push_header(struct msgb *msg, uint8_t proto);
+
+
+/***********************************************************************
+ * IPA Keep-Alive FSM
+ ***********************************************************************/
+
+/*! parameters describing the keep-alive FSM (timeouts). */
+struct ipa_keepalive_params {
+	/*! interval in which to send IPA CCM PING requests to the peer. */
+	unsigned int interval;
+	/*! time to wait for an IPA CCM PONG in response to a IPA CCM PING before giving up. */
+	unsigned int wait_for_resp;
+};
+
+typedef void ipa_keepalive_timeout_cb_t(struct osmo_fsm_inst *fi, void *conn);
+
+struct osmo_fsm_inst *ipa_client_conn_alloc_keepalive_fsm(struct ipa_client_conn *client,
+							  const struct ipa_keepalive_params *params,
+							  const char *id);
+
+struct osmo_fsm_inst *ipa_server_conn_alloc_keepalive_fsm(struct ipa_server_conn *server,
+							  const struct ipa_keepalive_params *params,
+							  const char *id);
+
+struct osmo_fsm_inst *ipa_keepalive_alloc_server(struct ipa_server_conn *server,
+						 const struct ipa_keepalive_params *params,
+						 const char *id);
+
+void ipa_keepalive_fsm_set_timeout_cb(struct osmo_fsm_inst *fi, ipa_keepalive_timeout_cb_t *cb);
+
+void ipa_keepalive_fsm_start(struct osmo_fsm_inst *fi);
+
+void ipa_keepalive_fsm_stop(struct osmo_fsm_inst *fi);
+
+void ipa_keepalive_fsm_pong_received(struct osmo_fsm_inst *fi);
 
 #endif
