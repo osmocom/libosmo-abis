@@ -468,6 +468,28 @@ int osmo_rtp_socket_connect(struct osmo_rtp_socket *rs, const char *ip, uint16_t
 		return osmo_rtp_socket_fdreg(rs);
 }
 
+/*! \brief Automatically associates a RTP socket with the first incoming UDP packet
+ *  \param[in] rs OsmoRTP socket
+ *
+ * The bound RTP socket will wait for incoming RTP packets and as soon as it
+ * sees one, will 'connect' to it, so all replies will go to that sources and
+ * incoming messages from other sources will be discarded. This obviously only
+ * works once.
+ *
+ *  \returns 0 on success, <0 in case of error.
+ */
+int osmo_rtp_socket_autoconnect(struct osmo_rtp_socket *rs)
+{
+	rtp_session_set_symmetric_rtp(rs->sess, 1);
+	rtp_session_set_connected_mode(rs->sess, 1);
+	rs->flags &= ~OSMO_RTP_F_DISABLED;
+
+	if (rs->flags & OSMO_RTP_F_POLL)
+		return 0;
+	else
+		return osmo_rtp_socket_fdreg(rs);
+}
+
 /*! \brief Increment timestamp on a RTP socket without sending any packet
  *  \param[in] rs OsmoRTP socket
  *  \param[in] duration duration in number of RTP clock ticks
