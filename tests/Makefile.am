@@ -1,6 +1,6 @@
 AM_CPPFLAGS = $(all_includes) -I$(top_srcdir)/include
 AM_CFLAGS=-Wall -g $(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS) $(COVERAGE_CFLAGS)
-AM_LDFLAGS = $(COVERAGE_LDFLAGS)
+AM_LDFLAGS = $(COVERAGE_LDFLAGS) -no-install
 
 check_PROGRAMS = e1inp_ipa_bsc_test	\
 		  e1inp_ipa_bts_test	\
