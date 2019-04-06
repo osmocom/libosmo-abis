@@ -189,6 +189,7 @@ static struct osmo_fsm ipa_keepalive_fsm = {
 	.states = ipa_keepalive_states,
 	.num_states = ARRAY_SIZE(ipa_keepalive_states),
 	.log_subsys = DLINP,
+	.allstate_event_mask = S(OSMO_IPA_KA_E_STOP),
 	.allstate_action = ipa_ka_allstate_action,
 	.event_names = ipa_keepalive_event_names,
 	.timer_cb = ipa_ka_fsm_timer_cb,
