@@ -167,7 +167,7 @@ static const struct osmo_fsm_state ipa_keepalive_states[] = {
 	[OSMO_IPA_KA_S_INIT] = {
 		.name = "INIT",
 		.in_event_mask = S(OSMO_IPA_KA_E_START),
-		.out_state_mask = S(OSMO_IPA_KA_S_WAIT_RESP),
+		.out_state_mask = S(OSMO_IPA_KA_S_WAIT_RESP) | S(OSMO_IPA_KA_S_INIT),
 		.action = ipa_ka_init,
 	},
 	[OSMO_IPA_KA_S_IDLE] = {
