@@ -41,7 +41,7 @@
 
 /* CONFIG */
 
-#define E1_DRIVER_NAMES		"(misdn|misdn_lapd|dahdi|ipa|unixsocket)"
+#define E1_DRIVER_NAMES		"(misdn|misdn_lapd|dahdi|e1d|ipa|unixsocket)"
 #define E1_DRIVER_HELP		"mISDN supported E1 Card (kernel LAPD)\n" \
 				"mISDN supported E1 Card (userspace LAPD)\n" \
 				"DAHDI supported E1/T1/J1 Card\n" \

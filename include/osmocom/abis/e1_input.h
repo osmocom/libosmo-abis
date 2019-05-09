@@ -129,6 +129,10 @@ struct e1inp_ts {
 			struct osmo_fd fd;
 		} dahdi;
 		struct {
+			/* osmo-e1d driver has one fd for each ts */
+			struct osmo_fd fd;
+		} e1d;
+		struct {
 			struct osmo_fd fd;
 		} rs232;
 	} driver;
