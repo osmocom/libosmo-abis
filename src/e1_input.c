@@ -875,6 +875,7 @@ const struct value_string e1inp_signal_names[] = {
 
 void e1inp_misdn_init(void);
 void e1inp_dahdi_init(void);
+void e1inp_e1d_init(void);
 void e1inp_ipaccess_init(void);
 void e1inp_rs232_init(void);
 void e1inp_unixsocket_init(void);
