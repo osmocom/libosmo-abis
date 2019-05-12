@@ -890,7 +890,7 @@ void e1inp_init(void)
 #ifdef HAVE_DAHDI_USER_H
 	e1inp_dahdi_init();
 #endif
-#ifdef ENABLE_E1D
+#ifdef HAVE_E1D
 	e1inp_e1d_init();
 #endif
 	e1inp_ipaccess_init();
