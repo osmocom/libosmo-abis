@@ -667,8 +667,10 @@ static void ipaccess_bts_updown_cb(struct ipa_client_conn *link, int up)
 {
 	struct e1inp_line *line = link->line;
 
-	if (up)
-		return;
+        if (up) {
+                update_fd_settings(line, link->ofd->fd);
+                return;
+        }
 
 	if (line->ops->sign_link_down)
 		line->ops->sign_link_down(line);
