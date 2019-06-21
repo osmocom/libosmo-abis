@@ -459,6 +459,17 @@ static void update_fd_settings(struct e1inp_line *line, int fd)
 			LOGP(DLINP, LOGL_NOTICE,
 			     "Failed to set keepalive count: %s\n",
 			     strerror(errno));
+#if defined(TCP_USER_TIMEOUT)
+                val = 1000 * line->keepalive_num_probes *
+                        line->keepalive_probe_interval +
+                        line->keepalive_idle_timeout;
+                ret = setsockopt(fd, IPPROTO_TCP, TCP_USER_TIMEOUT,
+                                 &val, sizeof(val));
+                if (ret < 0)
+                        LOGP(DLINP, LOGL_NOTICE,
+                             "Failed to set user timoeut: %s\n",
+                             strerror(errno));
+#endif
 #endif
 	}
 }
