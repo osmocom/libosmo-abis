@@ -113,7 +113,9 @@ struct ipa_keepalive_params {
 	unsigned int wait_for_resp;
 };
 
-typedef void ipa_keepalive_timeout_cb_t(struct osmo_fsm_inst *fi, void *conn);
+typedef int ipa_keepalive_timeout_cb_t(struct osmo_fsm_inst *fi, void *conn);
+
+typedef void ipa_keepalive_send_cb_t(struct osmo_fsm_inst *fi, void *conn, struct msgb *msg);
 
 struct osmo_fsm_inst *ipa_client_conn_alloc_keepalive_fsm(struct ipa_client_conn *client,
 							  const struct ipa_keepalive_params *params,
@@ -123,11 +125,13 @@ struct osmo_fsm_inst *ipa_server_conn_alloc_keepalive_fsm(struct ipa_server_conn
 							  const struct ipa_keepalive_params *params,
 							  const char *id);
 
-struct osmo_fsm_inst *ipa_keepalive_alloc_server(struct ipa_server_conn *server,
-						 const struct ipa_keepalive_params *params,
-						 const char *id);
+struct osmo_fsm_inst *ipa_generic_conn_alloc_keepalive_fsm(void *ctx, void* data,
+							  const struct ipa_keepalive_params *params,
+							  const char *id);
 
 void ipa_keepalive_fsm_set_timeout_cb(struct osmo_fsm_inst *fi, ipa_keepalive_timeout_cb_t *cb);
+
+void ipa_keepalive_fsm_set_send_cb(struct osmo_fsm_inst *fi, ipa_keepalive_send_cb_t *fn);
 
 void ipa_keepalive_fsm_start(struct osmo_fsm_inst *fi);
 

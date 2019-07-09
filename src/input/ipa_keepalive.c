@@ -76,7 +76,9 @@ struct ipa_fsm_priv {
 
 	struct ipa_server_conn *srv_conn;
 	struct ipa_client_conn *client_conn;
+	void *generic;
 	ipa_keepalive_timeout_cb_t *timeout_cb;
+	ipa_keepalive_send_cb_t *send_fn;
 };
 
 static void ipa_ka_init(struct osmo_fsm_inst *fi, uint32_t event, void *data)
@@ -103,11 +105,23 @@ static void ipa_ka_wait_resp_onenter(struct osmo_fsm_inst *fi, uint32_t prev_sta
 	msg = gen_ipa_ping();
 	OSMO_ASSERT(msg);
 
-	if (ifp->srv_conn)
-		ipa_server_conn_send(ifp->srv_conn, msg);
+	if (ifp->send_fn && ifp->generic) {
+		ifp->send_fn(fi, ifp->generic, msg);
+		return;
+	}
+
+	if (ifp->srv_conn) {
+		if (ifp->send_fn)
+			ifp->send_fn(fi, ifp->srv_conn, msg);
+		else
+			ipa_server_conn_send(ifp->srv_conn, msg);
+	}
 	else {
 		OSMO_ASSERT(ifp->client_conn);
-		ipa_client_conn_send(ifp->client_conn, msg);
+		if (ifp->send_fn)
+			ifp->send_fn(fi, ifp->client_conn, msg);
+		else
+			ipa_client_conn_send(ifp->client_conn, msg);
 	}
 }
 
@@ -140,10 +154,12 @@ static int ipa_ka_fsm_timer_cb(struct osmo_fsm_inst *fi)
 		/* PONG not received within time */
 		if (ifp->srv_conn)
 			conn = ifp->srv_conn;
-		else
+		else if (ifp->client_conn)
 			conn = ifp->client_conn;
+		else
+			conn = ifp->generic;
 		if (ifp->timeout_cb)
-			ifp->timeout_cb(fi, conn);
+			return ifp->timeout_cb(fi, conn);
 		/* ask fsm core to terminate us */
 		return 1;
 	default:
@@ -261,12 +277,41 @@ struct osmo_fsm_inst *ipa_server_conn_alloc_keepalive_fsm(struct ipa_server_conn
 	return fi;
 }
 
+/*! Create a new instance of an IPA keepalive FSM: Periodically transmit PING and expect PONG.
+ *  \param[in] ctx Talloc context.
+ *  \param[in] data Data to pass to write/timeout cb.
+ *  \param[in] params Parameters describing the keepalive FSM time-outs.
+ *  \param[in] id String used as identifier for the FSM.
+ *  \returns pointer to the newly-created FSM instance; NULL in case of error. */
+struct osmo_fsm_inst *ipa_generic_conn_alloc_keepalive_fsm(void *ctx, void* data,
+							   const struct ipa_keepalive_params *params,
+							   const char *id)
+{
+	struct osmo_fsm_inst *fi;
+	struct ipa_fsm_priv *ifp;
+	
+	fi = __ipa_conn_alloc_keepalive_fsm(ctx, params, id);
+	if (!fi)
+		return NULL;
+	ifp = fi->priv;
+	ifp->generic = data;
+	return fi;
+}
+
 /*! Set a timeout call-back which is to be called once the peer doesn't respond anymore */
 void ipa_keepalive_fsm_set_timeout_cb(struct osmo_fsm_inst *fi, ipa_keepalive_timeout_cb_t *cb)
 {
 	struct ipa_fsm_priv *ifp = fi->priv;
 	OSMO_ASSERT(fi->fsm == &ipa_keepalive_fsm);
 	ifp->timeout_cb = cb;
+}
+
+/*! Set a custom send callback for sending pings */
+void ipa_keepalive_fsm_set_send_cb(struct osmo_fsm_inst *fi, ipa_keepalive_send_cb_t *fn)
+{
+	struct ipa_fsm_priv *ifp = fi->priv;
+	OSMO_ASSERT(fi->fsm == &ipa_keepalive_fsm);
+	ifp->send_fn = fn;
 }
 
 /*! Inform IPA Keepalive FSM that a PONG has been received. */
