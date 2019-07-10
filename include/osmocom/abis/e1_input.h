@@ -123,6 +123,8 @@ struct e1inp_ts {
 		struct {
 			/* ip.access driver has one fd for each ts */
 			struct osmo_fd fd;
+			/* ipa keep-alive */
+			struct osmo_fsm_inst* ka_fsm;
 		} ipaccess;
 		struct {
 			/* DAHDI driver has one fd for each ts */
@@ -197,10 +199,13 @@ struct e1inp_line {
 	char *sock_path;
 	struct rate_ctr_group *rate_ctr;
 
-	/* keepalive configuration */
+	/* tcp keepalive configuration */
 	int keepalive_num_probes; /* 0: disable, num, or E1INP_USE_DEFAULT */
 	int keepalive_idle_timeout; /* secs, or E1INP_USE_DEFAULT */
 	int keepalive_probe_interval; /* secs or E1INP_USE_DEFAULT */
+
+	/* ipa ping/pong keepalive params */
+	struct ipa_keepalive_params *ipa_kap;
 
 	/* array of timestlots */
 	struct e1inp_ts ts[NUM_E1_TS];

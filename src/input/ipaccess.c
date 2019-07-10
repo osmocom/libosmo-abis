@@ -59,14 +59,31 @@ static void *tall_ipa_ctx;
 #define DEFAULT_TCP_KEEPALIVE_INTERVAL     3
 #define DEFAULT_TCP_KEEPALIVE_RETRY_COUNT  10
 
+static inline struct e1inp_ts *ipaccess_line_ts(struct osmo_fd *bfd, struct e1inp_line *line)
+{
+	if (bfd->priv_nr == E1INP_SIGN_OML)
+		return e1inp_line_ipa_oml_ts(line);
+	else
+		return e1inp_line_ipa_rsl_ts(line, bfd->priv_nr - E1INP_SIGN_RSL);
+}
+
+static inline void ipaccess_keepalive_fsm_cleanup(struct e1inp_ts *e1i_ts)
+{
+	struct osmo_fsm_inst *ka_fsm;
+
+	ka_fsm = e1i_ts->driver.ipaccess.ka_fsm;
+	if (ka_fsm) {
+		ipa_keepalive_fsm_stop(ka_fsm);
+		e1i_ts->driver.ipaccess.ka_fsm = NULL;
+	}
+}
+
 static int ipaccess_drop(struct osmo_fd *bfd, struct e1inp_line *line)
 {
 	int ret = 1;
-	struct e1inp_ts *e1i_ts;
-	if (bfd->priv_nr == E1INP_SIGN_OML)
-		e1i_ts = e1inp_line_ipa_oml_ts(line);
-	else
-		e1i_ts = e1inp_line_ipa_rsl_ts(line, bfd->priv_nr - E1INP_SIGN_RSL);
+	struct e1inp_ts *e1i_ts = ipaccess_line_ts(bfd, line);
+
+	ipaccess_keepalive_fsm_cleanup(e1i_ts);
 
 	/* Error case: we did not see any ID_RESP yet for this socket. */
 	if (bfd->fd != -1) {
@@ -87,6 +104,80 @@ static int ipaccess_drop(struct osmo_fd *bfd, struct e1inp_line *line)
 	return ret;
 }
 
+static void ipa_bsc_keepalive_write_server_cb(struct osmo_fsm_inst *fi, void *conn, struct msgb *msg)
+{
+	struct osmo_fd *bfd = (struct osmo_fd *)conn;
+	write(bfd->fd, msg->data, msg->len);
+	msgb_free(msg);
+}
+
+static int ipa_bsc_keepalive_timeout_cb(struct osmo_fsm_inst *fi, void *data)
+{
+	struct osmo_fd *bfd = (struct osmo_fd *)data;
+
+	if (bfd->fd == -1)
+		return 1;
+
+	ipaccess_drop(bfd, (struct e1inp_line *)bfd->data);
+	return 1;
+}
+
+static void ipaccess_bsc_keepalive_fsm_alloc(struct e1inp_ts *e1i_ts, struct osmo_fd *bfd, const char *id)
+{
+	struct e1inp_line *line = e1i_ts->line;
+	struct osmo_fsm_inst *ka_fsm;
+
+	ipaccess_keepalive_fsm_cleanup(e1i_ts);
+	if (!line->ipa_kap)
+		return;
+
+	ka_fsm = ipa_generic_conn_alloc_keepalive_fsm(tall_ipa_ctx, bfd, line->ipa_kap, id);
+	e1i_ts->driver.ipaccess.ka_fsm = ka_fsm;
+	if (!ka_fsm)
+		return;
+
+	ipa_keepalive_fsm_set_timeout_cb(ka_fsm, ipa_bsc_keepalive_timeout_cb);
+	ipa_keepalive_fsm_set_send_cb(ka_fsm, ipa_bsc_keepalive_write_server_cb);
+	ipa_keepalive_fsm_start(ka_fsm);
+}
+
+static void ipa_bts_keepalive_write_client_cb(struct osmo_fsm_inst *fi, void *conn, struct msgb *msg) {
+	struct ipa_client_conn *link = (struct ipa_client_conn *)conn;
+	int ret = 0;
+
+	ret = ipa_send(link->ofd->fd, msg->data, msg->len);
+	if (ret != msg->len) {
+		LOGP(DLINP, LOGL_ERROR, "cannot send message. Reason: %s\n", strerror(errno));
+	}
+	msgb_free(msg);
+}
+
+static void update_fd_settings(struct e1inp_line *line, int fd);
+static void ipaccess_bts_updown_cb(struct ipa_client_conn *link, int up);
+
+static int ipa_bts_keepalive_timeout_cb(struct osmo_fsm_inst *fi, void *conn) {
+	ipaccess_bts_updown_cb(conn, false);
+	return 1;
+}
+
+static void ipaccess_bts_keepalive_fsm_alloc(struct e1inp_ts *e1i_ts, struct ipa_client_conn *client, const char *id)
+{
+	struct e1inp_line *line = e1i_ts->line;
+	struct osmo_fsm_inst *ka_fsm;
+
+	ipaccess_keepalive_fsm_cleanup(e1i_ts);
+	if (!line->ipa_kap)
+		return;
+
+	ka_fsm = ipa_client_conn_alloc_keepalive_fsm(client, line->ipa_kap, id);
+	e1i_ts->driver.ipaccess.ka_fsm = ka_fsm;
+	if (!ka_fsm)
+		return;
+
+	ipa_keepalive_fsm_set_timeout_cb(ka_fsm, ipa_bts_keepalive_timeout_cb);
+	ipa_keepalive_fsm_set_send_cb(ka_fsm, ipa_bts_keepalive_write_client_cb);
+}
+
 /* Returns -1 on error, and 0 or 1 on success. If -1 or 1 is returned, line has
  * been released and should not be used anymore by the caller. */
 static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
@@ -98,6 +189,14 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 	struct e1inp_sign_link *sign_link;
 	char *unitid;
 	int len, ret;
+	struct e1inp_ts *e1i_ts;
+	struct osmo_fsm_inst *ka_fsm;
+
+	/* peek the pong for our keepalive fsm */
+	e1i_ts = ipaccess_line_ts(bfd, line);
+	ka_fsm = e1i_ts->driver.ipaccess.ka_fsm;
+	if (ka_fsm && msg_type == IPAC_MSGT_PONG)
+		ipa_keepalive_fsm_pong_received(ka_fsm);
 
 	/* Handle IPA PING, PONG and ID_ACK messages. */
 	ret = ipa_ccm_rcvmsg_base(msg, bfd);
@@ -165,9 +264,12 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 					"closing socket.\n");
 				goto err;
 			}
+
+			ipaccess_bsc_keepalive_fsm_alloc(e1i_ts, bfd, "oml_bsc_to_bts");
+
 		} else if (bfd->priv_nr == E1INP_SIGN_RSL) {
 			struct e1inp_ts *ts;
-                        struct osmo_fd *newbfd;
+			struct osmo_fd *newbfd;
 			struct e1inp_line *new_line;
 
 			sign_link =
@@ -209,6 +311,9 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 			}
 			/* now we can release the dummy RSL line. */
 			e1inp_line_put(line);
+
+			e1i_ts = ipaccess_line_ts(newbfd, new_line);
+			ipaccess_bsc_keepalive_fsm_alloc(e1i_ts, newbfd, "rsl_bsc_to_bts");
 			return 1;
 		}
 		break;
@@ -238,11 +343,7 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 	struct msgb *msg = NULL;
 	int ret, rc;
 
-	if (bfd->priv_nr == E1INP_SIGN_OML)
-		e1i_ts = e1inp_line_ipa_oml_ts(line);
-	else
-		e1i_ts = e1inp_line_ipa_rsl_ts(line, bfd->priv_nr - E1INP_SIGN_RSL);
-
+	e1i_ts = ipaccess_line_ts(bfd, line);
 	ret = ipa_msg_recv_buffered(bfd->fd, &msg, &e1i_ts->pending_msg);
 	if (ret < 0) {
 		if (ret == -EAGAIN)
@@ -312,6 +413,17 @@ static void ipaccess_close(struct e1inp_sign_link *sign_link)
 {
 	struct e1inp_ts *e1i_ts = sign_link->ts;
 	struct osmo_fd *bfd = &e1i_ts->driver.ipaccess.fd;
+	struct e1inp_line *line = e1i_ts->line;
+
+	/* line might not exist if != bsc||bts */
+	if (line) {
+		/* depending on caller the fsm might be dead */
+		struct osmo_fsm_inst* ka_fsm = ipaccess_line_ts(bfd, line)->driver.ipaccess.ka_fsm;
+		if (ka_fsm)
+			ipa_keepalive_fsm_stop(ka_fsm);
+
+	}
+
 	return e1inp_close_socket(e1i_ts, sign_link, bfd);
 }
 
@@ -331,11 +443,7 @@ static int __handle_ts1_write(struct osmo_fd *bfd, struct e1inp_line *line)
 	struct msgb *msg;
 	int ret;
 
-	if (bfd->priv_nr == E1INP_SIGN_OML)
-		e1i_ts = e1inp_line_ipa_oml_ts(line);
-	else
-		e1i_ts = e1inp_line_ipa_rsl_ts(line, bfd->priv_nr - E1INP_SIGN_RSL);
-
+	e1i_ts = ipaccess_line_ts(bfd, line);
 	bfd->when &= ~BSC_FD_WRITE;
 
 	/* get the next msg for this timeslot */
@@ -378,6 +486,7 @@ out:
 	msgb_free(msg);
 	return ret;
 err:
+	ipaccess_keepalive_fsm_cleanup(e1i_ts);
 	ipaccess_drop(bfd, line);
 	msgb_free(msg);
 	return ret;
@@ -684,10 +793,14 @@ static void ipaccess_bts_updown_cb(struct ipa_client_conn *link, int up)
 {
 	struct e1inp_line *line = link->line;
 
-        if (up) {
-                update_fd_settings(line, link->ofd->fd);
-                return;
-        }
+	if (up) {
+		struct osmo_fsm_inst *ka_fsm = ipaccess_line_ts(link->ofd, line)->driver.ipaccess.ka_fsm;
+
+		update_fd_settings(line, link->ofd->fd);
+		if (ka_fsm && line->ipa_kap)
+			ipa_keepalive_fsm_start(ka_fsm);
+		return;
+	}
 
 	if (line->ops->sign_link_down)
 		line->ops->sign_link_down(line);
@@ -701,10 +814,19 @@ int ipaccess_bts_handle_ccm(struct ipa_client_conn *link,
 	struct ipaccess_head *hh = (struct ipaccess_head *) msg->data;
 	struct msgb *rmsg;
 	int ret = 0;
+	/* line might not exist if != bsc||bts */
+	struct e1inp_line *line = link->line;
 
 	/* special handling for IPA CCM. */
 	if (hh->proto == IPAC_PROTO_IPACCESS) {
 		uint8_t msg_type = *(msg->l2h);
+		struct osmo_fsm_inst* ka_fsm = NULL;
+
+		/* peek the pong for our keepalive fsm */
+		if (line && msg_type == IPAC_MSGT_PONG) {
+			ka_fsm = ipaccess_line_ts(link->ofd, line)->driver.ipaccess.ka_fsm;
+			ipa_keepalive_fsm_pong_received(ka_fsm);
+		}
 
 		/* ping, pong and acknowledgment cases. */
 		ret = ipa_ccm_rcvmsg_bts_base(msg, link->ofd);
@@ -895,6 +1017,7 @@ static int ipaccess_line_update(struct e1inp_line *line)
 	}
 	case E1INP_LINE_R_BTS: {
 		struct ipa_client_conn *link;
+		struct e1inp_ts *e1i_ts;
 
 		LOGP(DLINP, LOGL_NOTICE, "enabling ipaccess BTS mode, "
 		     "OML connecting to %s:%u\n", line->ops->cfg.ipa.addr,
@@ -922,6 +1045,9 @@ static int ipaccess_line_update(struct e1inp_line *line)
 			ipa_client_conn_destroy(link);
 			return -EIO;
 		}
+
+		e1i_ts = e1inp_line_ipa_oml_ts(line);
+		ipaccess_bts_keepalive_fsm_alloc(e1i_ts, link, "oml_bts_to_bsc");
 		ret = 0;
 		break;
 	}
@@ -944,6 +1070,7 @@ int e1inp_ipa_bts_rsl_connect_n(struct e1inp_line *line,
 				uint8_t trx_nr)
 {
 	struct ipa_client_conn *rsl_link;
+	struct e1inp_ts *e1i_ts = e1inp_line_ipa_rsl_ts(line, trx_nr);
 
 	if (E1INP_SIGN_RSL+trx_nr-1 >= NUM_E1_TS) {
 		LOGP(DLINP, LOGL_ERROR, "cannot create RSL BTS link: "
@@ -972,6 +1099,8 @@ int e1inp_ipa_bts_rsl_connect_n(struct e1inp_line *line,
 		ipa_client_conn_destroy(rsl_link);
 		return -EIO;
 	}
+
+	ipaccess_bts_keepalive_fsm_alloc(e1i_ts, rsl_link, "rsl_bts_to_bsc");
 	return 0;
 }
 
