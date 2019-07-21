@@ -215,8 +215,10 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 	return 0;
 err:
 	osmo_fd_unregister(bfd);
-	close(bfd->fd);
-	bfd->fd = -1;
+	if (bfd->fd != -1) {
+		close(bfd->fd);
+		bfd->fd = -1;
+	}
 	e1inp_line_put(line);
 	return -1;
 }
