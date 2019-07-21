@@ -1,3 +1,33 @@
+libosmo-abis (0.7.0) unstable; urgency=medium
+
+  [ Max ]
+  * Set local IP in ipa_server_link properly
+  * Log peer's port in accept callback
+
+  [ Harald Welte ]
+  * ipa: Make ipa_server_conn_destroy() re-entrant
+  * Add IPA keep-alive FSM implementation
+  * ipa_keepalive_fsm: Fix OSMO_IPA_KA_E_STOP allstate event
+  * ipa_keepalive_fsm: Suppress error messages for INIT -> INIT transition
+  * ipaccess.c: Avoid calling close(-1) on error path
+
+  [ Oliver Smith ]
+  * tests: use -no-install libtool flag to avoid ./lt-* scripts
+  * contrib/jenkins.sh: run "make maintainer-clean"
+
+  [ Sylvain Munaut ]
+  * rtp: Add 'autoconnect' feature to the osmo_rtp_socket
+
+  [ Eric Wild ]
+  * ipaccess: allow tcp keepalive for ipa clients
+  * add TCP_USER_TIMEOUT to keepalive
+  * extend the ipa keepalive fsm
+
+  [ Debian Mobcom Maintainers ]
+  * spelling
+
+ -- Harald Welte <laforge@gnumonks.org>  Sun, 21 Jul 2019 21:32:08 +0200
+
 libosmo-abis (0.6.0) unstable; urgency=medium
 
   [ Neels Hofmeyr ]
