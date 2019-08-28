@@ -297,6 +297,7 @@ ipa_server_link_create(void *ctx, struct e1inp_line *line,
 
 	ipa_link->ofd.when |= BSC_FD_READ | BSC_FD_WRITE;
 	ipa_link->ofd.cb = ipa_server_fd_cb;
+	ipa_link->ofd.fd = -1;
 	ipa_link->ofd.data = ipa_link;
 	if (addr)
 		ipa_link->addr = talloc_strdup(ipa_link, addr);
@@ -326,6 +327,7 @@ int ipa_server_link_open(struct ipa_server_link *link)
 	link->ofd.fd = ret;
 	if (osmo_fd_register(&link->ofd) < 0) {
 		close(ret);
+		link->ofd.fd = -1;
 		return -EIO;
 	}
 	return 0;
@@ -333,8 +335,12 @@ int ipa_server_link_open(struct ipa_server_link *link)
 
 void ipa_server_link_close(struct ipa_server_link *link)
 {
+	if (link->ofd.fd == -1)
+		return;
+
 	osmo_fd_unregister(&link->ofd);
 	close(link->ofd.fd);
+	link->ofd.fd = -1;
 }
 
 static int ipa_server_conn_read(struct ipa_server_conn *conn)
