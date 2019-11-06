@@ -1,6 +1,6 @@
 /* OpenBSC Abis input driver for DAHDI */
 
-/* (C) 2008-2011 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2008-2019 by Harald Welte <laforge@gnumonks.org>
  * (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
  * (C) 2010 by Digium and Matthew Fredrickson <creslin@digium.com>
  *
@@ -603,6 +603,33 @@ int dahdi_set_bufinfo(int fd, int as_sigchan)
 	return 0;
 }
 
+static int dahdi_open_slot(int dahdi_chan_nr)
+{
+	int rc, fd;
+#ifndef DAHDI_SPECIFY
+	char openstr[128];
+	snprintf(openstr, sizeof(openstr), "/dev/dahdi/%d", dev_nr);
+#else
+	const char *openstr = "/dev/dahdi/channel";
+#endif
+	rc = open(openstr, O_RDWR | O_NONBLOCK);
+	if (rc < 0) {
+		LOGP(DLINP, LOGL_ERROR, "DAHDI: could not open %s %s\n", openstr, strerror(errno));
+		return -EIO;
+	}
+	fd = rc;
+#ifdef DAHDI_SPECIFY
+	rc = ioctl(fd, DAHDI_SPECIFY, &dahdi_chan_nr);
+	if (rc < 0) {
+		close(fd);
+		LOGP(DLINP, LOGL_ERROR, "DAHDI: could not DAHDI_SPECIFY %d: %s\n",
+		     dahdi_chan_nr, strerror(errno));
+		return -EIO;
+	}
+#endif
+	return fd;
+}
+
 static int dahdi_e1_setup(struct e1inp_line *line)
 {
 	struct span_cfg *scfg;
@@ -623,7 +650,6 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 	/* TS0 is CRC4, don't need any fd for it */
 	for (ts = 1; ts <= scfg->chan_num; ts++) {
 		unsigned int idx = ts-1;
-		char openstr[128];
 		struct e1inp_ts *e1i_ts = &line->ts[idx];
 		struct osmo_fd *bfd = &e1i_ts->driver.dahdi.fd;
 		int dev_nr;
@@ -640,7 +666,6 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 		bfd->data = line;
 		bfd->priv_nr = ts;
 		bfd->cb = dahdi_fd_cb;
-		snprintf(openstr, sizeof(openstr), "/dev/dahdi/%d", dev_nr);
 
 		switch (e1i_ts->type) {
 		case E1INP_TS_TYPE_NONE:
@@ -657,13 +682,9 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 			break;
 		case E1INP_TS_TYPE_SIGN:
 			if (!bfd->fd)
-				bfd->fd = open(openstr, O_RDWR | O_NONBLOCK);
-			if (bfd->fd == -1) {
-				LOGP(DLINP, LOGL_ERROR,
-					"%s could not open %s %s\n",
-					__func__, openstr, strerror(errno));
+				bfd->fd = dahdi_open_slot(dev_nr);
+			if (bfd->fd < 0)
 				return -EIO;
-			}
 			bfd->when = BSC_FD_READ | BSC_FD_EXCEPT;
 			ret = dahdi_set_bufinfo(bfd->fd, 1);
 			if (ret < 0)
@@ -676,13 +697,9 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 			break;
 		case E1INP_TS_TYPE_HDLC:
 			if (!bfd->fd)
-				bfd->fd = open(openstr, O_RDWR | O_NONBLOCK);
-			if (bfd->fd == -1) {
-				LOGP(DLINP, LOGL_ERROR,
-					"%s could not open %s %s\n",
-					__func__, openstr, strerror(errno));
+				bfd->fd = dahdi_open_slot(dev_nr);
+			if (bfd->fd < 0)
 				return -EIO;
-			}
 			bfd->when = BSC_FD_READ | BSC_FD_EXCEPT;
 			ret = dahdi_set_bufinfo(bfd->fd, 1);
 			if (ret < 0)
@@ -696,13 +713,9 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 				e1i_ts->lapd = NULL;
 			}
 			if (!bfd->fd)
-				bfd->fd = open(openstr, O_RDWR | O_NONBLOCK);
-			if (bfd->fd == -1) {
-				LOGP(DLINP, LOGL_ERROR,
-					"%s could not open %s %s\n",
-					__func__, openstr, strerror(errno));
+				bfd->fd = dahdi_open_slot(dev_nr);
+			if (bfd->fd < 0)
 				return -EIO;
-			}
 			ret = dahdi_set_bufinfo(bfd->fd, 0);
 			if (ret < 0)
 				return -EIO;
@@ -713,12 +726,8 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 			break;
 		}
 
-		if (bfd->fd < 0) {
-			LOGP(DLINP, LOGL_ERROR,
-				"%s could not open %s %s\n",
-				__func__, openstr, strerror(errno));
+		if (bfd->fd < 0)
 			return bfd->fd;
-		}
 
 		ret = osmo_fd_register(bfd);
 		if (ret < 0) {
