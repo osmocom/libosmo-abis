@@ -78,6 +78,8 @@ struct ipa_client_conn {
 	int (*write_cb)(struct ipa_client_conn *link);
 	void				*data;
 	struct msgb			*pending_msg;
+	const char			*local_addr;
+	uint16_t			local_port;
 };
 
 struct ipa_client_conn *
@@ -86,7 +88,16 @@ ipa_client_conn_create(void *ctx, struct e1inp_ts *ts, int priv_nr,
 			void (*updown)(struct ipa_client_conn *link, int),
 			int (*read_cb)(struct ipa_client_conn *link, struct msgb *msgb),
 			int (*write_cb)(struct ipa_client_conn *link),
-			void *data);
+			void *data) OSMO_DEPRECATED("Use ipa_client_conn_create2() instead");
+struct ipa_client_conn *
+ipa_client_conn_create2(void *ctx, struct e1inp_ts *ts,
+		       int priv_nr, const char *loc_addr, uint16_t loc_port,
+		       const char *rem_addr, uint16_t rem_port,
+		       void (*updown_cb)(struct ipa_client_conn *link, int up),
+		       int (*read_cb)(struct ipa_client_conn *link,
+				      struct msgb *msgb),
+		       int (*write_cb)(struct ipa_client_conn *link),
+		       void *data);
 void ipa_client_conn_destroy(struct ipa_client_conn *link);
 
 int ipa_client_conn_open(struct ipa_client_conn *link);

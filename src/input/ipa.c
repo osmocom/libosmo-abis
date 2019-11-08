@@ -155,6 +155,20 @@ ipa_client_conn_create(void *ctx, struct e1inp_ts *ts,
 		       int (*write_cb)(struct ipa_client_conn *link),
 		       void *data)
 {
+	return ipa_client_conn_create2(ctx, ts, priv_nr, NULL, 0, addr, port,
+				       updown_cb, read_cb, write_cb, data);
+}
+
+struct ipa_client_conn *
+ipa_client_conn_create2(void *ctx, struct e1inp_ts *ts,
+		       int priv_nr, const char *loc_addr, uint16_t loc_port,
+		       const char *rem_addr, uint16_t rem_port,
+		       void (*updown_cb)(struct ipa_client_conn *link, int up),
+		       int (*read_cb)(struct ipa_client_conn *link,
+				      struct msgb *msgb),
+		       int (*write_cb)(struct ipa_client_conn *link),
+		       void *data)
+{
 	struct ipa_client_conn *ipa_link;
 
 	ipa_link = talloc_zero(ctx, struct ipa_client_conn);
@@ -181,8 +195,10 @@ ipa_client_conn_create(void *ctx, struct e1inp_ts *ts,
 	ipa_link->ofd->data = ipa_link;
 	ipa_link->ofd->fd = -1;
 	ipa_link->state = IPA_CLIENT_LINK_STATE_CONNECTING;
-	ipa_link->addr = talloc_strdup(ipa_link, addr);
-	ipa_link->port = port;
+	ipa_link->local_addr = talloc_strdup(ipa_link, loc_addr);
+	ipa_link->local_port = loc_port;
+	ipa_link->addr = talloc_strdup(ipa_link, rem_addr);
+	ipa_link->port = rem_port;
 	ipa_link->updown_cb = updown_cb;
 	ipa_link->read_cb = read_cb;
 	/* default to generic write callback if not set. */
@@ -209,9 +225,10 @@ int ipa_client_conn_open(struct ipa_client_conn *link)
 	int ret;
 
 	link->state = IPA_CLIENT_LINK_STATE_CONNECTING;
-	ret = osmo_sock_init(AF_INET, SOCK_STREAM, IPPROTO_TCP,
+	ret = osmo_sock_init2(AF_INET, SOCK_STREAM, IPPROTO_TCP,
+			     link->local_addr, link->local_port,
 			     link->addr, link->port,
-			     OSMO_SOCK_F_CONNECT|OSMO_SOCK_F_NONBLOCK);
+			     OSMO_SOCK_F_BIND|OSMO_SOCK_F_CONNECT|OSMO_SOCK_F_NONBLOCK);
 	if (ret < 0)
 		return ret;
 	link->ofd->fd = ret;

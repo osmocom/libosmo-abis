@@ -896,9 +896,10 @@ static int ipaccess_line_update(struct e1inp_line *line)
 		     "OML connecting to %s:%u\n", line->ops->cfg.ipa.addr,
 		     IPA_TCP_PORT_OML);
 
-		link = ipa_client_conn_create(tall_ipa_ctx,
+		link = ipa_client_conn_create2(tall_ipa_ctx,
 					      e1inp_line_ipa_oml_ts(line),
 					      E1INP_SIGN_OML,
+					      NULL, 0,
 					      line->ops->cfg.ipa.addr,
 					      IPA_TCP_PORT_OML,
 					      ipaccess_bts_updown_cb,
@@ -946,9 +947,10 @@ int e1inp_ipa_bts_rsl_connect_n(struct e1inp_line *line,
 		return -EINVAL;
 	}
 
-	rsl_link = ipa_client_conn_create(tall_ipa_ctx,
+	rsl_link = ipa_client_conn_create2(tall_ipa_ctx,
 					  e1inp_line_ipa_rsl_ts(line, trx_nr),
 					  E1INP_SIGN_RSL+trx_nr,
+					  NULL, 0,
 					  rem_addr, rem_port,
 					  ipaccess_bts_updown_cb,
 					  ipaccess_bts_read_cb,
