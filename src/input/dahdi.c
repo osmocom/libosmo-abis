@@ -26,8 +26,6 @@
 
 #include "config.h"
 
-#ifdef HAVE_DAHDI_USER_H
-
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -756,5 +754,3 @@ int e1inp_dahdi_init(void)
 	/* register the driver with the core */
 	return e1inp_driver_register(&dahdi_driver);
 }
-
-#endif /* HAVE_DAHDI_USER_H */

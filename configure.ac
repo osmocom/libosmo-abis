@@ -64,7 +64,16 @@ PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 1.0.0)
 PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 1.0.0)
 PKG_CHECK_MODULES(ORTP, ortp >= 0.22.0)
 
-AC_CHECK_HEADERS(dahdi/user.h,,AC_MSG_WARN(DAHDI input driver will not be built))
+AC_ARG_ENABLE([dahdi],
+	      AC_HELP_STRING([--disable-dahdi],
+			     [disable support for DAHID ISDN (E1/T1) cards [default=yes]]),
+	      [enable_dahdi="$enableval"], [enable_dahdi="yes"])
+AM_CONDITIONAL(ENABLE_DAHDI, test "x$enable_dahdi" = "xyes")
+if test "x$enable_dahdi" =  "xyes"; then
+	AC_CHECK_HEADERS([dahdi/user.h],[],[AC_MSG_ERROR([DAHDI input driver enabled but DAHDI not found])])
+else
+	AC_MSG_WARN([DAHDI input driver will not be built])
+fi
 
 AC_ARG_ENABLE(sanitize,
 	[AS_HELP_STRING(

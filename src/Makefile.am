@@ -19,7 +19,6 @@ libosmoabis_la_SOURCES = init.c \
 			 ipa_proxy.c \
 			 subchan_demux.c \
 			 trau_frame.c \
-			 input/dahdi.c \
 			 input/ipa.c \
 			 input/ipa_keepalive.c \
 			 input/ipaccess.c \
@@ -28,6 +27,9 @@ libosmoabis_la_SOURCES = init.c \
 			 input/misdn.c \
 			 input/rs232.c \
 			 input/unixsocket.c
+if ENABLE_DAHDI
+libosmoabis_la_SOURCES += input/dahdi.c
+endif
 
 libosmotrau_la_CFLAGS = $(AM_CFLAGS) $(ORTP_CFLAGS)
 libosmotrau_la_LDFLAGS = $(AM_LDFLAGS) -version-info $(TRAU_LIBVERSION)
