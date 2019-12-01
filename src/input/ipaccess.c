@@ -143,7 +143,11 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 		}
 		unitid = (char *) TLVP_VAL(&tlvp, IPAC_IDTAG_UNIT);
 		unitid[len - 1] = '\0';
-		ipa_parse_unitid(unitid, &unit_data);
+		ret = ipa_parse_unitid(unitid, &unit_data);
+		if (ret) {
+			LOGP(DLINP, LOGL_ERROR, "Failed to parse unit ID '%s'\n", unitid);
+			goto err;
+		}
 
 		if (!line->ops->sign_link_up) {
 			LOGP(DLINP, LOGL_ERROR,
