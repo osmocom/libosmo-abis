@@ -419,12 +419,19 @@ e1inp_line_clone(void *ctx, struct e1inp_line *line)
 
 void e1inp_line_get(struct e1inp_line *line)
 {
-	line->refcnt++;
+	int old_refcnt = line->refcnt++;
+
+	LOGP(DLINP, LOGL_DEBUG, "Line '%s' (%p) reference count get: %d -> %d\n",
+	     line->name, line, old_refcnt, line->refcnt);
 }
 
 void e1inp_line_put(struct e1inp_line *line)
 {
-	line->refcnt--;
+	int old_refcnt = line->refcnt--;
+
+	LOGP(DLINP, LOGL_DEBUG, "Line '%s' (%p) reference count put: %d -> %d\n",
+	     line->name, line, old_refcnt, line->refcnt);
+
 	if (line->refcnt == 0) {
 		/* Remove our counter group from libosmocore's global counter
 		 * list if we are freeing the last remaining talloc context.
