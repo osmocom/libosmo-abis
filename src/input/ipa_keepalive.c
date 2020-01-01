@@ -213,7 +213,7 @@ static struct osmo_fsm ipa_keepalive_fsm = {
 
 static __attribute__((constructor)) void on_dso_load(void)
 {
-	osmo_fsm_register(&ipa_keepalive_fsm);
+	OSMO_ASSERT(osmo_fsm_register(&ipa_keepalive_fsm) == 0);
 }
 
 
