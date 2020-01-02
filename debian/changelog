@@ -1,3 +1,23 @@
+libosmo-abis (0.8.0) unstable; urgency=medium
+
+  [ Alexander Couzens ]
+  * ipa: ipa_server_link_close() add checks of link state
+
+  [ Pau Espin Pedrol ]
+  * ipa: Allow setting local addr and port for struct ipa_client_conn
+
+  [ Harald Welte ]
+  * dahdi: Use ioctl(DAHDI_SPECIFY) instead of legacy /dev/dahdi/%u
+  * Enable DAHDI support by default; require --disable-dahdi otherwise
+
+  [ Vadim Yanitskiy ]
+  * input/ipaccess.c: propagate errors from ipa_parse_unitid()
+  * input/ipaccess.c: fix debug message on receipt of IPAC_MSGT_ID_GET
+  * e1_input.c: make reference counting get() / put() more verbose
+  * input/ipa_keepalive.c: make sure IPA keepalive FSM is registered
+
+ -- Pau Espin Pedrol <pespin@sysmocom.de>  Thu, 02 Jan 2020 20:53:32 +0100
+
 libosmo-abis (0.7.0) unstable; urgency=medium
 
   [ Max ]

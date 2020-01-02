@@ -7,5 +7,3 @@
 # If any interfaces have been added since the last public release: c:r:a + 1.
 # If any interfaces have been removed or changed since the last public release: c:r:0.
 #library	what		description / commit summary line
-libosmo-abis	struct ipa_client_conn		Fields added at the end (no ABI break because instance is created through API func)
-libosmo-abis	ipa_client_conn_create2()	New API added

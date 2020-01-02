@@ -1,7 +1,7 @@
 # This is _NOT_ the library release version, it's an API version.
 # Please read chapter "Library interface versions" of the libtool documentation
 # before making any modifications: https://www.gnu.org/software/libtool/manual/html_node/Versioning.html
-ABIS_LIBVERSION=7:0:1
+ABIS_LIBVERSION=8:0:2
 TRAU_LIBVERSION=4:0:2
 
 AM_CPPFLAGS = $(all_includes) -I$(top_srcdir)/include -I$(top_builddir)
