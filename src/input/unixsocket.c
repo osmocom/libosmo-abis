@@ -58,15 +58,13 @@ static int unixsocket_exception_cb(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
 
-	LOGP(DLINP, LOGL_ERROR,
-	     "Socket connection failure, reconnecting... (line=%p, fd=%d)\n",
-	     line, bfd->fd);
+	LOGPIL(line, DLINP, LOGL_ERROR, "Socket connection failure, reconnecting... (line=%p, fd=%d)\n",
+		line, bfd->fd);
 
 	/* Unregister faulty file descriptor from select loop */
 	if(osmo_fd_is_registered(bfd)) {
-		LOGP(DLINP, LOGL_DEBUG,
-		     "removing inactive socket from select loop... (line=%p, fd=%d)\n",
-		     line, bfd->fd);
+		LOGPIL(line, DLINP, LOGL_DEBUG, "removing inactive socket from select loop... (line=%p, fd=%d)\n",
+			line, bfd->fd);
 		osmo_fd_unregister(bfd);
 	}
 
@@ -98,22 +96,21 @@ static int unixsocket_read_cb(struct osmo_fd *bfd)
 		goto fail;
 	} else if (ret < 2) {
 		/* packet must be at least 2 byte long to hold version + control/data header */
-		LOGP(DLMI, LOGL_ERROR, "received to small packet: %d < 2", ret);
+		LOGPIL(line, DLMI, LOGL_ERROR, "received to small packet: %d < 2", ret);
 		ret = -1;
 		goto fail;
 	}
 	msgb_put(msg, ret);
 
-	LOGP(DLMI, LOGL_DEBUG, "rx msg: %s (fd=%d)\n",
-	     osmo_hexdump_nospc(msg->data, msg->len), bfd->fd);
+	LOGPIL(line, DLMI, LOGL_DEBUG, "rx msg: %s (fd=%d)\n", osmo_hexdump_nospc(msg->data, msg->len), bfd->fd);
 
 	/* check version header */
 	version = msgb_pull_u8(msg);
 	controldata = msgb_pull_u8(msg);
 
 	if (version != UNIXSOCKET_PROTO_VERSION) {
-		LOGP(DLMI, LOGL_ERROR, "received message with invalid version %d. valid: %d",
-		     ret, UNIXSOCKET_PROTO_VERSION);
+		LOGPIL(line, DLMI, LOGL_ERROR, "received message with invalid version %d. valid: %d",
+			ret, UNIXSOCKET_PROTO_VERSION);
 		ret = -1;
 		goto fail;
 	}
@@ -122,11 +119,11 @@ static int unixsocket_read_cb(struct osmo_fd *bfd)
 	case UNIXSOCKET_PROTO_DATA:
 		return e1inp_rx_ts_lapd(&line->ts[0], msg);
 	case UNIXSOCKET_PROTO_CONTROL:
-		LOGP(DLMI, LOGL_ERROR, "received (invalid) control message.");
+		LOGPIL(line, DLMI, LOGL_ERROR, "received (invalid) control message.");
 		ret = -1;
 		break;
 	default:
-		LOGP(DLMI, LOGL_ERROR, "received invalid message.");
+		LOGPIL(line, DLMI, LOGL_ERROR, "received invalid message.");
 		ret = -1;
 		break;
 	}
@@ -156,8 +153,7 @@ static int unixsocket_write_cb(struct osmo_fd *bfd)
 	msg = e1inp_tx_ts(e1i_ts, &sign_link);
 	if (!msg) {
 		/* no message after tx delay timer */
-		LOGP(DLINP, LOGL_INFO,
-		     "no message available (line=%p)\n", line);
+		LOGPITS(e1i_ts, DLINP, LOGL_INFO, "no message available (line=%p)\n", line);
 		return 0;
 	}
 
@@ -166,8 +162,7 @@ static int unixsocket_write_cb(struct osmo_fd *bfd)
 
 	osmo_timer_schedule(&e1i_ts->sign.tx_timer, 0, e1i_ts->sign.delay);
 
-	LOGP(DLINP, LOGL_DEBUG, "sending: %s (line=%p)\n",
-	     msgb_hexdump(msg), line);
+	LOGPITS(e1i_ts, DLINP, LOGL_DEBUG, "sending: %s (line=%p)\n", msgb_hexdump(msg), line);
 	lapd_transmit(e1i_ts->lapd, sign_link->tei,
 			sign_link->sapi, msg);
 
@@ -195,18 +190,20 @@ static int ts_want_write(struct e1inp_ts *e1i_ts)
 	return 0;
 }
 
-static void unixsocket_write_msg(struct msgb *msg, struct osmo_fd *bfd) {
+static void unixsocket_write_msg(struct msgb *msg, struct osmo_fd *bfd)
+{
+	struct e1inp_line *line = bfd->data;
 	int ret;
 
-	LOGP(DLMI, LOGL_DEBUG, "tx msg: %s (fd=%d)\n",
-	     osmo_hexdump_nospc(msg->data, msg->len), bfd->fd);
+	LOGPIL(line, DLMI, LOGL_DEBUG, "tx msg: %s (fd=%d)\n",
+		osmo_hexdump_nospc(msg->data, msg->len), bfd->fd);
 
 	ret = write(bfd->fd, msg->data, msg->len);
 	msgb_free(msg);
 	if (ret == -1)
 		unixsocket_exception_cb(bfd);
 	else if (ret < 0)
-		LOGP(DLMI, LOGL_NOTICE, "%s write failed %d\n", __func__, ret);
+		LOGPIL(line, DLMI, LOGL_NOTICE, "%s write failed %d\n", __func__, ret);
 }
 
 /*!
@@ -234,14 +231,13 @@ static int unixsocket_line_update(struct e1inp_line *line)
 	int ret = 0;
 	int i;
 
-	LOGP(DLINP, LOGL_NOTICE, "line update (line=%p)\n", line);
+	LOGPIL(line, DLINP, LOGL_NOTICE, "line update (line=%p)\n", line);
 
 	if (!line->driver_data)
 		line->driver_data = talloc_zero(line, struct unixsocket_line);
 
 	if (!line->driver_data) {
-		LOGP(DLINP, LOGL_ERROR,
-		     "OOM in line update (line=%p)\n", line);
+		LOGPIL(line, DLINP, LOGL_ERROR, "OOM in line update (line=%p)\n", line);
 		return -ENOMEM;
 	}
 
@@ -255,10 +251,10 @@ static int unixsocket_line_update(struct e1inp_line *line)
 		ret = snprintf(un.sun_path, sizeof(un.sun_path), "%s%d",
 		    UNIXSOCKET_SOCK_PATH_DEFAULT, line->num);
 		if (ret == -1) {
-			LOGP(DLINP, LOGL_ERROR, "Cannot create default socket path: %s\n", strerror(errno));
+			LOGPIL(line, DLINP, LOGL_ERROR, "Cannot create default socket path: %s\n", strerror(errno));
 			return -errno;
 		} else if (ret >= sizeof(un.sun_path)) {
-			LOGP(DLINP, LOGL_ERROR, "Default socket path exceeds %zd bytes: %s%d\n",
+			LOGPIL(line, DLINP, LOGL_ERROR, "Default socket path exceeds %zd bytes: %s%d\n",
 			     sizeof(un.sun_path), UNIXSOCKET_SOCK_PATH_DEFAULT, line->num);
 			return -ENOSPC;
 		}
@@ -272,21 +268,18 @@ static int unixsocket_line_update(struct e1inp_line *line)
 		 * opening the socket fails. The caller may want to call this
 		 * function multiple times using config->fd.data as line
 		 * parameter. Freeing now would destroy that reference. */
-		LOGP(DLINP, LOGL_ERROR,
-		     "unable to open socket: %s (line=%p, fd=%d)\n", sock_path,
-		     line, config->fd.fd);
+		LOGPIL(line, DLINP, LOGL_ERROR, "unable to open socket: %s (line=%p, fd=%d)\n", sock_path,
+			line, config->fd.fd);
 		return ret;
 	}
-	LOGP(DLINP, LOGL_DEBUG,
-	     "successfully opend (new) socket: %s (line=%p, fd=%d, ret=%d)\n",
-	     sock_path, line, config->fd.fd, ret);
+	LOGPIL(line, DLINP, LOGL_DEBUG, "successfully opend (new) socket: %s (line=%p, fd=%d, ret=%d)\n",
+		sock_path, line, config->fd.fd, ret);
 	config->fd.fd = ret;
 
 	/* Register socket in select loop */
 	if (osmo_fd_register(&config->fd) < 0) {
-		LOGP(DLINP, LOGL_ERROR,
-		     "error registering new socket (line=%p, fd=%d)\n",
-		     line, config->fd.fd);
+		LOGPIL(line, DLINP, LOGL_ERROR, "error registering new socket (line=%p, fd=%d)\n",
+			line, config->fd.fd);
 		close(config->fd.fd);
 		return -EIO;
 	}
@@ -330,13 +323,13 @@ void e1inp_ericsson_set_altc(struct e1inp_line *unixline, int superchannel)
 		return;
 
 	if (unixline->driver != &unixsocket_driver) {
-		LOGP(DLMI, LOGL_NOTICE, "altc is only supported by unixsocket\n");
+		LOGPIL(unixline, DLMI, LOGL_NOTICE, "altc is only supported by unixsocket\n");
 		return;
 	}
 
 	config = unixline->driver_data;
 	if (!config) {
-		LOGP(DLMI, LOGL_NOTICE, "e1inp driver not yet initialized.\n");
+		LOGPIL(unixline, DLMI, LOGL_NOTICE, "e1inp driver not yet initialized.\n");
 		return;
 	}
 

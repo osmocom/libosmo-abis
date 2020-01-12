@@ -124,21 +124,21 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 
 	msgb_put(msg, ret);
 
-	DEBUGP(DLMI, "alen =%d, dev(%d) channel(%d) sapi(%d) tei(%d)\n",
+	LOGPITS(e1i_ts, DLMI, LOGL_DEBUG, "alen =%d, dev(%d) channel(%d) sapi(%d) tei(%d)\n",
 		alen, l2addr.dev, l2addr.channel, l2addr.sapi, l2addr.tei);
 
-	DEBUGP(DLMI, "<= len = %d, prim(0x%x) id(0x%x): %s\n",
+	LOGPITS(e1i_ts, DLMI, LOGL_DEBUG, "<= len = %d, prim(0x%x) id(0x%x): %s\n",
 		ret, hh->prim, hh->id, get_value_string(prim_names, hh->prim));
 
 	switch (hh->prim) {
 	case DL_INFORMATION_IND:
 		/* mISDN tells us which channel number is allocated for this
 		 * tuple of (SAPI, TEI). */
-		DEBUGP(DLMI, "DL_INFORMATION_IND: use channel(%d) sapi(%d) tei(%d) for now\n",
+		LOGPITS(e1i_ts, DLMI, LOGL_DEBUG, "DL_INFORMATION_IND: use channel(%d) sapi(%d) tei(%d) for now\n",
 			l2addr.channel, l2addr.sapi, l2addr.tei);
 		link = e1inp_lookup_sign_link(e1i_ts, l2addr.tei, l2addr.sapi);
 		if (!link) {
-			DEBUGPC(DLMI, "mISDN message for unknown sign_link\n");
+			LOGPITS(e1i_ts, DLMI, LOGL_DEBUG, "mISDN message for unknown sign_link\n");
 			msgb_free(msg);
 			return -EINVAL;
 		}
@@ -147,14 +147,14 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 		msgb_free(msg);
 		break;
 	case DL_ESTABLISH_IND:
-		DEBUGP(DLMI, "DL_ESTABLISH_IND: channel(%d) sapi(%d) tei(%d)\n",
+		LOGPITS(e1i_ts, DLMI, LOGL_DEBUG, "DL_ESTABLISH_IND: channel(%d) sapi(%d) tei(%d)\n",
 			l2addr.channel, l2addr.sapi, l2addr.tei);
 		/* For some strange reason, sometimes the DL_INFORMATION_IND tells
 		 * us the wrong channel, and we only get the real channel number
 		 * during the DL_ESTABLISH_IND */
 		link = e1inp_lookup_sign_link(e1i_ts, l2addr.tei, l2addr.sapi);
 		if (!link) {
-			DEBUGPC(DLMI, "mISDN message for unknown sign_link\n");
+			LOGPITS(e1i_ts, DLMI, LOGL_DEBUG, "mISDN message for unknown sign_link\n");
 			msgb_free(msg);
 			return -EINVAL;
 		}
@@ -164,7 +164,7 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 		msgb_free(msg);
 		break;
 	case DL_RELEASE_IND:
-		DEBUGP(DLMI, "DL_RELEASE_IND: channel(%d) sapi(%d) tei(%d)\n",
+		LOGPITS(e1i_ts, DLMI, LOGL_DEBUG, "DL_RELEASE_IND: channel(%d) sapi(%d) tei(%d)\n",
 		l2addr.channel, l2addr.sapi, l2addr.tei);
 		ret = e1inp_event(e1i_ts, S_L_INP_TEI_DN, l2addr.tei, l2addr.sapi);
 		msgb_free(msg);
@@ -172,33 +172,33 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 	case DL_DATA_IND:
 	case DL_UNITDATA_IND:
 		msg->l2h = msg->data + MISDN_HEADER_LEN;
-		DEBUGP(DLMI, "RX: %s\n", osmo_hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN));
+		LOGPITS(e1i_ts, DLMI, LOGL_DEBUG, "RX: %s\n", osmo_hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN));
 		if (mline->use_userspace_lapd) {
-			LOGP(DLMI, LOGL_ERROR, "DL_DATA_IND but userspace LAPD ?!?\n");
+			LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "DL_DATA_IND but userspace LAPD ?!?\n");
 			msgb_free(msg);
 			return -EIO;
 		}
 		ret = e1inp_rx_ts(e1i_ts, msg, l2addr.tei, l2addr.sapi);
 		break;
 	case PH_ACTIVATE_IND:
-		DEBUGP(DLMI, "PH_ACTIVATE_IND: channel(%d) sapi(%d) tei(%d)\n",
+		LOGPITS(e1i_ts, DLMI, LOGL_DEBUG, "PH_ACTIVATE_IND: channel(%d) sapi(%d) tei(%d)\n",
 		l2addr.channel, l2addr.sapi, l2addr.tei);
 		msgb_free(msg);
 		break;
 	case PH_DEACTIVATE_IND:
-		DEBUGP(DLMI, "PH_DEACTIVATE_IND: channel(%d) sapi(%d) tei(%d)\n",
+		LOGPITS(e1i_ts, DLMI, LOGL_DEBUG, "PH_DEACTIVATE_IND: channel(%d) sapi(%d) tei(%d)\n",
 		l2addr.channel, l2addr.sapi, l2addr.tei);
 		msgb_free(msg);
 		break;
 	case PH_DATA_IND:
 		if (!mline->use_userspace_lapd) {
-			LOGP(DLMI, LOGL_ERROR, "PH_DATA_IND but kernel LAPD ?!?\n");
+			LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "PH_DATA_IND but kernel LAPD ?!?\n");
 			return -EIO;
 		}
 		/* remove the Misdn Header */
 		msgb_pull(msg, MISDN_HEADER_LEN);
 		/* hand into the LAPD code */
-		DEBUGP(DLMI, "RX: %s\n", osmo_hexdump(msg->data, msg->len));
+		LOGPITS(e1i_ts, DLMI, LOGL_DEBUG, "RX: %s\n", osmo_hexdump(msg->data, msg->len));
 		ret = e1inp_rx_ts_lapd(e1i_ts, msg);
 		break;
 	default:
@@ -252,9 +252,8 @@ static int handle_ts1_write(struct osmo_fd *bfd)
 	}
 
 	if (mline->use_userspace_lapd) {
-		DEBUGP(DLMI, "TX %u/%u/%u: %s\n",
-			line->num, sign_link->tei, sign_link->sapi,
-			osmo_hexdump(msg->data, msg->len));
+		LOGPITS(e1i_ts, DLMI, LOGL_DEBUG, "TX %u/%u/%u: %s\n", line->num, sign_link->tei,
+			sign_link->sapi, osmo_hexdump(msg->data, msg->len));
 		lapd_transmit(e1i_ts->lapd, sign_link->tei,
 				sign_link->sapi, msg);
 		ret = 0;
@@ -265,7 +264,7 @@ static int handle_ts1_write(struct osmo_fd *bfd)
 		hh = (struct mISDNhead *) msgb_push(msg, sizeof(*hh));
 		hh->prim = DL_DATA_REQ;
 
-		DEBUGP(DLMI, "TX channel(%d) TEI(%d) SAPI(%d): %s\n",
+		LOGPITS(e1i_ts, DLMI, LOGL_DEBUG, "TX channel(%d) TEI(%d) SAPI(%d): %s\n",
 			sign_link->driver.misdn.channel, sign_link->tei,
 			sign_link->sapi, osmo_hexdump(l2_data, msg->len - MISDN_HEADER_LEN));
 
@@ -295,13 +294,13 @@ static int handle_ts1_write(struct osmo_fd *bfd)
 static void misdn_write_msg(struct msgb *msg, void *cbdata)
 {
 	struct osmo_fd *bfd = cbdata;
-//	struct e1inp_line *line = bfd->data;
-//	unsigned int ts_nr = bfd->priv_nr;
-//	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
+	struct e1inp_line *line = bfd->data;
+	unsigned int ts_nr = bfd->priv_nr;
+	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
 	struct mISDNhead *hh;
 	int ret;
 
-	DEBUGP(DLMI, "PH_DATA_REQ: len=%d %s\n", msg->len,
+	LOGPITS(e1i_ts, DLMI, LOGL_DEBUG, "PH_DATA_REQ: len=%d %s\n", msg->len,
 		osmo_hexdump(msg->data, msg->len));
 
 	hh = (struct mISDNhead *) msgb_push(msg, MISDN_HEADER_LEN);
@@ -310,7 +309,7 @@ static void misdn_write_msg(struct msgb *msg, void *cbdata)
 
 	ret = write(bfd->fd, msg->data, msg->len);
 	if (ret < 0)
-		LOGP(DLMI, LOGL_NOTICE, "write failed %d\n", ret);
+		LOGPITS(e1i_ts, DLMI, LOGL_NOTICE, "write failed %d\n", ret);
 
 	msgb_free(msg);
 }
@@ -332,13 +331,11 @@ static int handle_tsX_write(struct osmo_fd *bfd, int len)
 
 	subchan_mux_out(mx, tx_buf+sizeof(*hh), len);
 
-	DEBUGP(DLMIB, "BCHAN TX: %s\n",
-		osmo_hexdump(tx_buf+sizeof(*hh), len));
+	LOGPITS(e1i_ts, DLMIB, LOGL_DEBUG, "BCHAN TX: %s\n", osmo_hexdump(tx_buf+sizeof(*hh), len));
 
 	ret = send(bfd->fd, tx_buf, sizeof(*hh) + len, 0);
 	if (ret < sizeof(*hh) + len)
-		DEBUGP(DLMIB, "send returns %d instead of %zu\n", ret,
-			sizeof(*hh) + len);
+		LOGPITS(e1i_ts, DLMIB, LOGL_DEBUG, "send returns %d instead of %zu\n", ret, sizeof(*hh) + len);
 
 	return ret;
 }
@@ -368,14 +365,13 @@ static int handle_tsX_read(struct osmo_fd *bfd)
 	msgb_put(msg, ret);
 
 	if (hh->prim != PH_CONTROL_IND)
-		DEBUGP(DLMIB, "<= BCHAN len = %d, prim(0x%x) id(0x%x): %s\n",
-			ret, hh->prim, hh->id,
-			get_value_string(prim_names, hh->prim));
+		LOGPITS(e1i_ts, DLMIB, LOGL_DEBUG, "<= BCHAN len = %d, prim(0x%x) id(0x%x): %s\n",
+			ret, hh->prim, hh->id, get_value_string(prim_names, hh->prim));
 
 	switch (hh->prim) {
 	case PH_DATA_IND:
 		msg->l2h = msg->data + MISDN_HEADER_LEN;
-		DEBUGP(DLMIB, "BCHAN RX: %s\n",
+		LOGPITS(e1i_ts, DLMIB, LOGL_DEBUG, "BCHAN RX: %s\n",
 			osmo_hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN));
 		/* the number of bytes received indicates that data to send */
 		handle_tsX_write(bfd, msgb_l2len(msg));
@@ -411,12 +407,10 @@ static int handle_ts_raw_write(struct osmo_fd *bfd, unsigned int len)
 		/* This might lead to a transmit underrun, as we call tx
 		 * from the rx path, as there's no select/poll on dahdi
 		 * */
-		LOGP(DLINP, LOGL_NOTICE, "unexpected msg->len = %u, "
-		     "expected %u\n", msg->len, len);
+		LOGPITS(e1i_ts, DLINP, LOGL_NOTICE, "unexpected msg->len = %u, expected %u\n", msg->len, len);
 	}
 
-	DEBUGP(DLMIB, "RAW CHAN TX: %s\n",
-		osmo_hexdump(msg->data, msg->len));
+	LOGPITS(e1i_ts, DLMIB, LOGL_DEBUG, "RAW CHAN TX: %s\n", osmo_hexdump(msg->data, msg->len));
 
 	hh = (struct mISDNhead *) msgb_push(msg, sizeof(*hh));
 	hh->prim = PH_DATA_REQ;
@@ -424,8 +418,7 @@ static int handle_ts_raw_write(struct osmo_fd *bfd, unsigned int len)
 
 	ret = write(bfd->fd, msg->data, msg->len);
 	if (ret < msg->len)
-		LOGP(DLINP, LOGL_DEBUG, "send returns %d instead of %d\n",
-			ret, msg->len);
+		LOGPITS(e1i_ts, DLINP, LOGL_DEBUG, "send returns %d instead of %d\n", ret, msg->len);
 	msgb_free(msg);
 
 	return ret;
@@ -454,14 +447,13 @@ static int handle_ts_raw_read(struct osmo_fd *bfd)
 	msgb_put(msg, ret);
 
 	if (hh->prim != PH_CONTROL_IND)
-		DEBUGP(DLMIB, "<= RAW CHAN len = %d, prim(0x%x) id(0x%x): %s\n",
-			ret, hh->prim, hh->id,
-			get_value_string(prim_names, hh->prim));
+		LOGPITS(e1i_ts, DLMIB, LOGL_DEBUG, "<= RAW CHAN len = %d, prim(0x%x) id(0x%x): %s\n",
+			ret, hh->prim, hh->id, get_value_string(prim_names, hh->prim));
 
 	switch (hh->prim) {
 	case PH_DATA_IND:
 		msg->l2h = msg->data + MISDN_HEADER_LEN;
-		DEBUGP(DLMIB, "RAW CHAN RX: %s\n",
+		LOGPITS(e1i_ts, DLMIB, LOGL_DEBUG, "RAW CHAN RX: %s\n",
 			osmo_hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN));
 		/* the number of bytes received indicates that data to send */
 		handle_ts_raw_write(bfd, msgb_l2len(msg));
@@ -661,8 +653,7 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 			addr.channel = ts;
 			break;
 		default:
-			DEBUGP(DLMI, "unsupported E1 TS type: %u\n",
-				e1i_ts->type);
+			LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "unsupported E1 TS type: %u\n", e1i_ts->type);
 			break;
 		}
 
@@ -724,7 +715,7 @@ static int _mi_e1_line_update(struct e1inp_line *line)
 		close(sk);
 		return -ENODEV;
 	}
-	//DEBUGP(DLMI,"%d device%s found\n", cnt, (cnt==1)?"":"s");
+	//LOGPIL(line, DLMI, LOGL_DEBUG, "%d device%s found\n", cnt, (cnt==1)?"":"s");
 	printf("%d device%s found\n", cnt, (cnt==1)?"":"s");
 #if 1
 	devinfo.id = line->port_nr;

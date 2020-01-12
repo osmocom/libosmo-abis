@@ -94,14 +94,14 @@ static int handle_ser_write(struct osmo_fd *bfd)
 		/* no message after tx delay timer */
 		return 0;
 	}
-	DEBUGP(DLMI, "rs232 TX: %s\n", osmo_hexdump(msg->data, msg->len));
+	LOGPITS(e1i_ts, DLMI, LOGL_DEBUG, "rs232 TX: %s\n", osmo_hexdump(msg->data, msg->len));
 
 	rs232_build_msg(msg);
 
 	/* send over serial line */
 	written = write(bfd->fd, msg->data, msg->len);
 	if (written < msg->len) {
-		LOGP(DLMI, LOGL_ERROR, "rs232: short write\n");
+		LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "rs232: short write\n");
 		msgb_free(msg);
 		return -1;
 	}
@@ -118,6 +118,7 @@ static int handle_ser_write(struct osmo_fd *bfd)
 static int handle_ser_read(struct osmo_fd *bfd)
 {
 	struct serial_handle *sh = bfd->data;
+	struct e1inp_ts *e1i_ts = &sh->line->ts[0];
 	struct msgb *msg;
 	int rc = 0;
 
@@ -131,7 +132,7 @@ static int handle_ser_read(struct osmo_fd *bfd)
 	if (msg->len < 2) {
 		rc = read(bfd->fd, msg->tail, 2 - msg->len);
 		if (rc < 0) {
-			LOGP(DLMI, LOGL_ERROR, "rs232: error reading from "
+			LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "rs232: error reading from "
 				"serial port: %s\n", strerror(errno));
 			msgb_free(msg);
 			return rc;
@@ -141,16 +142,14 @@ static int handle_ser_read(struct osmo_fd *bfd)
 		if (msg->len >= 2) {
 			/* parse CRAPD payload length */
 			if (msg->data[0] != 0) {
-				LOGP(DLMI, LOGL_ERROR,
-					"Suspicious header byte 0: 0x%02x\n",
+				LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "Suspicious header byte 0: 0x%02x\n",
 					msg->data[0]);
 			}
 			sh->rxmsg_bytes_missing = msg->data[0] << 8;
 			sh->rxmsg_bytes_missing += msg->data[1];
 
 			if (sh->rxmsg_bytes_missing < CRAPD_HDR_LEN -2) {
-				LOGP(DLMI, LOGL_ERROR,
-					"Invalid length in hdr: %u\n",
+				LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "Invalid length in hdr: %u\n",
 					sh->rxmsg_bytes_missing);
 			}
 		}
@@ -158,8 +157,8 @@ static int handle_ser_read(struct osmo_fd *bfd)
 		/* try to read as many of the missing bytes as are available */
 		rc = read(bfd->fd, msg->tail, sh->rxmsg_bytes_missing);
 		if (rc < 0) {
-			LOGP(DLMI, LOGL_ERROR, "rs232: error reading from "
-				"serial port: %s", strerror(errno));
+			LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "rs232: error reading from serial port: %s",
+				strerror(errno));
 			msgb_free(msg);
 			return rc;
 		}
@@ -167,7 +166,6 @@ static int handle_ser_read(struct osmo_fd *bfd)
 		sh->rxmsg_bytes_missing -= rc;
 
 		if (sh->rxmsg_bytes_missing == 0) {
-			struct e1inp_ts *e1i_ts = &sh->line->ts[0];
 
 			/* we have one complete message now */
 			sh->rx_msg = NULL;
@@ -175,15 +173,13 @@ static int handle_ser_read(struct osmo_fd *bfd)
 			if (msg->len > CRAPD_HDR_LEN)
 				msg->l2h = msg->data + CRAPD_HDR_LEN;
 
-			DEBUGP(DLMI, "rs232 RX: %s",
-				osmo_hexdump(msg->data, msg->len));
+			LOGPITS(e1i_ts, DLMI, LOGL_DEBUG, "rs232 RX: %s", osmo_hexdump(msg->data, msg->len));
 
 			/* don't use e1inp_tx_ts() here, this header does not
 			 * contain any SAPI and TEI values. */
 			if (!e1i_ts->line->ops->sign_link) {
-				LOGP(DLMI, LOGL_ERROR, "rs232: no callback set, "
-					"skipping message.\n");
-					return -EINVAL;
+				LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "rs232: no callback set, skipping message.\n");
+				return -EINVAL;
 			}
 			e1i_ts->line->ops->sign_link(msg);
 		}
@@ -226,8 +222,7 @@ rs232_setup(struct e1inp_line *line, const char *serial_port, unsigned int delay
 
 	rc = open(serial_port, O_RDWR);
 	if (rc < 0) {
-		LOGP(DLMI, LOGL_ERROR, "rs232: cannot open serial port: %s",
-			strerror(errno));
+		LOGPIL(line, DLMI, LOGL_ERROR, "rs232: cannot open serial port: %s", strerror(errno));
 		return rc;
 	}
 	bfd->fd = rc;
@@ -235,8 +230,7 @@ rs232_setup(struct e1inp_line *line, const char *serial_port, unsigned int delay
 	/* set baudrate */
 	rc = tcgetattr(bfd->fd, &tio);
 	if (rc < 0) {
-		LOGP(DLMI, LOGL_ERROR, "rs232: tcgetattr says: %s",
-			strerror(errno));
+		LOGPIL(line, DLMI, LOGL_ERROR, "rs232: tcgetattr says: %s", strerror(errno));
 		return rc;
 	}
 	cfsetispeed(&tio, B19200);
@@ -249,16 +243,14 @@ rs232_setup(struct e1inp_line *line, const char *serial_port, unsigned int delay
 	tio.c_oflag &= ~(OPOST);
 	rc = tcsetattr(bfd->fd, TCSADRAIN, &tio);
 	if (rc < 0) {
-		LOGP(DLMI, LOGL_ERROR, "rs232: tcsetattr says: %s",
-			strerror(errno));
+		LOGPIL(line, DLMI, LOGL_ERROR, "rs232: tcsetattr says: %s", strerror(errno));
 		return rc;
 	}
 
 	ser_handle = talloc_zero(tall_rs232_ctx, struct serial_handle);
 	if (ser_handle == NULL) {
 		close(bfd->fd);
-		LOGP(DLMI, LOGL_ERROR, "rs232: cannot allocate memory for "
-			"serial handler\n");
+		LOGPIL(line, DLMI, LOGL_ERROR, "rs232: cannot allocate memory for serial handler\n");
 		return -ENOMEM;
 	}
 	ser_handle->line = line;
@@ -271,8 +263,7 @@ rs232_setup(struct e1inp_line *line, const char *serial_port, unsigned int delay
 	rc = osmo_fd_register(bfd);
 	if (rc < 0) {
 		close(bfd->fd);
-		LOGP(DLMI, LOGL_ERROR, "rs232: could not register FD: %s\n",
-			strerror(-rc));
+		LOGPIL(line, DLMI, LOGL_ERROR, "rs232: could not register FD: %s\n", strerror(-rc));
 		return rc;
 	}
 

@@ -354,8 +354,7 @@ e1inp_line_create(uint8_t e1_nr, const char *driver_name)
 
 	line = e1inp_line_find(e1_nr);
 	if (line) {
-		LOGP(DLINP, LOGL_ERROR, "E1 Line %u already exists\n",
-		     e1_nr);
+		LOGPIL(line, DLINP, LOGL_ERROR, "E1 Line %u already exists\n", e1_nr);
 		return NULL;
 	}
 
@@ -375,7 +374,7 @@ e1inp_line_create(uint8_t e1_nr, const char *driver_name)
 
 	line->rate_ctr = rate_ctr_group_alloc(line, &e1inp_ctr_g_d, line->num);
 	if (!line->rate_ctr) {
-		LOGP(DLINP, LOGL_ERROR, "Cannot allocate counter group\n");
+		LOGPIL(line, DLINP, LOGL_ERROR, "Cannot allocate counter group\n");
 		talloc_free(line);
 		return NULL;
 	}
@@ -429,7 +428,7 @@ void e1inp_line_get(struct e1inp_line *line)
 {
 	int old_refcnt = line->refcnt++;
 
-	LOGP(DLINP, LOGL_DEBUG, "Line '%s' (%p) reference count get: %d -> %d\n",
+	LOGPIL(line, DLINP, LOGL_DEBUG, "Line '%s' (%p) reference count get: %d -> %d\n",
 	     line->name, line, old_refcnt, line->refcnt);
 }
 
@@ -437,7 +436,7 @@ void e1inp_line_put(struct e1inp_line *line)
 {
 	int old_refcnt = line->refcnt--;
 
-	LOGP(DLINP, LOGL_DEBUG, "Line '%s' (%p) reference count put: %d -> %d\n",
+	LOGPIL(line, DLINP, LOGL_DEBUG, "Line '%s' (%p) reference count put: %d -> %d\n",
 	     line->name, line, old_refcnt, line->refcnt);
 
 	if (line->refcnt == 0) {
@@ -598,13 +597,13 @@ int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
 		/* consult the list of signalling links */
 		link = e1inp_lookup_sign_link(ts, tei, sapi);
 		if (!link) {
-			LOGP(DLMI, LOGL_ERROR, "didn't find signalling link for "
+			LOGPITS(ts, DLMI, LOGL_ERROR, "didn't find signalling link for "
 				"tei %d, sapi %d\n", tei, sapi);
 			msgb_free(msg);
 			return -EINVAL;
 		}
 		if (!ts->line->ops->sign_link) {
-	                LOGP(DLINP, LOGL_ERROR, "Fix your application, "
+	                LOGPITS(ts, DLINP, LOGL_ERROR, "Fix your application, "
 				"no action set for signalling messages.\n");
 			msgb_free(msg);
 			return -ENOENT;
@@ -624,7 +623,7 @@ int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
 		break;
 	default:
 		ret = -EINVAL;
-		LOGP(DLMI, LOGL_ERROR, "unknown TS type %u\n", ts->type);
+		LOGPITS(ts, DLMI, LOGL_ERROR, "unknown TS type %u\n", ts->type);
 		msgb_free(msg);
 		break;
 	}
@@ -652,7 +651,7 @@ int e1inp_rx_ts_lapd(struct e1inp_ts *e1i_ts, struct msgb *msg)
 	else
 		tei = msg->data[1] >> 1;
 
-	DEBUGP(DLMI, "<= len = %d, sapi(%d) tei(%d)\n", msg->len, sapi, tei);
+	LOGPITS(e1i_ts, DLMI, LOGL_DEBUG, "<= len = %d, sapi(%d) tei(%d)\n", msg->len, sapi, tei);
 
 	ret = lapd_receive(e1i_ts->lapd, msg, &error);
 	if (ret < 0) {
@@ -679,18 +678,18 @@ void e1inp_dlsap_up(struct osmo_dlsap_prim *dp, uint8_t tei, uint8_t sapi,
 
 	switch (dp->oph.primitive) {
 	case PRIM_DL_EST:
-		DEBUGP(DLMI, "DL_EST: sapi(%d) tei(%d)\n", sapi, tei);
+		LOGPITS(e1i_ts, DLMI, LOGL_DEBUG, "DL_EST: sapi(%d) tei(%d)\n", sapi, tei);
 		e1inp_event(e1i_ts, S_L_INP_TEI_UP, tei, sapi);
 		break;
 	case PRIM_DL_REL:
-		DEBUGP(DLMI, "DL_REL: sapi(%d) tei(%d)\n", sapi, tei);
+		LOGPITS(e1i_ts, DLMI, LOGL_DEBUG, "DL_REL: sapi(%d) tei(%d)\n", sapi, tei);
 		e1inp_event(e1i_ts, S_L_INP_TEI_DN, tei, sapi);
 		break;
 	case PRIM_DL_DATA:
 	case PRIM_DL_UNIT_DATA:
 		if (dp->oph.operation == PRIM_OP_INDICATION) {
 			msg->l2h = msg->l3h;
-			DEBUGP(DLMI, "RX: %s sapi=%d tei=%d\n",
+			LOGPITS(e1i_ts, DLMI, LOGL_DEBUG, "RX: %s sapi=%d tei=%d\n",
 				osmo_hexdump(msgb_l2(msg), msgb_l2len(msg)),
 				sapi, tei);
 			e1inp_rx_ts(e1i_ts, msg, tei, sapi);
@@ -698,7 +697,7 @@ void e1inp_dlsap_up(struct osmo_dlsap_prim *dp, uint8_t tei, uint8_t sapi,
 		}
 		break;
 	case PRIM_MDL_ERROR:
-		DEBUGP(DLMI, "MDL_EERROR: cause(%d)\n", dp->u.error_ind.cause);
+		LOGPITS(e1i_ts, DLMI, LOGL_DEBUG, "MDL_EERROR: cause(%d)\n", dp->u.error_ind.cause);
 		break;
 	default:
 		printf("ERROR: unknown prim\n");
@@ -738,8 +737,7 @@ struct msgb *e1inp_tx_ts(struct e1inp_ts *e1i_ts,
 			return NULL;
 		len = subchan_mux_out(&e1i_ts->trau.mux, msg->data, 40);
 		if (len != 40) {
-			LOGP(DLMI, LOGL_ERROR,
-			     "cannot transmit, failed to mux\n");
+			LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "cannot transmit, failed to mux\n");
 			msgb_free(msg);
 			return NULL;
 		}
@@ -754,7 +752,7 @@ struct msgb *e1inp_tx_ts(struct e1inp_ts *e1i_ts,
 		msg = msgb_dequeue(&e1i_ts->hdlc.tx_queue);
 		break;
 	default:
-		LOGP(DLMI, LOGL_ERROR, "unsupported E1 TS type %u\n", e1i_ts->type);
+		LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "unsupported E1 TS type %u\n", e1i_ts->type);
 		return NULL;
 	}
 	return msg;

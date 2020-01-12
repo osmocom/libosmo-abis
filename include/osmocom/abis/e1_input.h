@@ -14,6 +14,12 @@
 #define NUM_E1_TS   32
 #define E1INP_USE_DEFAULT (-1)
 
+#define LOGPITS(e1ts, ss, level, fmt, args ...) \
+       LOGP(ss, level, "E1TS(%u:%u) " fmt, (e1ts)->line->num, (e1ts)->num, ## args)
+
+#define LOGPIL(e1l, ss, level, fmt, args ...) \
+       LOGP(ss, level, "E1L(%u) " fmt, (e1l)->num, ## args)
+
 enum e1inp_sign_type {
 	E1INP_SIGN_NONE,
 	E1INP_SIGN_OML,

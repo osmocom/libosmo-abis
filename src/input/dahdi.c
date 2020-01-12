@@ -134,7 +134,7 @@ static void handle_dahdi_exception(struct e1inp_ts *ts)
 	if (rc < 0)
 		return;
 
-	LOGP(DLMI, LOGL_NOTICE, "Line %u(%s) / TS %u DAHDI EVENT %s\n",
+	LOGPITS(ts, DLMI, LOGL_NOTICE, "Line %u(%s) / TS %u DAHDI EVENT %s\n",
 		ts->line->num, ts->line->name, ts->num,
 		get_value_string(dahdi_evt_names, evt));
 
@@ -181,12 +181,12 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 	if (ret == -1)
 		handle_dahdi_exception(e1i_ts);
 	else if (ret < 0) {
-		LOGP(DLMI, LOGL_ERROR, "%s read failed %d (%s)\n", __func__, ret, strerror(errno));
+		LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "%s read failed %d (%s)\n", __func__, ret, strerror(errno));
 		return ret;
 	}
 	msgb_put(msg, ret - 2);
 	if (ret <= 3) {
-		LOGP(DLMI, LOGL_ERROR, "%s read failed %d (%s)\n", __func__, ret, strerror(errno));
+		LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "%s read failed %d (%s)\n", __func__, ret, strerror(errno));
 		return ret;
 	}
 
@@ -199,7 +199,7 @@ static int ts_want_write(struct e1inp_ts *e1i_ts)
 	 * writeset, since it doesn't support poll() based
 	 * write flow control */
 	if (e1i_ts->type == E1INP_TS_TYPE_TRAU) {
-		LOGP(DLINP, LOGL_DEBUG, "Trying to write TRAU ts\n");
+		LOGPITS(e1i_ts, DLINP, LOGL_DEBUG, "Trying to write TRAU ts\n");
 		return 0;
 	}
 
@@ -229,7 +229,7 @@ static void dahdi_write_msg(struct msgb *msg, void *cbdata)
 	if (ret == -1)
 		handle_dahdi_exception(e1i_ts);
 	else if (ret < 0)
-		LOGP(DLMI, LOGL_NOTICE, "%s write failed %d\n", __func__, ret);
+		LOGPITS(e1i_ts, DLMI, LOGL_NOTICE, "%s write failed %d\n", __func__, ret);
 }
 
 static int handle_ts1_write(struct osmo_fd *bfd)
@@ -249,7 +249,7 @@ static int handle_ts1_write(struct osmo_fd *bfd)
 		return 0;
 	}
 
-	DEBUGP(DLMI, "TX: %s\n", osmo_hexdump(msg->data, msg->len));
+	LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "TX: %s\n", osmo_hexdump(msg->data, msg->len));
 	lapd_transmit(e1i_ts->lapd, sign_link->tei,
 			sign_link->sapi, msg);
 
@@ -278,7 +278,7 @@ static void handle_hdlc_write(struct osmo_fd *bfd)
 	if (ret == -1)
 		handle_dahdi_exception(e1i_ts);
 	else if (ret < 0)
-		LOGP(DLMI, LOGL_NOTICE, "%s write failed %d\n", __func__, ret);
+		LOGPITS(e1i_ts, DLMI, LOGL_NOTICE, "%s write failed %d\n", __func__, ret);
 }
 
 static int handle_hdlc_read(struct osmo_fd *bfd)
@@ -296,12 +296,12 @@ static int handle_hdlc_read(struct osmo_fd *bfd)
 	if (ret == -1)
 		handle_dahdi_exception(e1i_ts);
 	else if (ret < 0) {
-		LOGP(DLMI, LOGL_ERROR, "%s read failed %d (%s)\n", __func__, ret, strerror(errno));
+		LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "%s read failed %d (%s)\n", __func__, ret, strerror(errno));
 		return ret;
 	}
 	msgb_put(msg, ret - 2);
 	if (ret <= 3) {
-		LOGP(DLMI, LOGL_ERROR, "%s read failed %d (%s)\n", __func__, ret, strerror(errno));
+		LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "%s read failed %d (%s)\n", __func__, ret, strerror(errno));
 		return ret;
 	}
 
@@ -351,13 +351,12 @@ static int handle_tsX_write(struct osmo_fd *bfd)
 	ret = subchan_mux_out(mx, tx_buf, D_BCHAN_TX_GRAN);
 
 	if (ret != D_BCHAN_TX_GRAN) {
-		LOGP(DLINP, LOGL_DEBUG, "Huh, got ret of %d\n", ret);
+		LOGPITS(e1i_ts, DLINP, LOGL_DEBUG, "Huh, got ret of %d\n", ret);
 		if (ret < 0)
 			return ret;
 	}
 
-	DEBUGP(DLMIB, "BCHAN TX: %s\n",
-		osmo_hexdump(tx_buf, D_BCHAN_TX_GRAN));
+	LOGPITS(e1i_ts, DLMIB, LOGL_DEBUG, "BCHAN TX: %s\n", osmo_hexdump(tx_buf, D_BCHAN_TX_GRAN));
 
 	if (invertbits) {
 		flip_buf_bits(tx_buf, ret);
@@ -365,7 +364,7 @@ static int handle_tsX_write(struct osmo_fd *bfd)
 
 	ret = write(bfd->fd, tx_buf, ret);
 	if (ret < D_BCHAN_TX_GRAN)
-		LOGP(DLINP, LOGL_DEBUG, "send returns %d instead of %d\n",
+		LOGPITS(e1i_ts, DLINP, LOGL_DEBUG, "send returns %d instead of %d\n",
 			ret, D_BCHAN_TX_GRAN);
 
 	return ret;
@@ -386,8 +385,7 @@ static int handle_tsX_read(struct osmo_fd *bfd)
 
 	ret = read(bfd->fd, msg->data, D_TSX_ALLOC_SIZE);
 	if (ret < 0 || ret != D_TSX_ALLOC_SIZE) {
-		LOGP(DLINP, LOGL_DEBUG, "read error  %d %s\n",
-			ret, strerror(errno));
+		LOGPITS(e1i_ts, DLINP, LOGL_DEBUG, "read error  %d %s\n", ret, strerror(errno));
 		return ret;
 	}
 
@@ -398,8 +396,7 @@ static int handle_tsX_read(struct osmo_fd *bfd)
 	msgb_put(msg, ret);
 
 	msg->l2h = msg->data;
-	DEBUGP(DLMIB, "BCHAN RX: %s\n",
-		osmo_hexdump(msgb_l2(msg), ret));
+	LOGPITS(e1i_ts, DLMIB, LOGL_DEBUG, "BCHAN RX: %s\n", osmo_hexdump(msgb_l2(msg), ret));
 	ret = e1inp_rx_ts(e1i_ts, msg, 0, 0);
 	/* physical layer indicates that data has been sent,
 	 * we thus can send some more data */
@@ -426,12 +423,11 @@ static int handle_ts_raw_write(struct osmo_fd *bfd)
 		/* This might lead to a transmit underrun, as we call tx
 		 * from the rx path, as there's no select/poll on dahdi
 		 * */
-		LOGP(DLINP, LOGL_NOTICE, "unexpected msg->len = %u, "
+		LOGPITS(e1i_ts, DLINP, LOGL_NOTICE, "unexpected msg->len = %u, "
 		     "expected %u\n", msg->len, D_BCHAN_TX_GRAN);
 	}
 
-	DEBUGP(DLMIB, "RAW CHAN TX: %s\n",
-		osmo_hexdump(msg->data, msg->len));
+	LOGPITS(e1i_ts, DLMIB, LOGL_DEBUG, "RAW CHAN TX: %s\n", osmo_hexdump(msg->data, msg->len));
 
 	if (0/*invertbits*/) {
 		flip_buf_bits(msg->data, msg->len);
@@ -439,8 +435,7 @@ static int handle_ts_raw_write(struct osmo_fd *bfd)
 
 	ret = write(bfd->fd, msg->data, msg->len);
 	if (ret < msg->len)
-		LOGP(DLINP, LOGL_DEBUG, "send returns %d instead of %d\n",
-			ret, msg->len);
+		LOGPITS(e1i_ts, DLINP, LOGL_DEBUG, "send returns %d instead of %d\n", ret, msg->len);
 	msgb_free(msg);
 
 	return ret;
@@ -459,8 +454,7 @@ static int handle_ts_raw_read(struct osmo_fd *bfd)
 
 	ret = read(bfd->fd, msg->data, D_TSX_ALLOC_SIZE);
 	if (ret < 0 || ret != D_TSX_ALLOC_SIZE) {
-		LOGP(DLINP, LOGL_DEBUG, "read error  %d %s\n",
-			ret, strerror(errno));
+		LOGPITS(e1i_ts, DLINP, LOGL_DEBUG, "read error  %d %s\n", ret, strerror(errno));
 		return ret;
 	}
 
@@ -471,8 +465,7 @@ static int handle_ts_raw_read(struct osmo_fd *bfd)
 	msgb_put(msg, ret);
 
 	msg->l2h = msg->data;
-	DEBUGP(DLMIB, "RAW CHAN RX: %s\n",
-		osmo_hexdump(msgb_l2(msg), ret));
+	LOGPITS(e1i_ts, DLMIB, LOGL_DEBUG, "RAW CHAN RX: %s\n", osmo_hexdump(msgb_l2(msg), ret));
 	ret = e1inp_rx_ts(e1i_ts, msg, 0, 0);
 	/* physical layer indicates that data has been sent,
 	 * we thus can send some more data */
@@ -530,8 +523,7 @@ static int dahdi_fd_cb(struct osmo_fd *bfd, unsigned int what)
 		 * write flow control */
 		break;
 	default:
-		LOGP(DLINP, LOGL_NOTICE,
-			"unknown E1 TS type %u\n", e1i_ts->type);
+		LOGPITS(e1i_ts, DLINP, LOGL_NOTICE, "unknown E1 TS type %u\n", e1i_ts->type);
 		break;
 	}
 
@@ -641,9 +633,8 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 
 	scfg = span_cfgs[line->port_nr];
 	if (!scfg) {
-		LOGP(DLMI, LOGL_ERROR, "Line %u(%s): DAHDI Port %u (Span %u) "
-			"doesn't exist\n", line->num, line->name, line->port_nr,
-			line->port_nr+1);
+		LOGPIL(line, DLMI, LOGL_ERROR, "Line %u(%s): DAHDI Port %u (Span %u) doesn't exist\n",
+			line->num, line->name, line->port_nr, line->port_nr+1);
 		return -EIO;
 	}
 
@@ -733,9 +724,7 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 
 		ret = osmo_fd_register(bfd);
 		if (ret < 0) {
-			LOGP(DLINP, LOGL_ERROR,
-				"could not register FD: %s\n",
-				strerror(ret));
+			LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "could not register FD: %s\n", strerror(ret));
 			return ret;
 		}
 	}
