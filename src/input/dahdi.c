@@ -181,11 +181,13 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 	if (ret == -1)
 		handle_dahdi_exception(e1i_ts);
 	else if (ret < 0) {
-		perror("read ");
+		LOGP(DLMI, LOGL_ERROR, "%s read failed %d (%s)\n", __func__, ret, strerror(errno));
+		return ret;
 	}
 	msgb_put(msg, ret - 2);
 	if (ret <= 3) {
-		perror("read ");
+		LOGP(DLMI, LOGL_ERROR, "%s read failed %d (%s)\n", __func__, ret, strerror(errno));
+		return ret;
 	}
 
 	return e1inp_rx_ts_lapd(e1i_ts, msg);
@@ -294,11 +296,13 @@ static int handle_hdlc_read(struct osmo_fd *bfd)
 	if (ret == -1)
 		handle_dahdi_exception(e1i_ts);
 	else if (ret < 0) {
-		perror("read ");
+		LOGP(DLMI, LOGL_ERROR, "%s read failed %d (%s)\n", __func__, ret, strerror(errno));
+		return ret;
 	}
 	msgb_put(msg, ret - 2);
 	if (ret <= 3) {
-		perror("read ");
+		LOGP(DLMI, LOGL_ERROR, "%s read failed %d (%s)\n", __func__, ret, strerror(errno));
+		return ret;
 	}
 
 	return e1inp_rx_ts(e1i_ts, msg, 0, 0);
