@@ -144,8 +144,6 @@ e1d_fd_cb(struct osmo_fd *bfd, unsigned int what)
 
 	switch (e1i_ts->type) {
 	case E1INP_TS_TYPE_SIGN:
-		//if (what & BSC_FD_EXCEPT)
-		//FIXME: what to do ?!?!
 		if (what & BSC_FD_READ)
 			ret = handle_ts_sign_read(bfd);
 		if (what & BSC_FD_WRITE)
@@ -221,7 +219,7 @@ e1d_line_update(struct e1inp_line *line)
 					"Could not open timeslot %d\n", ts);
 				return -EIO;
 			}
-			bfd->when = BSC_FD_READ | BSC_FD_EXCEPT;
+			bfd->when = BSC_FD_READ;
 
 			if (!e1i_ts->lapd)
 				e1i_ts->lapd = lapd_instance_alloc(1,
