@@ -66,13 +66,13 @@ handle_ts_sign_read(struct osmo_fd *bfd)
 
 	ret = read(bfd->fd, msg->data, TS_SIGN_ALLOC_SIZE - 16);
 	if (ret < 0) {
-		LOGP(DLMI, LOGL_ERROR, "%s read failed %d (%s)\n", __func__, ret, strerror(errno));
+		LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "%s read failed %d (%s)\n", __func__, ret, strerror(errno));
 		return ret;
 	}
 
 	msgb_put(msg, ret);
 	if (ret <= 1) {
-		LOGP(DLMI, LOGL_ERROR, "%s read failed %d (%s)\n", __func__, ret, strerror(errno));
+		LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "%s read failed %d (%s)\n", __func__, ret, strerror(errno));
 		return ret;
 	}
 
@@ -130,7 +130,7 @@ e1d_write_msg(struct msgb *msg, void *cbdata)
 	ret = write(bfd->fd, msg->data, msg->len);
 	msgb_free(msg);
 	if (ret < 0)
-		LOGP(DLMI, LOGL_NOTICE, "%s write failed %d\n", __func__, ret);
+		LOGPITS(e1i_ts, DLMI, LOGL_NOTICE, "%s write failed %d\n", __func__, ret);
 }
 
 static int
@@ -150,8 +150,7 @@ e1d_fd_cb(struct osmo_fd *bfd, unsigned int what)
 			ret = handle_ts_sign_write(bfd);
 		break;
 	default:
-		LOGP(DLINP, LOGL_NOTICE,
-			"unknown/unsupported E1 TS type %u\n", e1i_ts->type);
+		LOGPITS(e1i_ts, DLINP, LOGL_NOTICE, "unknown/unsupported E1 TS type %u\n", e1i_ts->type);
 		break;
 	}
 
@@ -164,7 +163,7 @@ e1d_want_write(struct e1inp_ts *e1i_ts)
 {
         /* We never include the DAHDI B-Channel FD into the writeset */
 	if (e1i_ts->type == E1INP_TS_TYPE_TRAU) {
-		LOGP(DLINP, LOGL_DEBUG, "Trying to write TRAU ts\n");
+		LOGPITS(e1i_ts, DLINP, LOGL_DEBUG, "Trying to write TRAU ts\n");
 		return 0;
 	}
 
@@ -188,7 +187,7 @@ e1d_line_update(struct e1inp_line *line)
 		return -EINVAL;
 
 
-	LOGP(DLINP, LOGL_NOTICE, "Line update %d %d=E1D(%d:%d) %d\n", line->num, line->port_nr,
+	LOGPIL(line, DLINP, LOGL_NOTICE, "Line update %d %d=E1D(%d:%d) %d\n", line->num, line->port_nr,
 		e1d_intf, e1d_line, line->num_ts);
 
 	for (ts=1; ts<line->num_ts; ts++)
@@ -223,8 +222,7 @@ e1d_line_update(struct e1inp_line *line)
 								   E1DP_TSMODE_HDLCFCS);
 			}
 			if (bfd->fd < 0) {
-				LOGP(DLINP, LOGL_ERROR,
-					"Could not open timeslot %d\n", ts);
+				LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Could not open timeslot %d\n", ts);
 				return -EIO;
 			}
 			bfd->when = BSC_FD_READ;
@@ -244,9 +242,7 @@ e1d_line_update(struct e1inp_line *line)
 
 		ret = osmo_fd_register(bfd);
 		if (ret < 0) {
-			LOGP(DLINP, LOGL_ERROR,
-				"could not register FD: %s\n",
-				strerror(ret));
+			LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "could not register FD: %s\n", strerror(ret));
 			return ret;
 		}
 	}
@@ -266,7 +262,7 @@ e1inp_e1d_init(void)
 	/* Connect to daemon */
 	g_e1d = osmo_e1dp_client_create(NULL, "/tmp/osmo-e1d.ctl");
 	if (!g_e1d) {
-		 LOGP(DLINP, LOGL_ERROR, "Unable to connect to osmo-e1d daemon\n");
+		LOGP(DLINP, LOGL_ERROR, "Unable to connect to osmo-e1d daemon\n");
 		return -EPIPE;
 	}
 
