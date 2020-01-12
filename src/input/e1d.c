@@ -66,13 +66,13 @@ handle_ts_sign_read(struct osmo_fd *bfd)
 
 	ret = read(bfd->fd, msg->data, TS_SIGN_ALLOC_SIZE - 16);
 	if (ret < 0) {
-		perror("read ");
+		LOGP(DLMI, LOGL_ERROR, "%s read failed %d (%s)\n", __func__, ret, strerror(errno));
 		return ret;
 	}
 
 	msgb_put(msg, ret);
 	if (ret <= 1) {
-		perror("read ");
+		LOGP(DLMI, LOGL_ERROR, "%s read failed %d (%s)\n", __func__, ret, strerror(errno));
 		return ret;
 	}
 
