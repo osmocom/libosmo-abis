@@ -182,6 +182,8 @@ e1d_line_update(struct e1inp_line *line)
 	 * resulting in max. 16 interfaces with 16 lines each */
 	uint8_t e1d_intf = (line->port_nr >> 4) & 0xF;
 	uint8_t e1d_line = line->port_nr & 0xF;
+	struct osmo_e1dp_ts_info *ts_info;
+	int num_ts_info;
 
 	if (line->driver != &e1d_driver)
 		return -EINVAL;
@@ -198,6 +200,12 @@ e1d_line_update(struct e1inp_line *line)
 	LOGPIL(line, DLINP, LOGL_NOTICE, "Line update %d %d=E1D(%d:%d) %d\n", line->num, line->port_nr,
 		e1d_intf, e1d_line, line->num_ts);
 
+	ret = osmo_e1dp_client_ts_query(g_e1d, &ts_info, &num_ts_info, e1d_intf, e1d_line, E1DP_INVALID);
+	if (ret < 0) {
+		LOGPIL(line, DLINP, LOGL_ERROR, "Cannot query E1D for timeslot information: %d\n", ret);
+		return -EIO;
+	}
+
 	for (ts=1; ts<line->num_ts; ts++)
 	{
 		unsigned int idx = ts-1;
@@ -212,6 +220,12 @@ e1d_line_update(struct e1inp_line *line)
 		bfd->priv_nr = ts;
 		bfd->cb = e1d_fd_cb;
 
+		if (e1i_ts->type != E1INP_TS_TYPE_NONE && ts >= num_ts_info) {
+			LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Timeslot configured, but not existant "
+				"on E1D side; skipping\n");
+			continue;
+		}
+
 		switch (e1i_ts->type) {
 		case E1INP_TS_TYPE_NONE:
 			/* close/release LAPD instance, if any */
@@ -225,12 +239,17 @@ e1d_line_update(struct e1inp_line *line)
 			}
                         continue;
 		case E1INP_TS_TYPE_SIGN:
+			if (bfd->fd > 0 && ts_info[ts].cfg.mode != E1DP_TSMODE_HDLCFCS) {
+				close(bfd->fd);
+				bfd->fd = 0;
+			}
 			if (bfd->fd <= 0) {
 				bfd->fd = osmo_e1dp_client_ts_open(g_e1d, e1d_intf, e1d_line, ts,
 								   E1DP_TSMODE_HDLCFCS);
 			}
 			if (bfd->fd < 0) {
 				LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Could not open timeslot %d\n", ts);
+				talloc_free(ts_info);
 				return -EIO;
 			}
 			bfd->when = BSC_FD_READ;
@@ -241,20 +260,61 @@ e1d_line_update(struct e1inp_line *line)
 					e1i_ts, &lapd_profile_abis);
 			break;
 		case E1INP_TS_TYPE_HDLC:
+			/* close/release LAPD instance, if any */
+			if (e1i_ts->lapd) {
+				lapd_instance_free(e1i_ts->lapd);
+				e1i_ts->lapd = NULL;
+			}
+			/* close, if old timeslot mode doesn't match new config */
+			if (bfd->fd > 0 && ts_info[ts].cfg.mode != E1DP_TSMODE_HDLCFCS) {
+				close(bfd->fd);
+				bfd->fd = 0;
+			}
+			if (bfd->fd <= 0) {
+				bfd->fd = osmo_e1dp_client_ts_open(g_e1d, e1d_intf, e1d_line, ts,
+								   E1DP_TSMODE_HDLCFCS);
+			}
+			if (bfd->fd < 0) {
+				LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Could not open timeslot %d\n", ts);
+				talloc_free(ts_info);
+				return -EIO;
+			}
+			bfd->when = BSC_FD_READ;
 			break;
 		case E1INP_TS_TYPE_TRAU:
-			break;
 		case E1INP_TS_TYPE_RAW:
+			/* close/release LAPD instance, if any */
+			if (e1i_ts->lapd) {
+				lapd_instance_free(e1i_ts->lapd);
+				e1i_ts->lapd = NULL;
+			}
+			/* close, if old timeslot mode doesn't match new config */
+			if (bfd->fd > 0 && ts_info[ts].cfg.mode != E1DP_TSMODE_RAW) {
+				close(bfd->fd);
+				bfd->fd = 0;
+			}
+			if (bfd->fd <= 0) {
+				bfd->fd = osmo_e1dp_client_ts_open(g_e1d, e1d_intf, e1d_line, ts,
+								   E1DP_TSMODE_RAW);
+			}
+			if (bfd->fd < 0) {
+				LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Could not open timeslot %d\n", ts);
+				talloc_free(ts_info);
+				return -EIO;
+			}
+			bfd->when = BSC_FD_READ;
 			break;
 		};
 
 		ret = osmo_fd_register(bfd);
 		if (ret < 0) {
 			LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "could not register FD: %s\n", strerror(ret));
+			talloc_free(ts_info);
 			return ret;
 		}
 	}
 
+	talloc_free(ts_info);
 	return 0;
 }
 
