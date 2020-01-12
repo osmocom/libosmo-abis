@@ -246,19 +246,10 @@ e1d_line_update(struct e1inp_line *line)
 	return 0;
 }
 
-static void
-e1d_vty_show(struct vty *vty, struct e1inp_line *line)
-{
-	/* FIXME */
-	vty_out(vty, "Not supported yet%s", VTY_NEWLINE);
-}
-
-
 struct e1inp_driver e1d_driver = {
 	.name        = "e1d",
 	.want_write  = e1d_want_write,
 	.line_update = e1d_line_update,
-	.vty_show    = e1d_vty_show,
 };
 
 int
