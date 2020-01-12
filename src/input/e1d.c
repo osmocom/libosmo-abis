@@ -186,6 +186,14 @@ e1d_line_update(struct e1inp_line *line)
 	if (line->driver != &e1d_driver)
 		return -EINVAL;
 
+	if (!g_e1d) {
+		/* Connect to daemon */
+		g_e1d = osmo_e1dp_client_create(NULL, "/tmp/osmo-e1d.ctl");
+		if (!g_e1d) {
+			LOGPIL(line, DLINP, LOGL_ERROR, "Unable to connect to osmo-e1d daemon\n");
+			return -EPIPE;
+		}
+	}
 
 	LOGPIL(line, DLINP, LOGL_NOTICE, "Line update %d %d=E1D(%d:%d) %d\n", line->num, line->port_nr,
 		e1d_intf, e1d_line, line->num_ts);
@@ -259,13 +267,6 @@ struct e1inp_driver e1d_driver = {
 int
 e1inp_e1d_init(void)
 {
-	/* Connect to daemon */
-	g_e1d = osmo_e1dp_client_create(NULL, "/tmp/osmo-e1d.ctl");
-	if (!g_e1d) {
-		LOGP(DLINP, LOGL_ERROR, "Unable to connect to osmo-e1d daemon\n");
-		return -EPIPE;
-	}
-
 	/* register the driver with the core */
 	return e1inp_driver_register(&e1d_driver);
 }
