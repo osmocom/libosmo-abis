@@ -179,11 +179,17 @@ e1d_line_update(struct e1inp_line *line)
 	int ts;
 	int ret;
 
+	/* we use higher 4 bits for interface, lower 4 bits for line,
+	 * resulting in max. 16 interfaces with 16 lines each */
+	uint8_t e1d_intf = (line->port_nr >> 4) & 0xF;
+	uint8_t e1d_line = line->port_nr & 0xF;
+
 	if (line->driver != &e1d_driver)
 		return -EINVAL;
 
 
-	LOGP(DLINP, LOGL_ERROR, "Line update %d %d %d\n", line->num, line->port_nr, line->num_ts);
+	LOGP(DLINP, LOGL_NOTICE, "Line update %d %d=E1D(%d:%d) %d\n", line->num, line->port_nr,
+		e1d_intf, e1d_line, line->num_ts);
 
 	for (ts=1; ts<line->num_ts; ts++)
 	{
@@ -212,8 +218,10 @@ e1d_line_update(struct e1inp_line *line)
 			}
                         continue;
 		case E1INP_TS_TYPE_SIGN:
-			if (bfd->fd <= 0)
-				bfd->fd = osmo_e1dp_client_ts_open(g_e1d, 0, 0, ts, E1DP_TSMODE_HDLCFCS);
+			if (bfd->fd <= 0) {
+				bfd->fd = osmo_e1dp_client_ts_open(g_e1d, e1d_intf, e1d_line, ts,
+								   E1DP_TSMODE_HDLCFCS);
+			}
 			if (bfd->fd < 0) {
 				LOGP(DLINP, LOGL_ERROR,
 					"Could not open timeslot %d\n", ts);
