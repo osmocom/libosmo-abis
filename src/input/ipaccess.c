@@ -830,7 +830,7 @@ err:
 }
 
 struct ipaccess_line {
-	int line_already_initialized;
+	bool line_already_initialized;
 };
 
 static int ipaccess_line_update(struct e1inp_line *line)
@@ -851,7 +851,7 @@ static int ipaccess_line_update(struct e1inp_line *line)
 	if (il->line_already_initialized)
 		return 0;
 
-	il->line_already_initialized = 1;
+	il->line_already_initialized = true;
 
 	switch(line->ops->cfg.ipa.role) {
 	case E1INP_LINE_R_BSC: {
