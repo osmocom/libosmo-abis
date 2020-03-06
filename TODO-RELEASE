@@ -8,3 +8,4 @@
 # If any interfaces have been removed or changed since the last public release: c:r:0.
 #library	what		description / commit summary line
 libosmo-abis	API change	major: add parameter to struct e1inp_line
+libosmo-trau	API change	add new function osmo_rtp_socket_set_dscp()
