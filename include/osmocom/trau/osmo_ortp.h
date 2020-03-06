@@ -76,6 +76,7 @@ int osmo_rtp_socket_bind(struct osmo_rtp_socket *rs, const char *ip, int port);
 int osmo_rtp_socket_connect(struct osmo_rtp_socket *rs, const char *ip, uint16_t port);
 int osmo_rtp_socket_autoconnect(struct osmo_rtp_socket *rs);
 int osmo_rtp_socket_set_pt(struct osmo_rtp_socket *rs, int payload_type);
+int osmo_rtp_socket_set_dscp(struct osmo_rtp_socket *rs, int dscp);
 int osmo_rtp_socket_free(struct osmo_rtp_socket *rs);
 int osmo_rtp_skipped_frame(struct osmo_rtp_socket *rs, unsigned int duration);
 int osmo_rtp_send_frame(struct osmo_rtp_socket *rs, const uint8_t *payload,

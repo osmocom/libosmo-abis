@@ -578,6 +578,16 @@ int osmo_rtp_socket_set_pt(struct osmo_rtp_socket *rs, int payload_type)
 	return rc;
 }
 
+/*! \brief Set the DSCP (Differentiated Services Code Point) for outgoing RTP packets
+ *  \param[in] rs OsmoRTP socket
+ *  \param[in] dscp DSCP value
+ *  \returns 0 on success, < 0 otherwise
+ */
+int osmo_rtp_socket_set_dscp(struct osmo_rtp_socket *rs, int dscp)
+{
+	return rtp_session_set_dscp(rs->sess, dscp);
+}
+
 /*! \brief completely close the RTP socket and release all resources
  *  \param[in] rs OsmoRTP socket to be released
  *  \returns 0 on success
