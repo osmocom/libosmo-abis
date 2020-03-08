@@ -54,7 +54,7 @@ static void test_bind_fail(void)
 	else {
 		printf("FAILED - second bind to port %u worked\n", port[0]);
 		fflush(stdout);
-		//OSMO_ASSERT(0);
+		OSMO_ASSERT(0);
 	}
 
 	osmo_rtp_socket_free(rs[0]);

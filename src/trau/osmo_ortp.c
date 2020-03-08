@@ -378,6 +378,12 @@ struct osmo_rtp_socket *osmo_rtp_socket_create(void *talloc_ctx, unsigned int fl
 	rtp_session_set_profile(rs->sess, osmo_pt_profile);
 	rtp_session_set_jitter_compensation(rs->sess, 100);
 
+	/* ortp >= 0.24.0 doesn't differentiate between SO_REUSEADDR and
+	 * SO_REUSEPORT, and has both enabled by default.  The latter means that
+	 * we can end up with non-unique port bindings as we will not fail to
+	 * bind the same port twice */
+	rtp_session_set_reuseaddr(rs->sess, false);
+
 	rtp_session_signal_connect(rs->sess, "ssrc_changed",
 				   (RtpCallback) ortp_sig_cb_ssrc,
 				   RTP_SIGNAL_PTR_CAST(rs));
