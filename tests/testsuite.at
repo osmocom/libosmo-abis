@@ -23,3 +23,9 @@ cat $abs_srcdir/subchan_demux/subchan_demux_test.ok > expout
 AT_CHECK([$abs_top_builddir/tests/subchan_demux/subchan_demux_test], [], [expout])
 AT_CLEANUP
 
+AT_SETUP([rtp_test])
+AT_KEYWORDS([rtp_test])
+cat $abs_srcdir/rtp_test/rtp_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/rtp_test/rtp_test], [ignore], [expout])
+AT_CLEANUP
+

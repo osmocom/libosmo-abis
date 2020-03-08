@@ -6,7 +6,8 @@ check_PROGRAMS = e1inp_ipa_bsc_test	\
 		  e1inp_ipa_bts_test	\
 		  ipa_proxy_test	\
 		  subchan_demux/subchan_demux_test \
-		  ipa_recv/ipa_recv_test
+		  ipa_recv/ipa_recv_test \
+		  rtp_test/rtp_test
 
 e1inp_ipa_bsc_test_SOURCES = e1inp_ipa_bsc_test.c
 e1inp_ipa_bsc_test_LDADD = $(top_builddir)/src/libosmoabis.la \
@@ -31,6 +32,11 @@ ipa_recv_ipa_recv_test_LDADD = $(top_builddir)/src/libosmoabis.la \
 			$(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) \
 			$(LIBOSMOVTY_LIBS)
 
+rtp_test_rtp_test_SOURCES = rtp_test/rtp_test.c
+rtp_test_rtp_test_LDADD = $(top_builddir)/src/libosmotrau.la \
+			$(LIBOSMOCORE_LIBS)
+
+
 # boilerplate for the tests
 # The `:;' works around a Bash 3.2 bug when the output is not writeable.
 $(srcdir)/package.m4: $(top_srcdir)/configure.ac
@@ -52,7 +58,8 @@ $(srcdir)/package.m4: $(top_srcdir)/configure.ac
 
 EXTRA_DIST = testsuite.at $(srcdir)/package.m4 $(TESTSUITE) \
 	subchan_demux/subchan_demux_test.ok \
-	ipa_recv/ipa_recv_test.ok
+	ipa_recv/ipa_recv_test.ok \
+	rtp_test/rtp_test.ok
 
 TESTSUITE = $(srcdir)/testsuite
 
