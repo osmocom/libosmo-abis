@@ -14,7 +14,7 @@ before_script:
 build-deb:
   stage: build
   script:
-  - yes "" | mk-build-deps -i ; echo $?
+  - bash -c "yes "" | mk-build-deps -i"
   - dpkg-buildpackage -us -uc
   - rm -rf debs/
   - mkdir -p debs/
