@@ -1,0 +1,17 @@
+---
+image: debian:buster
+
+before_script:
+  - apt-get update
+  - apt-get install -y dpkg-dev devscripts pbuilder
+  - apt-get install -y build-essential git automake libdbi-dev libdbd-sqlite3 sqlite3 libsctp-dev libortp-dev libpcap-dev libc-ares-dev libtool shtool pkg-config libtalloc-dev libpcsclite-dev libgnutls28-dev libmnl-dev libssl-dev libczmq-dev libsofia-sip-ua-glib-dev libsqlite3-dev libasound2-dev libusb-1.0-0-dev doxygen
+
+build:
+  script:
+  - dpkg-buildpackage -us -uc
+  - mkdir debs/
+  - cp ../*.deb ../*.dsc ../*.tar* ../*.buildinfo ../*changes debs/
+  - ls -al ../
+  artifacts:
+    paths:
+    - debs/*
