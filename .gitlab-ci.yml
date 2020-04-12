@@ -11,7 +11,8 @@ before_script:
   - cd ..
   - apt-get update
 
-build:
+build-deb:
+  stage: build
   script:
   - yes "" | mk-build-deps -i
   - dpkg-buildpackage -us -uc
