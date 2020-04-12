@@ -3,7 +3,7 @@ image: debian:buster
 
 before_script:
   - apt-get update
-  - apt-get install -y dpkg-dev devscripts pbuilder wget git
+  - apt-get install -y dpkg-dev devscripts wget git
   - wget "https://code.fe80.eu/$CI_PROJECT_NAMESPACE/libosmocore/-/jobs/artifacts/master/download?job=build-deb" -O libosmocore.zip
   - unzip libosmocore.zip
   - cd debs/ && dpkg-scanpackages . > Packages
