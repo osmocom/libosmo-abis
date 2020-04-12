@@ -3,16 +3,19 @@ image: debian:buster
 
 before_script:
   - apt-get update
-  - apt-get install -y dpkg-dev devscripts pbuilder wget
-  - apt-get install -y build-essential git automake libdbi-dev libdbd-sqlite3 sqlite3 libsctp-dev libortp-dev libpcap-dev libc-ares-dev libtool shtool pkg-config libtalloc-dev libpcsclite-dev libgnutls28-dev libmnl-dev libssl-dev libczmq-dev libsofia-sip-ua-glib-dev libsqlite3-dev libasound2-dev libusb-1.0-0-dev doxygen dahdi-source
+  - apt-get install -y dpkg-dev devscripts pbuilder wget git
   - wget "https://code.fe80.eu/$CI_PROJECT_NAMESPACE/libosmocore/-/jobs/artifacts/master/download?job=build-deb" -O libosmocore.zip
+  - unzip libosmocore.zip
+  - cd debs/ && dpkg-scanpackages . > Packages
+  - echo 'deb [trusted=yes] file://$PWD/debs ./' > /etc/apt/sources.list.d/local.list
+  - apt-get update
 
 build:
   script:
-  - unzip libosmocore.zip
-  - dpkg -i debs/libosmocore*.deb
+  - mk-build-deps -i
   - dpkg-buildpackage -us -uc
-  - mkdir debs/
+  - rm -rf debs/
+  - mkdir -p debs/
   - cp ../*.deb ../*.dsc ../*.tar* ../*.buildinfo ../*changes debs/
   - ls -al ../
   artifacts:
