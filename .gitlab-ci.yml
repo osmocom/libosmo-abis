@@ -8,6 +8,7 @@ before_script:
   - unzip libosmocore.zip
   - cd debs/ && dpkg-scanpackages . > Packages
   - echo "deb [trusted=yes] file://$PWD ./" > /etc/apt/sources.list.d/local.list
+  - cd ..
   - apt-get update
 
 build:
