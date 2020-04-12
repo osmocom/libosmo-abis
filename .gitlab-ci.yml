@@ -13,7 +13,7 @@ before_script:
 
 build:
   script:
-  - mk-build-deps -i
+  - yes "" | mk-build-deps -i
   - dpkg-buildpackage -us -uc
   - rm -rf debs/
   - mkdir -p debs/
