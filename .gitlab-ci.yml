@@ -7,7 +7,7 @@ before_script:
   - wget "https://code.fe80.eu/$CI_PROJECT_NAMESPACE/libosmocore/-/jobs/artifacts/master/download?job=build-deb" -O libosmocore.zip
   - unzip libosmocore.zip
   - cd debs/ && dpkg-scanpackages . > Packages
-  - echo 'deb [trusted=yes] file://$PWD/debs ./' > /etc/apt/sources.list.d/local.list
+  - echo "deb [trusted=yes] file://$PWD/debs ./" > /etc/apt/sources.list.d/local.list
   - apt-get update
 
 build:
