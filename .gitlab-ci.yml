@@ -19,7 +19,7 @@ build-deb:
   - rm -rf debs/
   - mkdir -p debs/
   - cp ../*.deb ../*.dsc ../*.tar* ../*.buildinfo ../*changes debs/
-  - ls -al ../
+  - ls -al debs/
   artifacts:
     paths:
     - debs/libosmo-abis*
