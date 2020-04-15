@@ -22,4 +22,4 @@ build-deb:
   - ls -al debs/
   artifacts:
     paths:
-    - debs/libosmo-abis*
+    - debs/
