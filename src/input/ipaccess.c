@@ -587,6 +587,11 @@ static void update_fd_settings(struct e1inp_line *line, int fd)
 #endif
 #endif
 	}
+
+	val = 1;
+	ret = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &val, sizeof(val));
+	if (ret < 0)
+		LOGP(DLINP, LOGL_ERROR, "Failed to set TCP_NODELAY: %s\n", strerror(errno));
 }
 
 /* callback of the OML listening filedescriptor */
