@@ -271,6 +271,7 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 			struct e1inp_ts *ts;
 			struct osmo_fd *newbfd;
 			struct e1inp_line *new_line;
+			int on = 1;
 
 			sign_link =
 				line->ops->sign_link_up(&unit_data, line,
@@ -309,6 +310,13 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 				     "could not register FD\n");
 				goto err;
 			}
+
+			/* set TCP_NODELAY (FIXME: just call update_fd_settings() here instead?) */
+			ret = setsockopt(newbfd->fd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on));
+			if (ret < 0)
+				LOGP(DLINP, LOGL_ERROR, "Failed to set TCP_NODELAY: %s\n", strerror(errno));
+
+
 			/* now we can release the dummy RSL line. */
 			e1inp_line_put(line);
 
@@ -587,6 +595,11 @@ static void update_fd_settings(struct e1inp_line *line, int fd)
 #endif
 #endif
 	}
+
+	val = 1;
+	ret = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &val, sizeof(val));
+	if (ret < 0)
+		LOGP(DLINP, LOGL_ERROR, "Failed to set TCP_NODELAY: %s\n", strerror(errno));
 }
 
 /* callback of the OML listening filedescriptor */
