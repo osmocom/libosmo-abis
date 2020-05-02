@@ -38,6 +38,7 @@ struct lapd_instance {
 
 	struct llist_head tei_list;	/* list of TEI in this LAPD instance */
 	int pcap_fd;			/* PCAP file descriptor */
+	char *name;			/* human-readable name */
 };
 
 enum lapd_recv_errors {
@@ -63,7 +64,14 @@ struct lapd_instance *lapd_instance_alloc(int network_side,
 	void (*tx_cb)(struct msgb *msg, void *cbdata), void *tx_cbdata,
 	void (*rx_cb)(struct osmo_dlsap_prim *odp, uint8_t tei, uint8_t sapi, 
 			void *rx_cbdata), void *rx_cbdata,
-	const struct lapd_profile *profile);
+	const struct lapd_profile *profile)
+OSMO_DEPRECATED("Use lapd_instance_alloc2() instead");
+
+struct lapd_instance *lapd_instance_alloc2(int network_side,
+	void (*tx_cb)(struct msgb *msg, void *cbdata), void *tx_cbdata,
+	void (*rx_cb)(struct osmo_dlsap_prim *odp, uint8_t tei, uint8_t sapi,
+			void *rx_cbdata), void *rx_cbdata,
+	const struct lapd_profile *profile, const char *name);
 
 /* In rare cases (e.g. Ericsson's lapd dialect), it may be necessary to
  * exchange the lapd profile on the fly. lapd_instance_set_profile()

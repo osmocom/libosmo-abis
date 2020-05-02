@@ -683,10 +683,13 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 			if (ret < 0)
 				return ret;
 
-			if (!e1i_ts->lapd)
-				e1i_ts->lapd = lapd_instance_alloc(1,
+			if (!e1i_ts->lapd) {
+				char name[32];
+				e1inp_ts_name(name, sizeof(name), e1i_ts);
+				e1i_ts->lapd = lapd_instance_alloc2(1,
 					dahdi_write_msg, bfd, e1inp_dlsap_up,
-					e1i_ts, &lapd_profile_abis);
+					e1i_ts, &lapd_profile_abis, name);
+			}
 			break;
 		case E1INP_TS_TYPE_HDLC:
 			if (!bfd->fd)

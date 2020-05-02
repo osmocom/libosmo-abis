@@ -636,10 +636,12 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 		switch (e1i_ts->type) {
 		case E1INP_TS_TYPE_SIGN:
 			if (mline->use_userspace_lapd) {
+				char name[32];
 				addr.channel = ts;
-				e1i_ts->lapd = lapd_instance_alloc(1,
+				e1inp_ts_name(name, sizeof(name), e1i_ts);
+				e1i_ts->lapd = lapd_instance_alloc2(1,
 					misdn_write_msg, bfd, e1inp_dlsap_up,
-					e1i_ts, &lapd_profile_abis);
+					e1i_ts, &lapd_profile_abis, name);
 			} else {
 				addr.channel = 0;
 				/* SAPI not supported yet in kernel */

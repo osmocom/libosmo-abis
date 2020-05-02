@@ -285,6 +285,9 @@ int e1inp_ts_config_hdlc(struct e1inp_ts *ts, struct e1inp_line *line,
 			 void (*hdlc_recv_cb)(struct e1inp_ts *ts,
 					      struct msgb *msg));
 
+/* obtain a string identifier/name for the given timeslot */
+void e1inp_ts_name(char *out, size_t out_len, const struct e1inp_ts *ts);
+
 /* Receive a packet from the E1 driver */
 int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
 		uint8_t tei, uint8_t sapi);

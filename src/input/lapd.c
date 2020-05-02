@@ -73,6 +73,15 @@
 
 #define LAPD_SET_K(n, o)  {n,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o}
 
+#define LOGLI(li, level, fmt, args ...) \
+	LOGP(DLLAPD, level, "%s: " fmt, (li)->name, ## args)
+
+#define LOGTEI(teip, level, fmt, args ...) \
+	LOGP(DLLAPD, level, "(%s-T%u): " fmt, (teip)->li->name, (teip)->tei, ## args)
+
+#define LOGSAP(sap, level, fmt, args ...) \
+	LOGP(DLLAPD, level, "%s: " fmt, (sap)->dl.name, ## args)
+
 const struct lapd_profile lapd_profile_isdn = {
 	.k		= LAPD_SET_K(7,7),
 	.n200		= 3,
@@ -177,7 +186,7 @@ static struct lapd_tei *teip_from_tei(struct lapd_instance *li, uint8_t tei)
 /* Change state of TEI */
 static void lapd_tei_set_state(struct lapd_tei *teip, int newstate)
 {
-	LOGP(DLLAPD, LOGL_INFO, "LAPD state change on TEI %d: %s -> %s\n",
+	LOGTEI(teip, LOGL_INFO, "LAPD state change on TEI %d: %s -> %s\n",
 		teip->tei, lapd_tei_states[teip->state],
 		lapd_tei_states[newstate]);
 	teip->state = newstate;
@@ -223,29 +232,32 @@ static struct lapd_sap *lapd_sap_alloc(struct lapd_tei *teip, uint8_t sapi)
 {
 	struct lapd_sap *sap;
 	struct lapd_datalink *dl;
-	struct lapd_instance *li;
+	struct lapd_instance *li = teip->li;
 	struct lapd_profile *profile;
+	char name[256];
 	int k;
+
+	snprintf(name, sizeof(name), "(%s-T%u-S%u)", li->name, teip->tei, sapi);
 
 	sap = talloc_zero(teip, struct lapd_sap);
 	if (!sap)
 		return NULL;
 
 	LOGP(DLLAPD, LOGL_NOTICE,
-	     "LAPD Allocating SAP for SAPI=%u / TEI=%u (dl=%p, sap=%p)\n",
-	     sapi, teip->tei, &sap->dl, sap);
+	     "%s: LAPD Allocating SAP for SAPI=%u / TEI=%u (dl=%p, sap=%p)\n",
+	     name, sapi, teip->tei, &sap->dl, sap);
 
 	sap->sapi = sapi;
 	sap->tei = teip;
 	dl = &sap->dl;
-	li = teip->li;
 	profile = &li->profile;
 
 	k = profile->k[sapi & 0x3f];
-	LOGP(DLLAPD, LOGL_NOTICE, "k=%d N200=%d N201=%d T200=%d.%d T203=%d.%d"
-		"\n", k, profile->n200, profile->n201, profile->t200_sec,
+	LOGP(DLLAPD, LOGL_NOTICE, "%s: k=%d N200=%d N201=%d T200=%d.%d T203=%d.%d\n",
+		name, k, profile->n200, profile->n201, profile->t200_sec,
 		profile->t200_usec, profile->t203_sec, profile->t203_usec);
 	lapd_dl_init(dl, k, 128, profile->n201);
+	lapd_dl_set_name(dl, name);
 	dl->use_sabme = 1; /* use SABME instead of SABM (GSM) */
 	dl->send_ph_data_req = send_ph_data_req;
 	dl->send_dlsap = send_dlsap;
@@ -269,7 +281,7 @@ static struct lapd_sap *lapd_sap_alloc(struct lapd_tei *teip, uint8_t sapi)
 /* Free SAP instance, including the datalink */
 static void lapd_sap_free(struct lapd_sap *sap)
 {
-	LOGP(DLLAPD, LOGL_NOTICE,
+	LOGSAP(sap, LOGL_NOTICE,
 	     "LAPD Freeing SAP for SAPI=%u / TEI=%u (dl=%p, sap=%p)\n",
 	     sap->sapi, sap->tei->tei, &sap->dl, sap);
 
@@ -306,7 +318,7 @@ static int lapd_tei_receive(struct lapd_instance *li, uint8_t *data, int len)
 	struct msgb *msg;
 
 	if (len < 5) {
-		LOGP(DLLAPD, LOGL_ERROR, "LAPD TEIMGR frame receive len %d < 5"
+		LOGLI(li, LOGL_ERROR, "LAPD TEIMGR frame receive len %d < 5"
 			", ignoring\n", len);
 		return -EINVAL;
 	};
@@ -327,7 +339,7 @@ static int lapd_tei_receive(struct lapd_instance *li, uint8_t *data, int len)
 
 		teip = teip_from_tei(li, action);
 		if (!teip) {
-			LOGP(DLLAPD, LOGL_INFO, "TEI MGR: New TEI %u\n",
+			LOGLI(li, LOGL_INFO, "TEI MGR: New TEI %u\n",
 				action);
 			teip = lapd_tei_alloc(li, action);
 			if (!teip)
@@ -344,16 +356,14 @@ static int lapd_tei_receive(struct lapd_instance *li, uint8_t *data, int len)
 		/* write to PCAP file, if enabled. */
 		osmo_pcap_lapd_write(li->pcap_fd, OSMO_LAPD_PCAP_OUTPUT, msg);
 
-		LOGP(DLLAPD, LOGL_DEBUG, "TX: %s\n",
-			osmo_hexdump(msg->data, msg->len));
+		LOGTEI(teip, LOGL_DEBUG, "TX: %s\n", osmo_hexdump(msg->data, msg->len));
 		li->transmit_cb(msg, li->transmit_cbdata);
 
 		if (teip->state == LAPD_TEI_NONE)
 			lapd_tei_set_state(teip, LAPD_TEI_ASSIGNED);
 		break;
 	default:
-		LOGP(DLLAPD, LOGL_NOTICE, "LAPD TEIMGR: unknown mt %x "
-			"action %x\n", mt, action);
+		LOGLI(li, LOGL_NOTICE, "LAPD TEIMGR: unknown mt %x action %x\n", mt, action);
 		break;
 	};
 
@@ -372,10 +382,9 @@ int lapd_receive(struct lapd_instance *li, struct msgb *msg, int *error)
 	/* write to PCAP file, if enabled. */
 	osmo_pcap_lapd_write(li->pcap_fd, OSMO_LAPD_PCAP_INPUT, msg);
 
-	LOGP(DLLAPD, LOGL_DEBUG, "RX: %s\n", osmo_hexdump(msg->data, msg->len));
+	LOGLI(li, LOGL_DEBUG, "RX: %s\n", osmo_hexdump(msg->data, msg->len));
 	if (msg->len < 2) {
-		LOGP(DLLAPD, LOGL_ERROR, "LAPD frame receive len %d < 2, "
-			"ignoring\n", msg->len);
+		LOGLI(li, LOGL_ERROR, "LAPD frame receive len %d < 2, ignoring\n", msg->len);
 		*error = LAPD_ERR_BAD_LEN;
 		return -EINVAL;
 	};
@@ -390,7 +399,7 @@ int lapd_receive(struct lapd_instance *li, struct msgb *msg, int *error)
 	lctx.lpd = 0;
 	if (!LAPD_ADDR_EA(msg->l2h[i])) {
 		if (msg->len < 3) {
-			LOGP(DLLAPD, LOGL_ERROR, "LAPD frame with TEI receive "
+			LOGLI(li, LOGL_ERROR, "LAPD frame with TEI receive "
 				"len %d < 3, ignoring\n", msg->len);
 			*error = LAPD_ERR_BAD_LEN;
 			return -EINVAL;
@@ -405,13 +414,13 @@ int lapd_receive(struct lapd_instance *li, struct msgb *msg, int *error)
 		lctx.n_send = LAPD_CTRL_I_Ns(msg->l2h[i]);
 		i++;
 		if (msg->len < 3 && i == 2) {
-			LOGP(DLLAPD, LOGL_ERROR, "LAPD I frame without TEI "
+			LOGLI(li, LOGL_ERROR, "LAPD I frame without TEI "
 				"receive len %d < 3, ignoring\n", msg->len);
 			*error = LAPD_ERR_BAD_LEN;
 			return -EINVAL;
 		};
 		if (msg->len < 4 && i == 3) {
-			LOGP(DLLAPD, LOGL_ERROR, "LAPD I frame with TEI "
+			LOGLI(li, LOGL_ERROR, "LAPD I frame with TEI "
 				"receive len %d < 4, ignoring\n", msg->len);
 			*error = LAPD_ERR_BAD_LEN;
 			return -EINVAL;
@@ -423,13 +432,13 @@ int lapd_receive(struct lapd_instance *li, struct msgb *msg, int *error)
 		lctx.s_u = LAPD_CTRL_S_BITS(msg->l2h[i]);
 		i++;
 		if (msg->len < 3 && i == 2) {
-			LOGP(DLLAPD, LOGL_ERROR, "LAPD S frame without TEI "
+			LOGLI(li, LOGL_ERROR, "LAPD S frame without TEI "
 				"receive len %d < 3, ignoring\n", msg->len);
 			*error = LAPD_ERR_BAD_LEN;
 			return -EINVAL;
 		};
 		if (msg->len < 4 && i == 3) {
-			LOGP(DLLAPD, LOGL_ERROR, "LAPD S frame with TEI "
+			LOGLI(li, LOGL_ERROR, "LAPD S frame with TEI "
 				"receive len %d < 4, ignoring\n", msg->len);
 			*error = LAPD_ERR_BAD_LEN;
 			return -EINVAL;
@@ -458,14 +467,14 @@ int lapd_receive(struct lapd_instance *li, struct msgb *msg, int *error)
 	/* resolve TEI and SAPI */
 	teip = teip_from_tei(li, lctx.tei);
 	if (!teip) {
-		LOGP(DLLAPD, LOGL_NOTICE, "LAPD Unknown TEI %u\n", lctx.tei);
+		LOGLI(li, LOGL_NOTICE, "LAPD Unknown TEI %u\n", lctx.tei);
 		*error = LAPD_ERR_UNKNOWN_TEI;
 		msgb_free(msg);
 		return -EINVAL;
 	}
 	sap = lapd_sap_find(teip, lctx.sapi);
 	if (!sap) {
-		LOGP(DLLAPD, LOGL_INFO, "LAPD No SAP for TEI=%u / SAPI=%u, "
+		LOGTEI(teip, LOGL_INFO, "LAPD No SAP for TEI=%u / SAPI=%u, "
 			"allocating\n", lctx.tei, lctx.sapi);
 		sap = lapd_sap_alloc(teip, lctx.sapi);
 		if (!sap) {
@@ -478,7 +487,7 @@ int lapd_receive(struct lapd_instance *li, struct msgb *msg, int *error)
 	lctx.n201 = lctx.dl->maxf;
 
 	if (msg->len > lctx.n201) {
-		LOGP(DLLAPD, LOGL_ERROR, "message len %d > N201(%d) "
+		LOGSAP(sap, LOGL_ERROR, "message len %d > N201(%d) "
 			"(discarding)\n", msg->len, lctx.n201);
 		msgb_free(msg);
 		*error = LAPD_ERR_BAD_LEN;
@@ -509,8 +518,7 @@ int lapd_sap_start(struct lapd_instance *li, uint8_t tei, uint8_t sapi)
 	if (!sap)
 		return -ENOMEM;
 
-	LOGP(DLLAPD, LOGL_NOTICE, "LAPD DL-ESTABLISH request TEI=%d SAPI=%d\n",
-		tei, sapi);
+	LOGSAP(sap, LOGL_NOTICE, "LAPD DL-ESTABLISH request TEI=%d SAPI=%d\n", tei, sapi);
 
 	/* prepare prim */
 	msg = msgb_alloc_headroom(56, 56, "DL EST");
@@ -537,8 +545,7 @@ int lapd_sap_stop(struct lapd_instance *li, uint8_t tei, uint8_t sapi)
 	if (!sap)
 		return -ENODEV;
 
-	LOGP(DLLAPD, LOGL_NOTICE, "LAPD DL-RELEASE request TEI=%d SAPI=%d\n",
-		tei, sapi);
+	LOGSAP(sap, LOGL_NOTICE, "LAPD DL-RELEASE request TEI=%d SAPI=%d\n", tei, sapi);
 
 	/* prepare prim */
 	msg = msgb_alloc_headroom(56, 56, "DL REL");
@@ -558,16 +565,14 @@ void lapd_transmit(struct lapd_instance *li, uint8_t tei, uint8_t sapi,
 	struct osmo_dlsap_prim dp;
 
 	if (!teip) {
-		LOGP(DLLAPD, LOGL_ERROR, "LAPD Cannot transmit on "
-		     "non-existing TEI %u\n", tei);
+		LOGLI(li, LOGL_ERROR, "LAPD Cannot transmit on non-existing TEI %u\n", tei);
 		msgb_free(msg);
 		return;
 	}
 
 	sap = lapd_sap_find(teip, sapi);
 	if (!sap) {
-		LOGP(DLLAPD, LOGL_INFO, "LAPD Tx on unknown SAPI=%u "
-		     "in TEI=%u\n", sapi, tei);
+		LOGTEI(teip, LOGL_INFO, "LAPD Tx on unknown SAPI=%u in TEI=%u\n", sapi, tei);
 		msgb_free(msg);
 		return;
 	}
@@ -625,7 +630,7 @@ static int send_ph_data_req(struct lapd_msg_ctx *lctx, struct msgb *msg)
 	osmo_pcap_lapd_write(li->pcap_fd, OSMO_LAPD_PCAP_OUTPUT, msg);
 
 	/* forward frame to L1 */
-	LOGP(DLLAPD, LOGL_DEBUG, "TX: %s\n", osmo_hexdump(msg->data, msg->len));
+	LOGDL(dl, LOGL_DEBUG, "TX: %s\n", osmo_hexdump(msg->data, msg->len));
 	li->transmit_cb(msg, li->transmit_cbdata);
 
 	return 0;
@@ -648,11 +653,11 @@ static int send_dlsap(struct osmo_dlsap_prim *dp, struct lapd_msg_ctx *lctx)
 
 	switch (dp->oph.primitive) {
 	case PRIM_DL_EST:
-		LOGP(DLLAPD, LOGL_NOTICE, "LAPD DL-ESTABLISH %s TEI=%d "
+		LOGDL(dl, LOGL_NOTICE, "LAPD DL-ESTABLISH %s TEI=%d "
 			"SAPI=%d\n", op, lctx->tei, lctx->sapi);
 		break;
 	case PRIM_DL_REL:
-		LOGP(DLLAPD, LOGL_NOTICE, "LAPD DL-RELEASE %s TEI=%d "
+		LOGDL(dl, LOGL_NOTICE, "LAPD DL-RELEASE %s TEI=%d "
 			"SAPI=%d\n", op, lctx->tei, lctx->sapi);
 		lapd_sap_free(sap);
 		/* note: sap and dl is now gone, don't use it anymore */
@@ -667,11 +672,11 @@ static int send_dlsap(struct osmo_dlsap_prim *dp, struct lapd_msg_ctx *lctx)
 }
 
 /* Allocate a new LAPD instance */
-struct lapd_instance *lapd_instance_alloc(int network_side,
+struct lapd_instance *lapd_instance_alloc2(int network_side,
 	void (*tx_cb)(struct msgb *msg, void *cbdata), void *tx_cbdata,
-	void (*rx_cb)(struct osmo_dlsap_prim *odp, uint8_t tei, uint8_t sapi, 
+	void (*rx_cb)(struct osmo_dlsap_prim *odp, uint8_t tei, uint8_t sapi,
 			void *rx_cbdata), void *rx_cbdata,
-	const struct lapd_profile *profile)
+	const struct lapd_profile *profile, const char *name)
 {
 	struct lapd_instance *li;
 
@@ -685,12 +690,23 @@ struct lapd_instance *lapd_instance_alloc(int network_side,
 	li->receive_cb = rx_cb;
 	li->receive_cbdata = rx_cbdata;
 	li->pcap_fd = -1;
+	li->name = talloc_strdup(li, name);
 	memcpy(&li->profile, profile, sizeof(li->profile));
 
 	INIT_LLIST_HEAD(&li->tei_list);
 
 	return li;
 }
+
+struct lapd_instance *lapd_instance_alloc(int network_side,
+	void (*tx_cb)(struct msgb *msg, void *cbdata), void *tx_cbdata,
+	void (*rx_cb)(struct osmo_dlsap_prim *odp, uint8_t tei, uint8_t sapi,
+			void *rx_cbdata), void *rx_cbdata,
+	const struct lapd_profile *profile)
+{
+	return lapd_instance_alloc2(network_side, tx_cbdata, tx_cb, rx_cb, rx_cbdata, profile, NULL);
+}
+
 
 /* Change lapd-profile on the fly (use with caution!) */
 void lapd_instance_set_profile(struct lapd_instance *li,

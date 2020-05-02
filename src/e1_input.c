@@ -312,6 +312,14 @@ int e1inp_ts_config_trau(struct e1inp_ts *ts, struct e1inp_line *line,
 	return 0;
 }
 
+void e1inp_ts_name(char *out, size_t out_len, const struct e1inp_ts *ts)
+{
+	if (ts->line->name)
+		snprintf(out, out_len, "%s:%u", ts->line->name, ts->num);
+	else
+		snprintf(out, out_len, "%u:%u", ts->line->num, ts->num);
+}
+
 int e1inp_ts_config_sign(struct e1inp_ts *ts, struct e1inp_line *line)
 {
 	if (ts->type == E1INP_TS_TYPE_SIGN && ts->line && line)

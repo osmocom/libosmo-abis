@@ -287,10 +287,12 @@ static int unixsocket_line_update(struct e1inp_line *line)
 	/* Set line parameter */
 	for (i = 0; i < ARRAY_SIZE(line->ts); i++) {
 		struct e1inp_ts *e1i_ts = &line->ts[i];
+		char name[32];
 		if (!e1i_ts->lapd) {
-			e1i_ts->lapd = lapd_instance_alloc(1,
+			e1inp_ts_name(name, sizeof(name), e1i_ts);
+			e1i_ts->lapd = lapd_instance_alloc2(1,
 				unixsocket_write_msg_lapd_cb, &config->fd,
-				e1inp_dlsap_up, e1i_ts, &lapd_profile_abis);
+				e1inp_dlsap_up, e1i_ts, &lapd_profile_abis, name);
 		}
 	}
 
