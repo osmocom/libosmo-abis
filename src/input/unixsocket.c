@@ -80,6 +80,7 @@ static int unixsocket_read_cb(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
 	struct msgb *msg = msgb_alloc(UNIXSOCKET_ALLOC_SIZE, "UNIXSOCKET TS");
+	uint8_t ts_nr;
 	uint8_t version;
 	uint8_t controldata;
 	int ret;
@@ -117,10 +118,18 @@ static int unixsocket_read_cb(struct osmo_fd *bfd)
 
 	switch (controldata) {
 	case UNIXSOCKET_PROTO_DATA:
+		/* FIXME: don't blindly assume TS0 is the signaling slot */
 		return e1inp_rx_ts_lapd(&line->ts[0], msg);
 	case UNIXSOCKET_PROTO_CONTROL:
 		LOGPIL(line, DLMI, LOGL_ERROR, "received (invalid) control message.");
 		ret = -1;
+		break;
+	case UNIXSOCKET_PROTO_TRAFFIC:
+		ts_nr = msgb_pull_u8(msg);
+		if (ts_nr >= line->num_ts) {
+			ret = -1;
+		} else
+			return e1inp_rx_ts(&line->ts[ts_nr], msg, 0, 0);
 		break;
 	default:
 		LOGPIL(line, DLMI, LOGL_ERROR, "received invalid message.");
@@ -143,28 +152,51 @@ static void timeout_ts1_write(void *data)
 static int unixsocket_write_cb(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
-	struct e1inp_ts *e1i_ts = &line->ts[0];
-	struct msgb *msg;
-	struct e1inp_sign_link *sign_link;
+	int i;
 
 	bfd->when &= ~BSC_FD_WRITE;
 
-	/* get the next msg for this timeslot */
-	msg = e1inp_tx_ts(e1i_ts, &sign_link);
-	if (!msg) {
-		/* no message after tx delay timer */
-		LOGPITS(e1i_ts, DLINP, LOGL_INFO, "no message available (line=%p)\n", line);
-		return 0;
+	for (i = 0; i < line->num_ts; i++) {
+		struct e1inp_ts *e1i_ts = &line->ts[i];
+		struct e1inp_sign_link *sign_link;
+		struct msgb *msg;
+		int rc;
+
+		/* get the next msg for this timeslot */
+		msg = e1inp_tx_ts(e1i_ts, &sign_link);
+		if (!msg) {
+			/* no message after tx delay timer */
+			LOGPITS(e1i_ts, DLINP, LOGL_INFO, "no message available (line=%p)\n", line);
+			continue;
+		}
+
+		LOGPITS(e1i_ts, DLINP, LOGL_DEBUG, "sending: %s (line=%p)\n", msgb_hexdump(msg), line);
+		switch (e1i_ts->type) {
+		case E1INP_TS_TYPE_SIGN:
+			lapd_transmit(e1i_ts->lapd, sign_link->tei, sign_link->sapi, msg);
+			/* set tx delay timer for next event */
+			osmo_timer_setup(&e1i_ts->sign.tx_timer, timeout_ts1_write, e1i_ts);
+			osmo_timer_schedule(&e1i_ts->sign.tx_timer, 0, e1i_ts->sign.delay);
+			break;
+		case E1INP_TS_TYPE_RAW:
+			msgb_push_u8(msg, i); /* timeslot number */
+			msgb_push_u8(msg, UNIXSOCKET_PROTO_TRAFFIC);
+			msgb_push_u8(msg, UNIXSOCKET_PROTO_VERSION);
+			rc = write(bfd->fd, msg->data, msg->len);
+			if (rc < msg->len) {
+				LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "write returne d%d instead of %d\n",
+					rc, msg->len);
+				msgb_free(msg);
+				return 0;
+			}
+			msgb_free(msg);
+			break;
+		default:
+			LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "unsupported timeslot type %s\n",
+				e1inp_tstype_name(e1i_ts->type));
+			break;
+		}
 	}
-
-	/* set tx delay timer for next event */
-	osmo_timer_setup(&e1i_ts->sign.tx_timer, timeout_ts1_write, e1i_ts);
-
-	osmo_timer_schedule(&e1i_ts->sign.tx_timer, 0, e1i_ts->sign.delay);
-
-	LOGPITS(e1i_ts, DLINP, LOGL_DEBUG, "sending: %s (line=%p)\n", msgb_hexdump(msg), line);
-	lapd_transmit(e1i_ts->lapd, sign_link->tei,
-			sign_link->sapi, msg);
 
 	return 0;
 }

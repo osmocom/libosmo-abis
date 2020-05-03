@@ -11,6 +11,7 @@
  *
  * data:    | 0x1 | 0x0 | lapd ..|
  * control: | 0x1 | 0x1 | control payload |
+ * traffic: | 0x1 | 0x2 | timeslot | rae E1 bitstream data |
  *
  * Atm there is only one control packet:
  *  - set_altc (superchannel or timeslot)
@@ -26,6 +27,7 @@
 enum {
 	UNIXSOCKET_PROTO_DATA = 0x0,
 	UNIXSOCKET_PROTO_CONTROL = 0x1,
+	UNIXSOCKET_PROTO_TRAFFIC = 0x2,
 };
 
 #endif /* UNIXSOCKET_PROTO_H */
