@@ -21,6 +21,7 @@
  */
 
 #include <stdint.h>
+#include <osmocom/core/bits.h>
 
 /*! \defgroup trau_frame TRAU frame handling
  *  @{
@@ -43,11 +44,11 @@
 
 /*! \brief a decoded TRAU frame, extracted C/D/T/S/M bits */
 struct decoded_trau_frame {
-	uint8_t c_bits[MAX_C_BITS];
-	uint8_t d_bits[MAX_D_BITS];
-	uint8_t t_bits[MAX_T_BITS];
-	uint8_t s_bits[MAX_S_BITS];
-	uint8_t m_bits[MAX_M_BITS];
+	ubit_t c_bits[MAX_C_BITS];
+	ubit_t d_bits[MAX_D_BITS];
+	ubit_t t_bits[MAX_T_BITS];
+	ubit_t s_bits[MAX_S_BITS];
+	ubit_t m_bits[MAX_M_BITS];
 };
 
 #define TRAU_FT_FR_UP		0x02	/* 0 0 0 1 0 - 3.5.1.1.1 */
@@ -64,11 +65,11 @@ struct decoded_trau_frame {
 #define TRAU_FT_IDLE_DOWN	0x0e	/* 0 1 1 1 0 - 3.5.5 */
 
 
-int decode_trau_frame(struct decoded_trau_frame *fr, const uint8_t *trau_bits);
-int encode_trau_frame(uint8_t *trau_bits, const struct decoded_trau_frame *fr);
+int decode_trau_frame(struct decoded_trau_frame *fr, const ubit_t *trau_bits);
+int encode_trau_frame(ubit_t *trau_bits, const struct decoded_trau_frame *fr);
 int trau_frame_up2down(struct decoded_trau_frame *fr);
 
-uint8_t *trau_idle_frame(void);
+ubit_t *trau_idle_frame(void);
 
 /* }@ */
 

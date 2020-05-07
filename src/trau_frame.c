@@ -51,7 +51,7 @@ static uint32_t get_bits(const ubit_t *bitbuf, int offset, int num)
 }
 
 /* Decode according to 3.1.1 */
-static void decode_fr(struct decoded_trau_frame *fr, const uint8_t *trau_bits)
+static void decode_fr(struct decoded_trau_frame *fr, const ubit_t *trau_bits)
 {
 	int i;
 	int d_idx = 0;
@@ -72,7 +72,7 @@ static void decode_fr(struct decoded_trau_frame *fr, const uint8_t *trau_bits)
 }
 
 /* Decode according to 3.1.2 */
-static void decode_amr(struct decoded_trau_frame *fr, const uint8_t *trau_bits)
+static void decode_amr(struct decoded_trau_frame *fr, const ubit_t *trau_bits)
 {
 	int i;
 	int d_idx = 0;
@@ -94,7 +94,7 @@ static void decode_amr(struct decoded_trau_frame *fr, const uint8_t *trau_bits)
 	memcpy(fr->d_bits + d_idx, trau_bits + 305, 11);
 }
 
-static void decode_data(struct decoded_trau_frame *fr, const uint8_t *trau_bits)
+static void decode_data(struct decoded_trau_frame *fr, const ubit_t *trau_bits)
 {
 	/* C1 .. C15 */
 	memcpy(fr->c_bits+0, trau_bits+17, 15);
@@ -102,7 +102,7 @@ static void decode_data(struct decoded_trau_frame *fr, const uint8_t *trau_bits)
 	memcpy(fr->d_bits, trau_bits+32, 288);
 }
 
-int decode_trau_frame(struct decoded_trau_frame *fr, const uint8_t *trau_bits)
+int decode_trau_frame(struct decoded_trau_frame *fr, const ubit_t *trau_bits)
 {
 	uint8_t cbits5 = get_bits(trau_bits, 17, 5);
 
@@ -139,9 +139,9 @@ int decode_trau_frame(struct decoded_trau_frame *fr, const uint8_t *trau_bits)
 	return 0;
 }
 
-const uint8_t ft_fr_down_bits[] = { 1, 1, 1, 0, 0 };
-const uint8_t ft_idle_down_bits[] = { 0, 1, 1, 1, 0 };
-const uint8_t ft_data_down_bits[] = { 1, 0, 1, 1, 0 };
+const ubit_t ft_fr_down_bits[] = { 1, 1, 1, 0, 0 };
+const ubit_t ft_idle_down_bits[] = { 0, 1, 1, 1, 0 };
+const ubit_t ft_data_down_bits[] = { 1, 0, 1, 1, 0 };
 
 /*! \brief modify an uplink TRAU frame so we can send it downlink
  *  \param[in,out] fr the uplink TRAU frame that is to be converted
@@ -209,7 +209,7 @@ int trau_frame_up2down(struct decoded_trau_frame *fr)
 
 }
 
-static void encode_fr(uint8_t *trau_bits, const struct decoded_trau_frame *fr)
+static void encode_fr(ubit_t *trau_bits, const struct decoded_trau_frame *fr)
 {
 	int i;
 	int d_idx = 0;
@@ -235,7 +235,7 @@ static void encode_fr(uint8_t *trau_bits, const struct decoded_trau_frame *fr)
 	memcpy(trau_bits+316, fr->t_bits+0, 4);
 }
 
-static void encode_data(uint8_t *trau_bits, const struct decoded_trau_frame *fr)
+static void encode_data(ubit_t *trau_bits, const struct decoded_trau_frame *fr)
 {
 	trau_bits[16] = 1;
 	/* C1 .. C15 */
@@ -249,7 +249,7 @@ static void encode_data(uint8_t *trau_bits, const struct decoded_trau_frame *fr)
  *  \param[in] fr decoded trau frame structure
  *  \returns 0 in case of success, < 0 in case of error
  */
-int encode_trau_frame(uint8_t *trau_bits, const struct decoded_trau_frame *fr)
+int encode_trau_frame(ubit_t *trau_bits, const struct decoded_trau_frame *fr)
 {
 	uint8_t cbits5 = get_bits(fr->c_bits, 0, 5);
 
@@ -291,12 +291,12 @@ static struct decoded_trau_frame fr_idle_frame = {
 	.c_bits = { 0, 1, 1, 1, 0 },	/* IDLE DOWNLINK 3.5.5 */
 	.t_bits = { 1, 1, 1, 1 },
 };
-static uint8_t encoded_idle_frame[TRAU_FRAME_BITS];
+static ubit_t encoded_idle_frame[TRAU_FRAME_BITS];
 static int dbits_initted = 0;
 
 /*! \brief return pointer to global buffer containing a TRAU idle frame
  */
-uint8_t *trau_idle_frame(void)
+ubit_t *trau_idle_frame(void)
 {
 	/* only initialize during the first call */
 	if (!dbits_initted) {
