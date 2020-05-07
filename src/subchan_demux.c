@@ -40,7 +40,7 @@
 
 void *tall_tqe_ctx;
 
-static inline void append_bit(struct demux_subch *sch, uint8_t bit)
+static inline void append_bit(struct demux_subch *sch, ubit_t bit)
 {
 	sch->out_bitbuf[sch->out_idx++] = bit;
 }

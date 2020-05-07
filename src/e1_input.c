@@ -297,7 +297,7 @@ int abis_rsl_sendmsg(struct msgb *msg)
 /* Timeslot */
 int e1inp_ts_config_trau(struct e1inp_ts *ts, struct e1inp_line *line,
 			 int (*trau_rcv_cb)(struct subch_demux *dmx, int ch,
-					uint8_t *data, int len, void *_priv))
+					const ubit_t *data, int len, void *_priv))
 {
 	if (ts->type == E1INP_TS_TYPE_TRAU && ts->line && line)
 		return 0;

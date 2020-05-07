@@ -273,7 +273,7 @@ int e1inp_ts_config_sign(struct e1inp_ts *ts, struct e1inp_line *line);
 /* configure and initialize one timeslot dedicated to TRAU frames. */
 int e1inp_ts_config_trau(struct e1inp_ts *ts, struct e1inp_line *line,
                          int (*trau_rcv_cb)(struct subch_demux *dmx, int ch,
-					uint8_t *data, int len, void *_priv));
+					    const ubit_t *data, int len, void *_priv));
 
 /* configure and initialize one timeslot dedicated to RAW frames */
 int e1inp_ts_config_raw(struct e1inp_ts *ts, struct e1inp_line *line,

@@ -37,7 +37,7 @@
  *  \file trau_frame.c
  */
 
-static uint32_t get_bits(const uint8_t *bitbuf, int offset, int num)
+static uint32_t get_bits(const ubit_t *bitbuf, int offset, int num)
 {
 	int i;
 	uint32_t ret = 0;

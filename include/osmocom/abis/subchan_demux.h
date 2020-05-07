@@ -22,6 +22,7 @@
 
 #include <stdint.h>
 #include <osmocom/core/linuxlist.h>
+#include <osmocom/core/bits.h>
 
 /*! \defgroup subchan_demux
  *  \brief E1 sub-channel multiplexer/demultiplexer
@@ -44,7 +45,7 @@
 /*! \brief one subchannel inside the demultplexer */
 struct demux_subch {
 	/*! \brief bit-buffer for output bits */
-	uint8_t out_bitbuf[TRAU_FRAME_BITS];
+	ubit_t out_bitbuf[TRAU_FRAME_BITS];
 	/*! \brief next bit to be written in out_bitbuf */
 	uint16_t out_idx;
 	/*! \brief number of consecutive zeros that we have received (for sync) */
@@ -61,7 +62,7 @@ struct subch_demux {
 	struct demux_subch subch[NR_SUBCH];
 	/*! \brief callback to be called once we have received a
 	 *  complete frame on a given subchannel */
-	int (*out_cb)(struct subch_demux *dmx, int ch, uint8_t *data, int len,
+	int (*out_cb)(struct subch_demux *dmx, int ch, const ubit_t *data, int len,
 		      void *);
 	/*! \brief user-provided data, transparently passed to out_cb() */
 	void *data;
