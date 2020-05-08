@@ -142,7 +142,7 @@ static int pcap_fd = -1;
 
 int e1_set_pcap_fd(int fd)
 {
-	struct pcap_hdr header = {
+	const struct pcap_hdr header = {
 		.magic_number	= 0xa1b2c3d4,
 		.version_major	= 2,
 		.version_minor	= 4,
@@ -151,9 +151,34 @@ int e1_set_pcap_fd(int fd)
 		.snaplen	= 65535,
 		.network	= DLT_LINUX_LAPD,
 	};
+	struct e1inp_line *line;
+	int i;
 
+	/* write header */
+	if (fd >= 0) {
+		int rc = write(fd, &header, sizeof(header));
+		if (rc < 0)
+			return rc;
+	}
+
+	/* update fd in all lines in our global list of e1 lines */
+	llist_for_each_entry(line, &e1inp_line_list, list) {
+		/* Set the PCAP file descriptor for all timeslots that have
+		 * software LAPD instances, to ensure the osmo_lapd_pcap code is
+		 * used to write PCAP files (if requested) */
+		for (i = 0; i < ARRAY_SIZE(line->ts); i++) {
+			struct e1inp_ts *e1i_ts = &line->ts[i];
+			if (e1i_ts->lapd)
+				e1i_ts->lapd->pcap_fd = fd;
+		}
+	}
+
+	/* close previous and update global */
+	if (pcap_fd >= 0)
+		close(pcap_fd);
 	pcap_fd = fd;
-	return write(pcap_fd, &header, sizeof(header));
+
+	return 0;
 }
 
 /* This currently only works for the D-Channel */
