@@ -20,9 +20,12 @@
  */
 #include "internal.h"
 
+#include <fcntl.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <sys/un.h>
 
 #include <osmocom/core/linuxlist.h>
@@ -232,6 +235,32 @@ DEFUN(cfg_e1line_name, cfg_e1_line_name_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_e1_pcap, cfg_e1_pcap_cmd,
+	"pcap .FILE",
+	"Setup a pcap recording of all E1 traffic\n"
+	"Filename to save the packets to\n")
+{
+	int fd;
+
+	fd = open(argv[0], O_WRONLY | O_CREAT | O_TRUNC, 0660);
+	if (fd < 0) {
+		vty_out(vty, "Failed to setup E1 pcap recording to %s.%s", argv[0], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	e1_set_pcap_fd(fd);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_e1_no_pcap, cfg_e1_no_pcap_cmd,
+	"no pcap",
+	NO_STR "Disable pcap recording of all E1 traffic\n")
+{
+	e1_set_pcap_fd(-1);
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_e1inp, cfg_e1inp_cmd,
 	"e1_input",
 	"Configure E1/T1/J1 TDM input\n")
@@ -435,6 +464,9 @@ int e1inp_vty_init(void)
 {
 	install_element(CONFIG_NODE, &cfg_e1inp_cmd);
 	install_node(&e1inp_node, e1inp_config_write);
+
+	install_element(L_E1INP_NODE, &cfg_e1_pcap_cmd);
+	install_element(L_E1INP_NODE, &cfg_e1_no_pcap_cmd);
 
 	install_element(L_E1INP_NODE, &cfg_e1_line_driver_cmd);
 	install_element(L_E1INP_NODE, &cfg_e1_line_port_cmd);
