@@ -85,7 +85,7 @@ struct subch_txq_entry {
 	unsigned int bit_len;	/*!< \brief total number of bits in 'bits' */
 	unsigned int next_bit;	/*!< \brief next bit to be transmitted */
 
-	uint8_t bits[0];	/*!< \brief one bit per byte */
+	ubit_t bits[0];		/*!< \brief one bit per byte */
 };
 
 /*! \brief one sub-channel inside a multiplexer */
@@ -102,7 +102,7 @@ struct subch_mux {
 
 int subchan_mux_init(struct subch_mux *mx);
 int subchan_mux_out(struct subch_mux *mx, uint8_t *data, int len);
-int subchan_mux_enqueue(struct subch_mux *mx, int s_nr, const uint8_t *data,
+int subchan_mux_enqueue(struct subch_mux *mx, int s_nr, const ubit_t *data,
 			int len);
 
 /* }@ */

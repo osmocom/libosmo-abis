@@ -200,7 +200,7 @@ static int alloc_add_idle_frame(struct subch_mux *mx, int sch_nr)
 
 /* return the requested number of bits from the specified subchannel */
 static int get_subch_bits(struct subch_mux *mx, int subch,
-			  uint8_t *bits, int num_requested)
+			  ubit_t *bits, int num_requested)
 {
 	struct mux_subch *sch = &mx->subch[subch];
 	int num_bits = 0;
@@ -258,7 +258,7 @@ static uint8_t compact_bits(const uint8_t *bits)
 /* obtain a single output byte from the subchannel muxer */
 static int mux_output_byte(struct subch_mux *mx, uint8_t *byte)
 {
-	uint8_t bits[8];
+	ubit_t bits[8];
 	int rc;
 
 	/* combine two bits of every subchan */
@@ -310,11 +310,11 @@ static void tx_queue_evict(struct mux_subch *sch, int num_evict)
 /*! \brief enqueue some data into the tx_queue of a given subchannel
  *  \param[in] mx subchannel muxer instance
  *  \param[in] s_nr subchannel number
- *  \param[in] data pointer to buffer with data
- *  \param[in] len length of \a data
+ *  \param[in] data pointer to buffer with data (unpacked bits)
+ *  \param[in] len length of data (in unpacked bits)
  *  \returns 0 in case of success, <0 in case of error
  */
-int subchan_mux_enqueue(struct subch_mux *mx, int s_nr, const uint8_t *data,
+int subchan_mux_enqueue(struct subch_mux *mx, int s_nr, const ubit_t *data,
 			int len)
 {
 	struct mux_subch *sch = &mx->subch[s_nr];
