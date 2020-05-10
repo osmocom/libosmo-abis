@@ -85,6 +85,7 @@ static void decode_amr(struct decoded_trau_frame *fr, const ubit_t *trau_bits)
 	memcpy(fr->t_bits+0, trau_bits+316, 4);
 	/* D1 .. D5 */
 	memcpy(fr->d_bits, trau_bits+43, 5);
+	d_idx += 5;
 	/* D6 .. D245 */
 	for (i = 48; i < 304; i += 16) {
 		memcpy(fr->d_bits + d_idx, trau_bits+i+1, 15);
