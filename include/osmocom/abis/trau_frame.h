@@ -55,7 +55,7 @@ struct decoded_trau_frame {
 #define TRAU_FT_FR_DOWN		0x1c	/* 1 1 1 0 0 - 3.5.1.1.1 */
 #define TRAU_FT_EFR		0x1a	/* 1 1 0 1 0 - 3.5.1.1.1 */
 #define TRAU_FT_AMR		0x06	/* 0 0 1 1 0 - 3.5.1.2 */
-#define TRAU_FT_OM_UP		0x07	/* 0 0 1 0 1 - 3.5.2 */
+#define TRAU_FT_OM_UP		0x05	/* 0 0 1 0 1 - 3.5.2 */
 #define TRAU_FT_OM_DOWN		0x1b	/* 1 1 0 1 1 - 3.5.2 */
 #define TRAU_FT_DATA_UP		0x08	/* 0 1 0 0 0 - 3.5.3 */
 #define TRAU_FT_DATA_DOWN	0x16	/* 1 0 1 1 0 - 3.5.3 */
