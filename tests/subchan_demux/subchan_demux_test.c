@@ -199,7 +199,7 @@ static uint8_t test_frames[] =
 
 
 
-static int data_cb(struct subch_demux *demux, int ch, uint8_t *data, int len, void *p)
+static int data_cb(struct subch_demux *demux, int ch, const ubit_t *data, int len, void *p)
 {
 	printf("DATA_CB Channel(%d): %s\n",
 		ch, osmo_hexdump(data, len));
