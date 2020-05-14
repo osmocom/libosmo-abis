@@ -5,4 +5,5 @@ nobase_include_HEADERS = osmocom/abis/ipa.h osmocom/abis/trau_frame.h	\
  osmocom/abis/subchan_demux.h osmocom/abis/e1_input.h			\
  osmocom/abis/lapd.h osmocom/abis/lapd_pcap.h osmocom/trau/osmo_ortp.h	\
  osmocom/abis/unixsocket_proto.h \
- osmocom/trau/trau_frame.h
+ osmocom/trau/trau_frame.h \
+ osmocom/trau/trau_sync.h

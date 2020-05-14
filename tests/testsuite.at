@@ -29,3 +29,9 @@ cat $abs_srcdir/rtp_test/rtp_test.ok > expout
 AT_CHECK([$abs_top_builddir/tests/rtp_test/rtp_test], [ignore], [expout])
 AT_CLEANUP
 
+AT_SETUP([trau_sync])
+AT_KEYWORDS([trau_sync])
+cat $abs_srcdir/trau_sync/trau_sync_test.ok > expout
+cat $abs_srcdir/trau_sync/trau_sync_test.err > experr
+AT_CHECK([$abs_top_builddir/tests/trau_sync/trau_sync_test], [0], [expout], [experr])
+AT_CLEANUP
