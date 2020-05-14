@@ -44,3 +44,5 @@ tests/ipa_recv/ipa_recv_test
 
 # vi/vim files
 *.sw?
+
+contrib/libosmo-abis.spec
