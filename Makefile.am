@@ -12,6 +12,11 @@ $(top_srcdir)/.version:
 dist-hook:
 	echo $(VERSION) > $(distdir)/.tarball-version
 
-EXTRA_DIST = .version README.md
+EXTRA_DIST = \
+	     .version \
+	     README.md \
+	     contrib/libosmo-abis.spec.in \
+	     debian \
+	     $(NULL)
 
 @RELMAKE@
