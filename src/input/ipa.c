@@ -225,7 +225,7 @@ int ipa_client_conn_open(struct ipa_client_conn *link)
 	int ret;
 
 	link->state = IPA_CLIENT_LINK_STATE_CONNECTING;
-	ret = osmo_sock_init2(AF_INET, SOCK_STREAM, IPPROTO_TCP,
+	ret = osmo_sock_init2(AF_UNSPEC, SOCK_STREAM, IPPROTO_TCP,
 			     link->local_addr, link->local_port,
 			     link->addr, link->port,
 			     OSMO_SOCK_F_BIND|OSMO_SOCK_F_CONNECT|OSMO_SOCK_F_NONBLOCK);
@@ -336,7 +336,7 @@ int ipa_server_link_open(struct ipa_server_link *link)
 {
 	int ret;
 
-	ret = osmo_sock_init(AF_INET, SOCK_STREAM, IPPROTO_TCP,
+	ret = osmo_sock_init(AF_UNSPEC, SOCK_STREAM, IPPROTO_TCP,
 			     link->addr, link->port, OSMO_SOCK_F_BIND);
 	if (ret < 0)
 		return ret;
