@@ -586,6 +586,8 @@ e1inp_sign_link_create(struct e1inp_ts *ts, enum e1inp_sign_type type,
 	link->tei = tei;
 	link->sapi = sapi;
 
+	e1inp_line_get(link->ts->line);
+
 	llist_add_tail(&link->list, &ts->sign.sign_links);
 
 	return link;
@@ -854,8 +856,6 @@ int e1inp_line_update(struct e1inp_line *line)
 {
 	struct input_signal_data isd;
 	int i, rc;
-
-	e1inp_line_get(line);
 
 	if (line->driver && line->ops && line->driver->line_update) {
 		rc = line->driver->line_update(line);
