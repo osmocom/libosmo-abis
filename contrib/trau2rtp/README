@@ -1,0 +1,67 @@
+this is a small utility program illustrating the use of the new (2020)
+TRAU related blocks like I.460 mux, TRAU frame synchronizer, TRAU frame
+decoder and trau2rtp conversion.
+
+The only argument to the progrmam is the input file, which can either be
+
+* a DAHDI device like /dev/dahdi/chan/004/002 to use TS2 on span/line 4
+* a pre-recorded capture file containing raw binary 64k timeslot data
+
+The tool will automatically determine if a regular file or a DAHDI device
+was passed, and behave accordingly.
+
+
+== reading capture files
+
+There are FR and EFR exampel captures included.
+
+The input data (*.log.bz2) was generated using strace on an osmo-nitb process
+while a MO-to-MT call was running on two sub-slots of TS2.
+
+The strace log is converted to a binary stream of the raw 64bit E1 slot
+using strace-write-parse.py
+
+You can use the too like this:
+
+* start osmo-gapk as a RTP to ALSA sink like
+  osmo-gapk -I 127.0.0.1/9999 -f gsm -g rawpcm-s16le  -A default     # for FR
+  osmo-gapk -I 127.0.0.1/9999 -f rtp-efr -g rawpcm-s16le  -A default # for EFR
+
+* run trau2rtp to read the bin file and generate RTP:
+  ./trau2rtp e1_ts2_fr.bin  # for FR
+  ./trau2rtp e1_ts2_efr.bin # for EFR
+
+
+== Interfacing a DAHDI device
+
+It can be operated in two modes:
+
+a) local loop between sub-slots 1+2 (bit-offset 2 + 4), i.e. connecting the first
+   two calls on a 'typical' TRX0 where the first sub-slot (bit-offset 0) is not
+   used,
+
+   OR
+
+b) interface between 64k TRAU slot and RTP.  IP addresses + port numbers are
+   compiled-in, you need to modify them accordingly.
+
+
+In mode "a", you can use it to have voice calls for low-level debugging without a media
+gateway.
+
+In mode "b", you can e.g. play back audio from an exterenal RTP source and listen to it
+over the GSM attached mobile phone.
+
+Command line for playing back EFR via RTP:
+./osmo-gapk -f amr-efr -i ../tests/ref-files/hhgttg_part1_5.s16.amr-efr -g rtp-efr -O 192.168.11.179/8002 -t -l
+
+Command line for playing back FR via RTP:
+./osmo-gapk -f gsm -i ../tests/ref-files/hhgttg_part1_5.s16.gsm -g gsm -O 192.168.11.179/8002 -t -l
+
+The '-l' option is experimental and requires gapk patch I2d552695dfb4cc96039838e79e0f5ae25a6737c8. If you want
+to use it with EFR, you need to change pq_file.c to skip the AMR file header when rewinding:
+
+-               fseek(state->fh, 0, SEEK_SET);
++               fseek(state->fh, 6, SEEK_SET);
+
+The code has been tested against BS-11 and RBS6000/DUG20 in both modes (loop vs. RTP) and for FR and EFR.
