@@ -44,6 +44,7 @@
 #include <osmocom/core/logging.h>
 #include <osmocom/core/signal.h>
 #include <osmocom/core/endian.h>
+#include <osmocom/gsm/i460_mux.h>
 #include <osmocom/abis/e1_input.h>
 
 #define NUM_E1_TS	32
@@ -241,12 +242,13 @@ const char *e1inp_signtype_name(enum e1inp_sign_type tp)
 	return get_value_string(e1inp_sign_type_names, tp);
 }
 
-const struct value_string e1inp_ts_type_names[6] = {
+const struct value_string e1inp_ts_type_names[] = {
 	{ E1INP_TS_TYPE_NONE,	"None" },
 	{ E1INP_TS_TYPE_SIGN,	"Signalling" },
 	{ E1INP_TS_TYPE_TRAU,	"TRAU" },
 	{ E1INP_TS_TYPE_RAW,	"RAW" },
 	{ E1INP_TS_TYPE_HDLC,	"HDLC" },
+	{ E1INP_TS_TYPE_I460,	"I460" },
 	{ 0, NULL }
 };
 
@@ -310,6 +312,17 @@ int e1inp_ts_config_trau(struct e1inp_ts *ts, struct e1inp_line *line,
 	ts->trau.demux.out_cb = trau_rcv_cb;
 	ts->trau.demux.data = ts;
 	subch_demux_init(&ts->trau.demux);
+	return 0;
+}
+
+int e1inp_ts_config_i460(struct e1inp_ts *ts, struct e1inp_line *line)
+{
+	if (ts->type == E1INP_TS_TYPE_I460 && ts->line && line)
+		return 0;
+
+	ts->type = E1INP_TS_TYPE_I460;
+	ts->line = line;
+	osmo_i460_ts_init(&ts->i460.i460_ts);
 	return 0;
 }
 
@@ -679,6 +692,10 @@ int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
 	case E1INP_TS_TYPE_HDLC:
 		ts->hdlc.recv_cb(ts, msg);
 		break;
+	case E1INP_TS_TYPE_I460:
+		osmo_i460_demux_in(&ts->i460.i460_ts, msg->l2h, msgb_l2len(msg));
+		msgb_free(msg);
+		break;
 	default:
 		ret = -EINVAL;
 		LOGPITS(ts, DLMI, LOGL_ERROR, "unknown TS type %u\n", ts->type);
@@ -808,6 +825,13 @@ struct msgb *e1inp_tx_ts(struct e1inp_ts *e1i_ts,
 	case E1INP_TS_TYPE_HDLC:
 		/* Get msgb from tx_queue */
 		msg = msgb_dequeue(&e1i_ts->hdlc.tx_queue);
+		break;
+	case E1INP_TS_TYPE_I460:
+		msg = msgb_alloc(TSX_ALLOC_SIZE, "I460_TX");
+		if (!msg)
+			return NULL;
+		len = osmo_i460_mux_out(&e1i_ts->i460.i460_ts, msg->data, 160);
+		msgb_put(msg, len);
 		break;
 	default:
 		LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "unsupported E1 TS type %u\n", e1i_ts->type);

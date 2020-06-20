@@ -9,6 +9,7 @@
 #include <osmocom/core/timer.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/select.h>
+#include <osmocom/gsm/i460_mux.h>
 #include <osmocom/abis/subchan_demux.h>
 #include <osmocom/abis/lapd.h>
 
@@ -73,9 +74,10 @@ enum e1inp_ts_type {
 	E1INP_TS_TYPE_TRAU,
 	E1INP_TS_TYPE_RAW,
 	E1INP_TS_TYPE_HDLC,
+	E1INP_TS_TYPE_I460,
 };
 const char *e1inp_tstype_name(enum e1inp_ts_type tp);
-extern const struct value_string e1inp_ts_type_names[6];
+extern const struct value_string e1inp_ts_type_names[];
 
 /* A timeslot in the E1 interface */
 struct e1inp_ts {
@@ -115,6 +117,9 @@ struct e1inp_ts {
 			/* queue of pending to-be-transmitted msgbs */
 			struct llist_head tx_queue;
 		} hdlc;
+		struct {
+			struct osmo_i460_timeslot i460_ts;
+		} i460;
 	};
 	union {
 		struct {
