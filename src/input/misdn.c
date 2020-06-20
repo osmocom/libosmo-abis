@@ -213,7 +213,8 @@ static int ts_want_write(struct e1inp_ts *e1i_ts)
 	/* We never include the mISDN B-Channel FD into the
 	 * writeset, since it doesn't support poll() based
 	 * write flow control */		
-	if (e1i_ts->type == E1INP_TS_TYPE_TRAU)
+	if (e1i_ts->type == E1INP_TS_TYPE_TRAU ||
+	    e1i_ts->type == E1INP_TS_TYPE_I460)
 		return 0;
 
 	e1i_ts->driver.misdn.fd.when |= BSC_FD_WRITE;
@@ -615,6 +616,7 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 			bfd->when = BSC_FD_READ;
 			break;
 		case E1INP_TS_TYPE_TRAU:
+		case E1INP_TS_TYPE_I460:
 		case E1INP_TS_TYPE_RAW:
 			bfd->fd = socket(PF_ISDN, SOCK_DGRAM, ISDN_P_B_RAW);
 			/* We never include the mISDN B-Channel FD into the

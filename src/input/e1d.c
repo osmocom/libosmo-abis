@@ -310,7 +310,8 @@ static int
 e1d_want_write(struct e1inp_ts *e1i_ts)
 {
         /* We never include the DAHDI B-Channel FD into the writeset */
-	if (e1i_ts->type == E1INP_TS_TYPE_TRAU) {
+	if (e1i_ts->type == E1INP_TS_TYPE_TRAU ||
+	    e1i_ts->type == E1INP_TS_TYPE_I460) {
 		LOGPITS(e1i_ts, DLINP, LOGL_DEBUG, "Trying to write TRAU ts\n");
 		return 0;
 	}
@@ -433,6 +434,7 @@ e1d_line_update(struct e1inp_line *line)
 			bfd->when = BSC_FD_READ;
 			break;
 		case E1INP_TS_TYPE_TRAU:
+		case E1INP_TS_TYPE_I460:
 		case E1INP_TS_TYPE_RAW:
 			/* close/release LAPD instance, if any */
 			if (e1i_ts->lapd) {

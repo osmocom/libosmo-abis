@@ -199,7 +199,8 @@ static int ts_want_write(struct e1inp_ts *e1i_ts)
 	/* We never include the DAHDI B-Channel FD into the
 	 * writeset, since it doesn't support poll() based
 	 * write flow control */
-	if (e1i_ts->type == E1INP_TS_TYPE_TRAU) {
+	if (e1i_ts->type == E1INP_TS_TYPE_TRAU ||
+	    e1i_ts->type == E1INP_TS_TYPE_I460) {
 		LOGPITS(e1i_ts, DLINP, LOGL_DEBUG, "Trying to write TRAU ts\n");
 		return 0;
 	}
@@ -498,6 +499,7 @@ static int dahdi_fd_cb(struct osmo_fd *bfd, unsigned int what)
 		 * writeset, since it doesn't support poll() based
 		 * write flow control */
 		break;
+	case E1INP_TS_TYPE_I460:
 	case E1INP_TS_TYPE_RAW:
 		if (what & BSC_FD_EXCEPT)
 			handle_dahdi_exception(e1i_ts);
@@ -689,6 +691,7 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 				return ret;
 			break;
 		case E1INP_TS_TYPE_TRAU:
+		case E1INP_TS_TYPE_I460:
 		case E1INP_TS_TYPE_RAW:
 			/* close/release LAPD instance, if any */
 			if (e1i_ts->lapd) {
