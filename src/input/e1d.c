@@ -256,7 +256,7 @@ e1d_line_update(struct e1inp_line *line)
 
 			if (!e1i_ts->lapd) {
 				char name[32];
-				e1inp_ts_name(name, e1i_ts);
+				e1inp_ts_name(name, sizeof(name), e1i_ts);
 				e1i_ts->lapd = lapd_instance_alloc2(1,
 					e1d_write_msg, bfd, e1inp_dlsap_up,
 					e1i_ts, &lapd_profile_abis, name);
