@@ -187,6 +187,72 @@ handle_ts_trau_read(struct osmo_fd *bfd)
 	return ret;
 }
 
+/* write to a raw channel TS */
+static int handle_ts_raw_write(struct osmo_fd *bfd)
+{
+	struct e1inp_line *line = bfd->data;
+	unsigned int ts_nr = bfd->priv_nr;
+	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
+	struct msgb *msg;
+	int ret;
+
+	/* get the next msg for this timeslot */
+	msg = e1inp_tx_ts(e1i_ts, NULL);
+	if (!msg)
+		return 0;
+
+	if (msg->len != D_BCHAN_TX_GRAN) {
+		/* This might lead to a transmit underrun, as we call tx
+		 * from the rx path, as there's no select/poll on dahdi
+		 * */
+		LOGPITS(e1i_ts, DLINP, LOGL_NOTICE, "unexpected msg->len = %u, "
+		     "expected %u\n", msg->len, D_BCHAN_TX_GRAN);
+	}
+
+	LOGPITS(e1i_ts, DLMIB, LOGL_DEBUG, "RAW CHAN TX: %s\n", osmo_hexdump(msg->data, msg->len));
+
+	if (0/*invertbits*/)
+		osmo_revbytebits_buf(msg->data, msg->len);
+
+	ret = write(bfd->fd, msg->data, msg->len);
+	if (ret < msg->len)
+		LOGPITS(e1i_ts, DLINP, LOGL_DEBUG, "send returns %d instead of %d\n", ret, msg->len);
+	msgb_free(msg);
+
+	return ret;
+}
+
+static int handle_ts_raw_read(struct osmo_fd *bfd)
+{
+	struct e1inp_line *line = bfd->data;
+	unsigned int ts_nr = bfd->priv_nr;
+	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
+	struct msgb *msg = msgb_alloc(D_TSX_ALLOC_SIZE, "E1D Raw TS");
+	int ret;
+
+	if (!msg)
+		return -ENOMEM;
+
+	ret = read(bfd->fd, msg->data, D_TSX_ALLOC_SIZE);
+	if (ret < 0 || ret != D_TSX_ALLOC_SIZE) {
+		LOGPITS(e1i_ts, DLINP, LOGL_DEBUG, "read error  %d %s\n", ret, strerror(errno));
+		return ret;
+	}
+
+	if (0/*invertbits*/)
+		osmo_revbytebits_buf(msg->data, ret);
+
+	msgb_put(msg, ret);
+
+	msg->l2h = msg->data;
+	LOGPITS(e1i_ts, DLMIB, LOGL_DEBUG, "RAW CHAN RX: %s\n", osmo_hexdump(msgb_l2(msg), ret));
+	ret = e1inp_rx_ts(e1i_ts, msg, 0, 0);
+	/* physical layer indicates that data has been sent,
+	 * we thus can send some more data */
+	ret = handle_ts_raw_write(bfd);
+
+	return ret;
+}
 
 static void
 e1d_write_msg(struct msgb *msg, void *cbdata)
@@ -224,6 +290,12 @@ e1d_fd_cb(struct osmo_fd *bfd, unsigned int what)
 			ret = handle_ts_trau_read(bfd);
 		if (what & BSC_FD_WRITE)
 			ret = handle_ts_trau_write(bfd);
+		break;
+	case E1INP_TS_TYPE_RAW:
+		if (what & BSC_FD_READ)
+			ret = handle_ts_raw_read(bfd);
+		if (what & BSC_FD_WRITE)
+			ret = handle_ts_raw_write(bfd);
 		break;
 	default:
 		LOGPITS(e1i_ts, DLINP, LOGL_NOTICE, "unknown/unsupported E1 TS type %u\n", e1i_ts->type);
