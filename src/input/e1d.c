@@ -48,6 +48,8 @@
 
 struct osmo_e1dp_client *g_e1d;
 
+static int invertbits = 1;
+
 /* pre-declaration */
 extern struct e1inp_driver e1d_driver;
 static int e1d_want_write(struct e1inp_ts *e1i_ts);
@@ -118,6 +120,73 @@ handle_ts_sign_write(struct osmo_fd *bfd)
 	return 0;
 }
 
+#define D_TSX_ALLOC_SIZE (D_BCHAN_TX_GRAN)
+
+static int
+handle_ts_trau_write(struct osmo_fd *bfd)
+{
+	struct e1inp_line *line = bfd->data;
+	unsigned int ts_nr = bfd->priv_nr;
+	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
+	uint8_t tx_buf[D_BCHAN_TX_GRAN];
+	struct subch_mux *mx = &e1i_ts->trau.mux;
+	int ret;
+
+	ret = subchan_mux_out(mx, tx_buf, D_BCHAN_TX_GRAN);
+
+	if (ret != D_BCHAN_TX_GRAN) {
+		LOGPITS(e1i_ts, DLINP, LOGL_DEBUG, "Huh, got ret of %d\n", ret);
+		if (ret < 0)
+			return ret;
+	}
+
+	LOGPITS(e1i_ts, DLMIB, LOGL_DEBUG, "BCHAN TX: %s\n", osmo_hexdump(tx_buf, D_BCHAN_TX_GRAN));
+
+	if (invertbits)
+		osmo_revbytebits_buf(tx_buf, ret);
+
+	ret = write(bfd->fd, tx_buf, ret);
+	if (ret < D_BCHAN_TX_GRAN)
+		LOGPITS(e1i_ts, DLINP, LOGL_DEBUG, "send returns %d instead of %d\n",
+			ret, D_BCHAN_TX_GRAN);
+
+	return ret;
+}
+
+
+static int
+handle_ts_trau_read(struct osmo_fd *bfd)
+{
+	struct e1inp_line *line = bfd->data;
+	unsigned int ts_nr = bfd->priv_nr;
+	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
+	struct msgb *msg = msgb_alloc(D_TSX_ALLOC_SIZE, "E1D Rx TSx");
+	int ret;
+
+	if (!msg)
+		return -ENOMEM;
+
+	ret = read(bfd->fd, msg->data, D_TSX_ALLOC_SIZE);
+	if (ret < 0 || ret != D_TSX_ALLOC_SIZE) {
+		LOGPITS(e1i_ts, DLINP, LOGL_DEBUG, "read error  %d %s\n", ret, strerror(errno));
+		return ret;
+	}
+
+	if (invertbits)
+		osmo_revbytebits_buf(msg->data, ret);
+
+	msgb_put(msg, ret);
+
+	msg->l2h = msg->data;
+	LOGPITS(e1i_ts, DLMIB, LOGL_DEBUG, "BCHAN RX: %s\n", osmo_hexdump(msgb_l2(msg), ret));
+	ret = e1inp_rx_ts(e1i_ts, msg, 0, 0);
+	/* physical layer indicates that data has been sent,
+	 * we thus can send some more data */
+	ret = handle_ts_trau_write(bfd);
+
+	return ret;
+}
+
 
 static void
 e1d_write_msg(struct msgb *msg, void *cbdata)
@@ -149,6 +218,12 @@ e1d_fd_cb(struct osmo_fd *bfd, unsigned int what)
 			ret = handle_ts_sign_read(bfd);
 		if (what & BSC_FD_WRITE)
 			ret = handle_ts_sign_write(bfd);
+		break;
+	case E1INP_TS_TYPE_TRAU:
+		if (what & BSC_FD_READ)
+			ret = handle_ts_trau_read(bfd);
+		if (what & BSC_FD_WRITE)
+			ret = handle_ts_trau_write(bfd);
 		break;
 	default:
 		LOGPITS(e1i_ts, DLINP, LOGL_NOTICE, "unknown/unsupported E1 TS type %u\n", e1i_ts->type);
