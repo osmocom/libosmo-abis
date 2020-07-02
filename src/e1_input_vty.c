@@ -49,8 +49,8 @@
 #define E1_DRIVER_HELP		"mISDN supported E1 Card (kernel LAPD)\n" \
 				"mISDN supported E1 Card (userspace LAPD)\n" \
 				"DAHDI supported E1/T1/J1 Card\n" \
+				"osmo-e1d supported E1 interface\n" \
 				"IPA TCP/IP input\n" \
-				"HSL TCP/IP input\n" \
 				"Unix socket input\n"
 
 #define E1_LINE_HELP		"Configure E1/T1/J1 Line\n" "Line Number\n"
