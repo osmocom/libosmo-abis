@@ -82,7 +82,7 @@
 #define LOGSAP(sap, level, fmt, args ...) \
 	LOGP(DLLAPD, level, "%s: " fmt, (sap)->dl.name, ## args)
 
-#define DLSAP_MSGB_SIZE		56
+#define DLSAP_MSGB_SIZE		128
 #define DLSAP_MSGB_HEADROOM	56
 
 const struct lapd_profile lapd_profile_isdn = {
