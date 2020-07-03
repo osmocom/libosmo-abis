@@ -82,6 +82,9 @@
 #define LOGSAP(sap, level, fmt, args ...) \
 	LOGP(DLLAPD, level, "%s: " fmt, (sap)->dl.name, ## args)
 
+#define DLSAP_MSGB_SIZE		56
+#define DLSAP_MSGB_HEADROOM	56
+
 const struct lapd_profile lapd_profile_isdn = {
 	.k		= LAPD_SET_K(7,7),
 	.n200		= 3,
@@ -349,7 +352,7 @@ static int lapd_tei_receive(struct lapd_instance *li, uint8_t *data, int len)
 		/* Send ACCEPT */
 		memmove(resp, "\xfe\xff\x03\x0f\x00\x00\x02\x00", 8);
 		resp[7] = (action << 1) | 1;
-		msg = msgb_alloc_headroom(56, 56, "DL EST");
+		msg = msgb_alloc_headroom(DLSAP_MSGB_SIZE, DLSAP_MSGB_HEADROOM, "DL EST");
 		msg->l2h = msgb_push(msg, 8);
 		memcpy(msg->l2h, resp, 8);
 
@@ -521,7 +524,7 @@ int lapd_sap_start(struct lapd_instance *li, uint8_t tei, uint8_t sapi)
 	LOGSAP(sap, LOGL_NOTICE, "LAPD DL-ESTABLISH request TEI=%d SAPI=%d\n", tei, sapi);
 
 	/* prepare prim */
-	msg = msgb_alloc_headroom(56, 56, "DL EST");
+	msg = msgb_alloc_headroom(DLSAP_MSGB_SIZE, DLSAP_MSGB_HEADROOM, "DL EST");
 	msg->l3h = msg->data;
         osmo_prim_init(&dp.oph, 0, PRIM_DL_EST, PRIM_OP_REQUEST, msg);
 
@@ -548,7 +551,7 @@ int lapd_sap_stop(struct lapd_instance *li, uint8_t tei, uint8_t sapi)
 	LOGSAP(sap, LOGL_NOTICE, "LAPD DL-RELEASE request TEI=%d SAPI=%d\n", tei, sapi);
 
 	/* prepare prim */
-	msg = msgb_alloc_headroom(56, 56, "DL REL");
+	msg = msgb_alloc_headroom(DLSAP_MSGB_SIZE, DLSAP_MSGB_HEADROOM, "DL REL");
 	msg->l3h = msg->data;
         osmo_prim_init(&dp.oph, 0, PRIM_DL_REL, PRIM_OP_REQUEST, msg);
 
