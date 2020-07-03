@@ -224,7 +224,16 @@ static void dahdi_write_msg(struct msgb *msg, void *cbdata)
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
 	int ret;
 
-	ret = write(bfd->fd, msg->data, msg->len + 2);
+	if (msgb_tailroom(msg) >= 2) {
+		/* two bytes of space for the FCS added by DAHDI in the kernel */
+		msgb_put(msg, 2);
+		ret = write(bfd->fd, msg->data, msg->len);
+	} else {
+		/* work-around for code that sends us messages with no tailroom (OS#4644) */
+		uint8_t buf[msg->len + 2];
+		memcpy(buf, msg->data, msg->len);
+		ret = write(bfd->fd, buf, sizeof(buf));
+	}
 	msgb_free(msg);
 	if (ret == -1)
 		handle_dahdi_exception(e1i_ts);
@@ -273,7 +282,16 @@ static void handle_hdlc_write(struct osmo_fd *bfd)
 	if (!msg)
 		return;
 
-	ret = write(bfd->fd, msg->data, msg->len + 2);
+	if (msgb_tailroom(msg) >= 2) {
+		/* two bytes of space for the FCS added by DAHDI in the kernel */
+		msgb_put(msg, 2);
+		ret = write(bfd->fd, msg->data, msg->len);
+	} else {
+		/* work-around for code that sends us messages with no tailroom (OS#4644) */
+		uint8_t buf[msg->len + 2];
+		memcpy(buf, msg->data, msg->len);
+		ret = write(bfd->fd, buf, sizeof(buf));
+	}
 	msgb_free(msg);
 	if (ret == -1)
 		handle_dahdi_exception(e1i_ts);
