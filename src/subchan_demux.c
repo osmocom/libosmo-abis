@@ -92,6 +92,29 @@ int subch_demux_init(struct subch_demux *dmx)
 	return 0;
 }
 
+static void append_bit_resync_out(struct subch_demux *dmx, int c, ubit_t bit)
+{
+	struct demux_subch *sch = &dmx->subch[c];
+	append_bit(sch, bit);
+
+	if (sync_hdr_complete(sch, bit))
+		resync_to_here(sch);
+
+	/* FIXME: verify the first bit in octet 2, 4, 6, ...
+	 * according to TS 08.60 4.8.1 */
+
+	/* once we have reached TRAU_FRAME_BITS, call
+	 * the TRAU frame handler callback function */
+	if (sch->out_idx >= TRAU_FRAME_BITS) {
+		if (sch->in_sync) {
+			dmx->out_cb(dmx, c, sch->out_bitbuf,
+			    sch->out_idx, dmx->data);
+			sch->in_sync = 0;
+		}
+		sch->out_idx = 0;
+	}
+}
+
 /*! \brief Input some data from the 64k full-slot into subchannel demux
  *  \param[in] dmx subchannel demuxer
  *  \param[in] data pointer to buffer containing input data
@@ -108,7 +131,6 @@ int subch_demux_in(struct subch_demux *dmx, uint8_t *data, int len)
 		uint8_t inbyte = data[i];
 
 		for (c = 0; c < NR_SUBCH; c++) {
-			struct demux_subch *sch = &dmx->subch[c];
 			uint8_t inbits;
 			uint8_t bit;
 
@@ -123,33 +145,13 @@ int subch_demux_in(struct subch_demux *dmx, uint8_t *data, int len)
 				bit = 1;
 			else
 				bit = 0;
-			append_bit(sch, bit);
-
-			if (sync_hdr_complete(sch, bit))
-				resync_to_here(sch);
+			append_bit_resync_out(dmx, c, bit);
 
 			if (inbits & 0x02)
 				bit = 1;
 			else
 				bit = 0;
-			append_bit(sch, bit);
-
-			if (sync_hdr_complete(sch, bit))
-				resync_to_here(sch);
-
-			/* FIXME: verify the first bit in octet 2, 4, 6, ...
-			 * according to TS 08.60 4.8.1 */
-
-			/* once we have reached TRAU_FRAME_BITS, call
-			 * the TRAU frame handler callback function */
-			if (sch->out_idx >= TRAU_FRAME_BITS) {
-				if (sch->in_sync) {
-					dmx->out_cb(dmx, c, sch->out_bitbuf,
-					    sch->out_idx, dmx->data);
-					sch->in_sync = 0;
-				}
-				sch->out_idx = 0;
-			}
+			append_bit_resync_out(dmx, c, bit);
 		}
 	}
 	return i;
