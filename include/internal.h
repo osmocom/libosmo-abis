@@ -20,13 +20,7 @@ const char *e1inp_ipa_get_bind_addr(void);
 struct msgb;
 struct msgb *ipa_msg_alloc(int headroom);
 
-/*
- * helper for internal drivers, not public
- */
-void e1inp_close_socket(struct e1inp_ts *ts,
-			struct e1inp_sign_link *sign_link,
-			struct osmo_fd *bfd);
-
+int e1inp_int_snd_event(struct e1inp_ts *ts, struct e1inp_sign_link *link, int evt);
 
 
 #endif

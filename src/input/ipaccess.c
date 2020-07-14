@@ -431,7 +431,19 @@ static void ipaccess_close(struct e1inp_sign_link *sign_link)
 
 	}
 
-	return e1inp_close_socket(e1i_ts, sign_link, bfd);
+	e1inp_int_snd_event(e1i_ts, sign_link, S_L_INP_TEI_DN);
+	/* the first e1inp_sign_link_destroy call closes the socket. */
+	if (bfd->fd != -1) {
+		osmo_fd_unregister(bfd);
+		close(bfd->fd);
+		bfd->fd = -1;
+		/* If The bfd holds a reference to e1inp_line in ->data (BSC
+		 * accepted() sockets), then release it */
+		if (bfd->data == line) {
+			bfd->data = NULL;
+			e1inp_line_put2(line, "ipa_bfd");
+		}
+	}
 }
 
 static void timeout_ts1_write(void *data)
