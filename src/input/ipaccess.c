@@ -219,10 +219,10 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 
 	switch (msg_type) {
 	case IPAC_MSGT_ID_RESP:
-		DEBUGP(DLMI, "ID_RESP\n");
+		DEBUGP(DLMI, "ID_RESP ");
 		/* parse tags, search for Unit ID */
 		ret = ipa_ccm_id_resp_parse(&tlvp, (const uint8_t *)msg->l2h+1, msgb_l2len(msg)-1);
-		DEBUGP(DLMI, "\n");
+		DEBUGPC(DLMI, "\n");
 		if (ret < 0) {
 			LOGP(DLINP, LOGL_ERROR, "IPA response message "
 				"with malformed TLVs\n");
