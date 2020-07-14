@@ -330,12 +330,15 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 	}
 	return 0;
 err:
-	osmo_fd_unregister(bfd);
 	if (bfd->fd != -1) {
+		osmo_fd_unregister(bfd);
 		close(bfd->fd);
 		bfd->fd = -1;
+		/* This is a BSC accepted socket, bfd->data holds a reference to line, drop it */
+		OSMO_ASSERT(bfd->data == line);
+		bfd->data = NULL;
+		e1inp_line_put2(line, "ipa_bfd");
 	}
-	e1inp_line_put2(line, "ipa_bfd");
 	return -1;
 }
 
