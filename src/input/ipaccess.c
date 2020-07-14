@@ -288,37 +288,42 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 					"closing socket.\n");
 				goto err;
 			}
+			/* Finally, we know which OML link is associated with
+			 * this RSL link, attach it to this socket. */
+			new_line = sign_link->ts->line;
 			/* this is a bugtrap, the BSC should be using the
 			 * virtual E1 line used by OML for this RSL link. */
-			if (sign_link->ts->line == line) {
+			if (new_line == line) {
 				LOGP(DLINP, LOGL_ERROR,
 					"Fix your BSC, you should use the "
 					"E1 line used by the OML link for "
 					"your RSL link.\n");
 				return 0;
 			}
-			/* Finally, we know which OML link is associated with
-			 * this RSL link, attach it to this socket. */
-			bfd->data = new_line = sign_link->ts->line;
 			e1inp_line_get2(new_line, "ipa_bfd");
 			ts = e1inp_line_ipa_rsl_ts(new_line, unit_data.trx_id);
 			newbfd = &ts->driver.ipaccess.fd;
 			OSMO_ASSERT(newbfd != bfd);
 
-			/* get rid of our old temporary bfd */
 			/* preserve 'newbfd->when' flags potentially set by sign_link_up() */
 			osmo_fd_setup(newbfd, bfd->fd, newbfd->when | bfd->when, bfd->cb,
-				      bfd->data, E1INP_SIGN_RSL + unit_data.trx_id);
+				      new_line, E1INP_SIGN_RSL + unit_data.trx_id);
+
+
+			/* now we can release the dummy RSL line (old temporary bfd). */
 			osmo_fd_unregister(bfd);
 			bfd->fd = -1;
+			/* bfd->data holds a reference to line, drop it */
+			OSMO_ASSERT(bfd->data == line);
+			bfd->data = NULL;
+			e1inp_line_put2(line, "ipa_bfd");
+
 			ret = osmo_fd_register(newbfd);
 			if (ret < 0) {
 				LOGP(DLINP, LOGL_ERROR,
 				     "could not register FD\n");
 				goto err;
 			}
-			/* now we can release the dummy RSL line. */
-			e1inp_line_put2(line, "ipa_bfd");
 
 			e1i_ts = ipaccess_line_ts(newbfd, new_line);
 			ipaccess_bsc_keepalive_fsm_alloc(e1i_ts, newbfd, "rsl_bsc_to_bts");
