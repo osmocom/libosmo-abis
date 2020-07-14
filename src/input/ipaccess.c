@@ -661,6 +661,7 @@ err_socket:
 err_line:
 	close(bfd->fd);
 	bfd->fd = -1;
+	bfd->data = NULL;
 	e1inp_line_put2(line, "ipa_bfd");
 	return ret;
 }
@@ -711,6 +712,7 @@ err_socket:
 err_line:
 	close(bfd->fd);
 	bfd->fd = -1;
+	bfd->data = NULL;
 	e1inp_line_put2(line, "ipa_bfd");
 	return ret;
 }
