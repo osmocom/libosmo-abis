@@ -293,7 +293,7 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 			/* Finally, we know which OML link is associated with
 			 * this RSL link, attach it to this socket. */
 			bfd->data = new_line = sign_link->ts->line;
-			e1inp_line_get(new_line);
+			e1inp_line_get2(new_line, "ipa_bfd");
 			ts = e1inp_line_ipa_rsl_ts(new_line, unit_data.trx_id);
 			newbfd = &ts->driver.ipaccess.fd;
 
@@ -310,7 +310,7 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 				goto err;
 			}
 			/* now we can release the dummy RSL line. */
-			e1inp_line_put(line);
+			e1inp_line_put2(line, "ipa_bfd");
 
 			e1i_ts = ipaccess_line_ts(newbfd, new_line);
 			ipaccess_bsc_keepalive_fsm_alloc(e1i_ts, newbfd, "rsl_bsc_to_bts");
@@ -328,7 +328,7 @@ err:
 		close(bfd->fd);
 		bfd->fd = -1;
 	}
-	e1inp_line_put(line);
+	e1inp_line_put2(line, "ipa_bfd");
 	return -1;
 }
 
@@ -603,7 +603,7 @@ static int ipaccess_bsc_oml_cb(struct ipa_server_link *link, int fd)
 	struct osmo_fd *bfd;
 
 	/* clone virtual E1 line for this new OML link. */
-	line = e1inp_line_clone(tall_ipa_ctx, link->line);
+	line = e1inp_line_clone(tall_ipa_ctx, link->line, "ipa_bfd");
 	if (line == NULL) {
 		LOGP(DLINP, LOGL_ERROR, "could not clone E1 line\n");
 		return -ENOMEM;
@@ -642,7 +642,7 @@ err_socket:
 err_line:
 	close(bfd->fd);
 	bfd->fd = -1;
-	e1inp_line_put(line);
+	e1inp_line_put2(line, "ipa_bfd");
 	return ret;
 }
 
@@ -655,7 +655,7 @@ static int ipaccess_bsc_rsl_cb(struct ipa_server_link *link, int fd)
 
         /* We don't know yet which OML link to associate it with. Thus, we
          * allocate a temporary E1 line until we have received ID. */
-	line = e1inp_line_clone(tall_ipa_ctx, link->line);
+	line = e1inp_line_clone(tall_ipa_ctx, link->line, "ipa_bfd");
 	if (line == NULL) {
 		LOGP(DLINP, LOGL_ERROR, "could not clone E1 line\n");
 		return -ENOMEM;
@@ -692,7 +692,7 @@ err_socket:
 err_line:
 	close(bfd->fd);
 	bfd->fd = -1;
-	e1inp_line_put(line);
+	e1inp_line_put2(line, "ipa_bfd");
 	return ret;
 }
 

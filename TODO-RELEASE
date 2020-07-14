@@ -10,3 +10,4 @@
 libosmo-abis	API change	major: add parameter to struct e1inp_line
 libosmo-trau	API change	add new function osmo_rtp_socket_set_dscp()
 libosmo-abis	API change	major: add parameter to struct lapd_instance
+libosmo-abis	Field added	struct e1inp_line "use_count". REMINDER: Upon LIBVERSION c bump, take the chance to drop struct e1inp_line "refcnt" field.

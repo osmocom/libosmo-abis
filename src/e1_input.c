@@ -26,6 +26,7 @@
 
 #include <stdio.h>
 #include <unistd.h>
+#include <inttypes.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
@@ -366,6 +367,48 @@ int e1inp_ts_config_hdlc(struct e1inp_ts *ts, struct e1inp_line *line,
 	return 0;
 }
 
+static int e1inp_line_use_cb(struct osmo_use_count_entry *use_count_entry, int32_t old_use_count,
+			     const char *file, int file_line)
+{
+	char buf[512];
+	struct osmo_use_count *uc = use_count_entry->use_count;
+	struct e1inp_line *line = uc->talloc_object;
+
+	LOGPSRC(DLINP, LOGL_INFO, file, file_line,
+		"E1L(%u) Line (%p) reference count %s changed %" PRId32 " -> %" PRId32 " [%s]\n",
+		(line)->num, line, use_count_entry->use,
+		old_use_count, use_count_entry->count,
+		osmo_use_count_name_buf(buf, sizeof(buf), uc));
+
+	if (!use_count_entry->count)
+		osmo_use_count_free(use_count_entry);
+
+	if (osmo_use_count_total(uc) > 0)
+		return 0;
+
+	/* Remove our counter group from libosmocore's global counter
+	 * list if we are freeing the last remaining talloc context.
+	 * Otherwise we get a use-after-free when libosmocore's timer
+	 * ticks again and attempts to update these counters (OS#3011).
+	 *
+	 * Note that talloc internally counts "secondary" references
+	 * _in addition to_ the initial allocation context, so yes,
+	 * we must check for *zero* remaining secondary contexts here. */
+	if (talloc_reference_count(line->rate_ctr) == 0) {
+		rate_ctr_group_free(line->rate_ctr);
+	} else {
+		/* We are not freeing the last talloc context.
+		 * Instead of calling talloc_free(), unlink this 'line' pointer
+		 * which serves as one of several talloc contexts for the rate
+		 * counters and driver private state. */
+		talloc_unlink(line, line->rate_ctr);
+		if (line->driver_data)
+			talloc_unlink(line, line->driver_data);
+	}
+	talloc_free(line);
+	return 0;
+}
+
 struct e1inp_line *e1inp_line_find(uint8_t e1_nr)
 {
 	struct e1inp_line *e1i_line;
@@ -417,14 +460,18 @@ e1inp_line_create(uint8_t e1_nr, const char *driver_name)
 		line->ts[i].num = i+1;
 		line->ts[i].line = line;
 	}
-	line->refcnt++;
+
+	line->use_count.talloc_object = line;
+	line->use_count.use_cb = e1inp_line_use_cb;
+	e1inp_line_get2(line, "ctor");
+
 	llist_add_tail(&line->list, &e1inp_line_list);
 
 	return line;
 }
 
 struct e1inp_line *
-e1inp_line_clone(void *ctx, struct e1inp_line *line)
+e1inp_line_clone(void *ctx, struct e1inp_line *line, const char *use)
 {
 	struct e1inp_line *clone;
 
@@ -453,47 +500,23 @@ e1inp_line_clone(void *ctx, struct e1inp_line *line)
 	if (line->driver_data)
 		clone->driver_data = talloc_reference(clone, line->driver_data);
 
-	clone->refcnt = 1;
+	clone->use_count = (struct osmo_use_count) {
+		.talloc_object = clone,
+		.use_cb = e1inp_line_use_cb,
+		.use_counts = {0},
+	};
+	e1inp_line_get2(clone, use); /* Clone is used internally for bfd */
 	return clone;
 }
 
 void e1inp_line_get(struct e1inp_line *line)
 {
-	int old_refcnt = line->refcnt++;
-
-	LOGPIL(line, DLINP, LOGL_DEBUG, "Line '%s' (%p) reference count get: %d -> %d\n",
-	     line->name, line, old_refcnt, line->refcnt);
+	e1inp_line_get2(line, "unknown");
 }
 
 void e1inp_line_put(struct e1inp_line *line)
 {
-	int old_refcnt = line->refcnt--;
-
-	LOGPIL(line, DLINP, LOGL_DEBUG, "Line '%s' (%p) reference count put: %d -> %d\n",
-	     line->name, line, old_refcnt, line->refcnt);
-
-	if (line->refcnt == 0) {
-		/* Remove our counter group from libosmocore's global counter
-		 * list if we are freeing the last remaining talloc context.
-		 * Otherwise we get a use-after-free when libosmocore's timer
-		 * ticks again and attempts to update these counters (OS#3011).
-		 *
-		 * Note that talloc internally counts "secondary" references
-		 * _in addition to_ the initial allocation context, so yes,
-		 * we must check for *zero* remaining secondary contexts here. */
-		if (talloc_reference_count(line->rate_ctr) == 0) {
-			rate_ctr_group_free(line->rate_ctr);
-		} else {
-			/* We are not freeing the last talloc context.
-			 * Instead of calling talloc_free(), unlink this 'line' pointer
-			 * which serves as one of several talloc contexts for the rate
-			 * counters and driver private state. */
-			talloc_unlink(line, line->rate_ctr);
-			if (line->driver_data)
-				talloc_unlink(line, line->driver_data);
-		}
-		talloc_free(line);
-	}
+	e1inp_line_put2(line, "unknown");
 }
 
 void
@@ -586,7 +609,7 @@ e1inp_sign_link_create(struct e1inp_ts *ts, enum e1inp_sign_type type,
 	link->tei = tei;
 	link->sapi = sapi;
 
-	e1inp_line_get(link->ts->line);
+	e1inp_line_get2(link->ts->line, "e1inp_sign_link");
 
 	llist_add_tail(&link->list, &ts->sign.sign_links);
 
@@ -609,7 +632,7 @@ void e1inp_sign_link_destroy(struct e1inp_sign_link *link)
 	if (link->ts->line->driver->close)
 		link->ts->line->driver->close(link);
 
-	e1inp_line_put(link->ts->line);
+	e1inp_line_put2(link->ts->line, "e1inp_sign_link");
 	talloc_free(link);
 }
 

@@ -5,6 +5,7 @@
 #include <netinet/in.h>
 
 #include <osmocom/core/linuxlist.h>
+#include <osmocom/core/use_count.h>
 #include <osmocom/core/timer.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/select.h>
@@ -191,7 +192,7 @@ struct e1inp_line_ops {
 
 struct e1inp_line {
 	struct llist_head list;
-	int refcnt;
+	int refcnt; /* unusued, kept for ABI compat, use_count is used instead */
 
 	unsigned int num;
 	const char *name;
@@ -215,6 +216,8 @@ struct e1inp_line {
 
 	struct e1inp_driver *driver;
 	void *driver_data;
+
+	struct osmo_use_count use_count;
 };
 #define e1inp_line_ipa_oml_ts(line) (&line->ts[0])
 #define e1inp_line_ipa_rsl_ts(line, trx_id) (&line->ts[1 + (trx_id)])
@@ -245,13 +248,17 @@ struct e1inp_line *e1inp_line_find(uint8_t e1_nr);
 struct e1inp_line *e1inp_line_create(uint8_t e1_nr, const char *driver_name);
 
 /* clone one existing E1 input line */
-struct e1inp_line *e1inp_line_clone(void *ctx, struct e1inp_line *line);
+struct e1inp_line *e1inp_line_clone(void *ctx, struct e1inp_line *line, const char *use);
 
 /* increment refcount use of E1 input line */
-void e1inp_line_get(struct e1inp_line *line);
+void e1inp_line_get(struct e1inp_line *line) OSMO_DEPRECATED("Use e1inp_line_get2() instead");
 
 /* decrement refcount use of E1 input line, release if unused */
-void e1inp_line_put(struct e1inp_line *line);
+void e1inp_line_put(struct e1inp_line *line) OSMO_DEPRECATED("Use e1inp_line_put2() instead");
+
+/* Convenience macros for struct foo instances. These are strict about use count errors. */
+#define e1inp_line_get2(line, USE) OSMO_ASSERT( osmo_use_count_get_put(&(line)->use_count, USE, 1) == 0 );
+#define e1inp_line_put2(line, USE) OSMO_ASSERT( osmo_use_count_get_put(&(line)->use_count, USE, -1) == 0 );
 
 /* bind operations to one E1 input line */
 void e1inp_line_bind_ops(struct e1inp_line *line, const struct e1inp_line_ops *ops);
