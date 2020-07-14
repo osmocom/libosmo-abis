@@ -92,6 +92,13 @@ static int ipaccess_drop(struct osmo_fd *bfd, struct e1inp_line *line)
 		osmo_fd_unregister(bfd);
 		close(bfd->fd);
 		bfd->fd = -1;
+		/* This is BSC code, ipaccess_drop() is only called for
+		   accepted() sockets, hence the bfd holds a reference to
+		   e1inp_line in ->data that needs to be released */
+		OSMO_ASSERT(bfd->data == line);
+		bfd->data = NULL;
+		e1inp_line_put2(line, "ipa_bfd");
+
 		ret = -ENOENT;
 	}
 
