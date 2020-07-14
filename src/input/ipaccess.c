@@ -486,7 +486,6 @@ out:
 	msgb_free(msg);
 	return ret;
 err:
-	ipaccess_keepalive_fsm_cleanup(e1i_ts);
 	ipaccess_drop(bfd, line);
 	msgb_free(msg);
 	return ret;
