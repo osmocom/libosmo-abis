@@ -303,6 +303,7 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 			e1inp_line_get2(new_line, "ipa_bfd");
 			ts = e1inp_line_ipa_rsl_ts(new_line, unit_data.trx_id);
 			newbfd = &ts->driver.ipaccess.fd;
+			OSMO_ASSERT(newbfd != bfd);
 
 			/* get rid of our old temporary bfd */
 			/* preserve 'newbfd->when' flags potentially set by sign_link_up() */
