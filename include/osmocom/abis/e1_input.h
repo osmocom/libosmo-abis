@@ -49,7 +49,7 @@ struct e1inp_sign_link {
 
 	enum e1inp_sign_type type;
 
-	/* trx for msg->trx of received msgs */	
+	/* trx for msg->trx of received msgs */
 	struct gsm_bts_trx *trx;
 
 	/* msgb queue of to-be-transmitted msgs */
