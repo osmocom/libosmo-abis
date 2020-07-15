@@ -259,8 +259,7 @@ static struct lapd_sap *lapd_sap_alloc(struct lapd_tei *teip, uint8_t sapi)
 	LOGP(DLLAPD, LOGL_NOTICE, "%s: k=%d N200=%d N201=%d T200=%d.%d T203=%d.%d\n",
 		name, k, profile->n200, profile->n201, profile->t200_sec,
 		profile->t200_usec, profile->t203_sec, profile->t203_usec);
-	lapd_dl_init(dl, k, 128, profile->n201);
-	lapd_dl_set_name(dl, name);
+	lapd_dl_init2(dl, k, 128, profile->n201, name);
 	dl->use_sabme = 1; /* use SABME instead of SABM (GSM) */
 	dl->send_ph_data_req = send_ph_data_req;
 	dl->send_dlsap = send_dlsap;
