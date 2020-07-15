@@ -647,7 +647,7 @@ static int send_dlsap(struct osmo_dlsap_prim *dp, struct lapd_msg_ctx *lctx)
 		container_of(dl, struct lapd_sap, dl);
 	struct lapd_instance *li;
 	uint8_t tei, sapi;
-	char *op = (dp->oph.operation == PRIM_OP_INDICATION) ? "indication" 
+	char *op = (dp->oph.operation == PRIM_OP_INDICATION) ? "indication"
 							: "confirm";
 
 	li = sap->tei->li;
