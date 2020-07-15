@@ -205,7 +205,7 @@ static struct e1inp_line *line;
 
 static void sighandler(int foo)
 {
-	e1inp_line_put(line);
+	e1inp_line_put2(line, "ctor");
 	exit(EXIT_SUCCESS);
 }
 
