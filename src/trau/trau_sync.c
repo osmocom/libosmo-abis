@@ -502,6 +502,12 @@ osmo_trau_sync_alloc(void *ctx, const char *name, frame_out_cb_t frame_out_cb,
 	/* FIXME: this must be configurable */
 	tss->pattern = &sync_patterns[pat_id];
 
+	/* An unusued E1 timeslot normally would send an idle signal that
+	 * has all bits set to one. In order to prevent false-positive
+	 * synchronization on startup we set all history bits to 1, to make
+         * it look like a signal from an unused timeslot. */
+	memset(tss->history, 1, sizeof(tss->history));
+
 	return fi;
 }
 
