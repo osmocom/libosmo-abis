@@ -82,6 +82,7 @@ static int ipaccess_drop(struct osmo_fd *bfd, struct e1inp_line *line)
 {
 	int ret = 1;
 	struct e1inp_ts *e1i_ts = ipaccess_line_ts(bfd, line);
+	e1inp_line_get2(line, __func__);
 
 	ipaccess_keepalive_fsm_cleanup(e1i_ts);
 
@@ -108,6 +109,7 @@ static int ipaccess_drop(struct osmo_fd *bfd, struct e1inp_line *line)
 	/* e1inp_sign_link_destroy releases the socket descriptors for us. */
 	line->ops->sign_link_down(line);
 
+	e1inp_line_put2(line, __func__);
 	return ret;
 }
 
