@@ -74,6 +74,14 @@ const struct value_string osmo_trau_frame_type_names[] = {
  * New API; introduced in 2020 for use by osmo-mgw
  *********************************************************************************/
 
+/* Bits C21..C22 (16k) or C4..C5 (8k) */
+enum ts48060_amr_frame_classification {
+	TS48060_AMR_FC_SPEECH_GOOD	= 0x3,
+	TS48060_AMR_FC_SPEECH_DEGRADED	= 0x2,
+	TS48060_AMR_FC_SPEECH_BAD	= 0x1,
+	TS48060_AMR_FC_NO_SPEECH	= 0x0,
+};
+
 /* 16k sub-slots */
 static const ubit_t ft_fr_up_bits[5] =		{ 0, 0, 0, 1, 0 };
 static const ubit_t ft_fr_down_bits[5] =	{ 1, 1, 1, 0, 0 };
@@ -110,17 +118,123 @@ static void encode_sync16(ubit_t *trau_bits)
 #define T16_500us	8	/* 500 us = 8 bits */
 #define T16_250us	4	/* 250 us = 4 bits */
 
+#define T8_250us	2	/* 250 us = 2 bits */
+#define T8_125us	1	/* 125 us = 1 bits */
+
 /* How many 16k bits to delay / advance (TS 48.060 Section 5.5.1.1.1) */
-static int fr_efr_alignment_bitcount(uint8_t c6_11)
+static int trau_frame_16_ta_us(uint8_t c6_11)
 {
 	if (c6_11 <= 0x27)
-		return c6_11 * T16_500us;	/* delay frame N x 500us */
+		return c6_11 * 500;	/* delay frame N x 500us */
 	else if (c6_11 == 0x3e)
-		return T16_250us;		/* delay frame 250us */
+		return 250;		/* delay frame 250us */
 	else if (c6_11 == 0x3f)
-		return -T16_250us;		/* advance frame 250us */
+		return -250;	/* advance frame 250us */
 	else
 		return 0;
+}
+
+/* How many 8k bits to delay / advance (TS 48.061 Table 6.1) */
+static int trau_frame_8_ta_us(uint8_t c6_8)
+{
+	/* TA2..TA1..TA0 == C6..C7..C8 */
+	switch (c6_8) {
+	case 0x7:
+		return 0;
+	case 0x6:
+		return -250;
+	case 0x5:
+		return 250;
+	case 0x3:
+		return 500;
+	case 0x4:
+		return 1000;
+	case 0x2:
+		return 2000;
+	case 0x1:
+		return 6000;
+	case 0:
+		return 9000;
+	default:
+		return 0;
+	}
+}
+
+/*! Determine the time alignment in us requested by CCU in a UL frame */
+int osmo_trau_frame_dl_ta_us(const struct osmo_trau_frame *fr)
+{
+	uint8_t c6_11, c6_8, fc;
+
+	/* timing alignment is only communicated from CCU to TRAU in UL */
+	if (fr->dir == OSMO_TRAU_DIR_DL)
+		return 0;
+
+	switch (fr->type) {
+	case OSMO_TRAU16_FT_FR:
+	case OSMO_TRAU16_FT_EFR:
+	case OSMO_TRAU16_FT_HR:
+	case OSMO_TRAU16_FT_AMR:
+		c6_11 = (fr->c_bits[5] << 5) | (fr->c_bits[6] << 4) | (fr->c_bits[7] << 3) |
+			(fr->c_bits[8] << 2) | (fr->c_bits[9] << 1) | (fr->c_bits[10] << 0);
+		return trau_frame_16_ta_us(c6_11);
+		break;
+
+	case OSMO_TRAU8_SPEECH:
+		c6_8 = (fr->c_bits[5] << 2) | (fr->c_bits[6] << 1) | (fr->c_bits[7] << 0);
+		return trau_frame_8_ta_us(c6_8);
+		break;
+
+	case OSMO_TRAU8_AMR_LOW:
+		fc = (fr->c_bits[3] << 1) | (fr->c_bits[4] << 0);
+		if (fc == TS48060_AMR_FC_NO_SPEECH) {
+			c6_11 = (fr->c_bits[5] << 5) | (fr->c_bits[6] << 4) | (fr->c_bits[7] << 3) |
+				(fr->c_bits[8] << 2) | (fr->c_bits[9] << 1) | (fr->c_bits[10] << 0);
+			/* For AMR speech on 8 kBit/s submultiplexing the same procedures as for AMR
+			 * speech on 16 kBit/s submultiplexing shall be applied, see 3GPP TS 48.060 */
+			return trau_frame_16_ta_us(c6_11);
+		} else
+			return 0;
+		break;
+
+	default:
+		return 0;
+	}
+}
+
+static int encode16_handle_ta(ubit_t *trau_bits, const struct osmo_trau_frame *fr)
+{
+	if (fr->dir == OSMO_TRAU_DIR_DL) {
+		int num_bits = fr->dl_ta_usec * T16_250us / 250;
+		if (num_bits > 0) {
+			if (num_bits > 39 * 8)
+				num_bits = 39;
+			memset(trau_bits + 40 * 8, 1, num_bits);
+			return 40 * 8 + num_bits;
+		} else if (num_bits < 0) {
+			if (num_bits < -1 * T16_250us)
+				num_bits = -1 * T16_250us;
+			return 40 * 8 + num_bits;
+		}
+	}
+	return 40 * 8;
+}
+
+static int encode8_handle_ta(ubit_t *trau_bits, const struct osmo_trau_frame *fr)
+{
+	if (fr->dir == OSMO_TRAU_DIR_DL) {
+		int num_bits = fr->dl_ta_usec * T8_250us / 250;
+		if (num_bits > 0) {
+			if (num_bits > 20 * 8 - 2)
+				num_bits = 20 * 8 - 2;
+			memset(trau_bits + 20 * 8, 1, num_bits);
+			return 20 * 8 + num_bits;
+		} else if (num_bits < 0) {
+			if (num_bits < -1 * T8_250us)
+				num_bits = -2;
+			return 20 * 8 + num_bits;
+		}
+	}
+	return 20 * 8;
 }
 
 /* TS 08.60 Section 3.1.1 */
@@ -172,16 +286,7 @@ static int encode16_fr(ubit_t *trau_bits, const struct osmo_trau_frame *fr)
 	memcpy(trau_bits + 316, fr->t_bits+0, 4);
 
 	/* handle timing adjustment */
-	if (fr->dir == OSMO_TRAU_DIR_DL) {
-		uint8_t cbits6_11 = get_bits(fr->c_bits, 5, 6);
-		int ta_bits = fr_efr_alignment_bitcount(cbits6_11);
-		if (ta_bits > 0) {
-			memset(trau_bits+320, 1, ta_bits);
-			return 320 + ta_bits;
-		} else if (ta_bits < 0)
-			return 320 - ta_bits;
-	}
-	return 40 * 8;
+	return encode16_handle_ta(trau_bits, fr);
 }
 
 /* TS 08.60 Section 3.1.1 */
@@ -236,18 +341,9 @@ static int encode16_amr(ubit_t *trau_bits, const struct osmo_trau_frame *fr)
 	/* T1 .. T4 */
 	memcpy(trau_bits + 316, fr->t_bits + 0, 4);
 
-	/* handle timing adjustment */
-	if (fr->dir == OSMO_TRAU_DIR_DL) {
-		uint8_t cbits6_11 = get_bits(fr->c_bits, 5, 6);
-		int ta_bits = fr_efr_alignment_bitcount(cbits6_11);
-		if (ta_bits > 0) {
-			memset(trau_bits+320, 1, ta_bits);
-			return 320 + ta_bits;
-		} else if (ta_bits < 0)
-			return 320 - ta_bits;
-	}
+	return encode16_handle_ta(trau_bits, fr);
+
 	/* FIXME: handle TAE (Timing Alignment Extension) */
-	return 40 * 8;
 }
 
 /* TS 08.60 Section 3.1.2 */
@@ -378,16 +474,7 @@ static int encode16_hr(ubit_t *trau_bits, const struct osmo_trau_frame *fr)
 	memcpy(trau_bits + 39 * 8 + 4, fr->t_bits, 4);
 
 	/* handle timing adjustment */
-	if (fr->dir == OSMO_TRAU_DIR_DL) {
-		uint8_t cbits6_11 = get_bits(fr->c_bits, 5, 6);
-		int ta_bits = fr_efr_alignment_bitcount(cbits6_11);
-		if (ta_bits > 0) {
-			memset(trau_bits+320, 1, ta_bits);
-			return 320 + ta_bits;
-		} else if (ta_bits < 0)
-			return 320 - ta_bits;
-	}
-	return 40 * 8;
+	return encode16_handle_ta(trau_bits, fr);
 }
 
 /* TS 08.61 Section 5.1.1.1 */
@@ -797,12 +884,12 @@ static int encode8_hr(ubit_t *trau_bits, const struct osmo_trau_frame *fr)
 	/* C6 .. C9 */
 	memcpy(trau_bits + 19 * 8 + 2, fr->c_bits + 5, 4);
 
-	/* FIXME: handle timing adjustment */
 	/* T1 .. T2 */
 	trau_bits[19 * 8 + 6] = fr->t_bits[0];
 	trau_bits[19 * 8 + 7] = fr->t_bits[1];
 
-	return 20 * 8;
+	/* handle timing adjustment */
+	return encode8_handle_ta(trau_bits, fr);
 }
 
 /* TS 08.61 Section 5.2.1.2.1 */
@@ -876,7 +963,7 @@ static int encode8_amr_low(ubit_t *trau_bits, const struct osmo_trau_frame *fr)
 	/* T1 */
 	trau_bits[19 * 8 + 7] = fr->t_bits[0];
 
-	return 20 * 8;
+	return encode8_handle_ta(trau_bits, fr);
 }
 
 /* TS 08.61 Section 5.2.1.2.2 */
@@ -947,7 +1034,7 @@ static int encode8_amr_67(ubit_t *trau_bits, const struct osmo_trau_frame *fr)
 		d_idx += 15;
 	}
 
-	return 20 * 8;
+	return encode8_handle_ta(trau_bits, fr);
 }
 
 /* TS 08.61 Section 5.1.2.3 */
@@ -1006,7 +1093,7 @@ static int encode8_amr_74(ubit_t *trau_bits, const struct osmo_trau_frame *fr)
 	/* D24 .. D151 */
 	memcpy(trau_bits + 4 * 8, fr->d_bits + d_idx, 16 * 8);
 
-	return 20 * 8;
+	return encode8_handle_ta(trau_bits, fr);
 }
 
 /* TS 08.61 Section 5.2.2 */
@@ -1185,6 +1272,7 @@ int osmo_trau_frame_decode_16k(struct osmo_trau_frame *fr, const ubit_t *bits,
 
 	fr->type = OSMO_TRAU_FT_NONE;
 	fr->dir = dir;
+	fr->dl_ta_usec = 0;
 
 	switch (cbits5) {
 	case TRAU_FT_FR_UP:
@@ -1326,6 +1414,7 @@ int osmo_trau_frame_decode_8k(struct osmo_trau_frame *fr, const ubit_t *bits,
 {
 	fr->type = OSMO_TRAU_FT_NONE;
 	fr->dir = dir;
+	fr->dl_ta_usec = 0;
 
 	if (is_hr(bits)) {
 		/* normal sync pattern */

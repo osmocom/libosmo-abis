@@ -110,6 +110,9 @@ struct osmo_trau_frame {
 	enum osmo_trau_frame_type type;
 	enum osmo_trau_frame_direction dir;
 
+	/* timing alignment: 0 = no change; negative: less bits; positive: more bits */
+	int dl_ta_usec;
+
 	ubit_t c_bits[MAX_C_BITS];
 	ubit_t d_bits[MAX_D_BITS];
 	ubit_t t_bits[MAX_T_BITS];
@@ -142,5 +145,7 @@ int osmo_trau_frame_decode_16k(struct osmo_trau_frame *fr, const ubit_t *bits,
  *  \return number of bits encoded */
 int osmo_trau_frame_encode(ubit_t *bits, size_t n_bits, const struct osmo_trau_frame *fr);
 
+/*! Determine the time alignment in us requested by CCU in a UL frame */
+int osmo_trau_frame_dl_ta_us(const struct osmo_trau_frame *fr);
 
 /* }@ */
