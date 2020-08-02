@@ -329,33 +329,6 @@ static int handle_hdlc_read(struct osmo_fd *bfd)
 
 static int invertbits = 1;
 
-static uint8_t flip_table[256];
-
-static void init_flip_bits(void)
-{
-        int i,k;
-
-        for (i = 0 ; i < 256 ; i++) {
-                uint8_t sample = 0 ;
-                for (k = 0; k<8; k++) {
-                        if ( i & 1 << k ) sample |= 0x80 >>  k;
-                }
-                flip_table[i] = sample;
-        }
-}
-
-static uint8_t * flip_buf_bits ( uint8_t * buf , int len)
-{
-        int i;
-        uint8_t * start = buf;
-
-        for (i = 0 ; i < len; i++) {
-                buf[i] = flip_table[(uint8_t)buf[i]];
-        }
-
-        return start;
-}
-
 /* write to a B channel TS */
 static int handle_tsX_write(struct osmo_fd *bfd)
 {
@@ -376,9 +349,8 @@ static int handle_tsX_write(struct osmo_fd *bfd)
 
 	LOGPITS(e1i_ts, DLMIB, LOGL_DEBUG, "BCHAN TX: %s\n", osmo_hexdump(tx_buf, D_BCHAN_TX_GRAN));
 
-	if (invertbits) {
-		flip_buf_bits(tx_buf, ret);
-	}
+	if (invertbits)
+		osmo_revbytebits_buf(tx_buf, ret);
 
 	ret = write(bfd->fd, tx_buf, ret);
 	if (ret < D_BCHAN_TX_GRAN)
@@ -407,9 +379,8 @@ static int handle_tsX_read(struct osmo_fd *bfd)
 		return ret;
 	}
 
-	if (invertbits) {
-		flip_buf_bits(msg->data, ret);
-	}
+	if (invertbits)
+		osmo_revbytebits_buf(msg->data, ret);
 
 	msgb_put(msg, ret);
 
@@ -447,9 +418,8 @@ static int handle_ts_raw_write(struct osmo_fd *bfd)
 
 	LOGPITS(e1i_ts, DLMIB, LOGL_DEBUG, "RAW CHAN TX: %s\n", osmo_hexdump(msg->data, msg->len));
 
-	if (0/*invertbits*/) {
-		flip_buf_bits(msg->data, msg->len);
-	}
+	if (0/*invertbits*/)
+		osmo_revbytebits_buf(msg->data, msg->len);
 
 	ret = write(bfd->fd, msg->data, msg->len);
 	if (ret < msg->len)
@@ -476,9 +446,8 @@ static int handle_ts_raw_read(struct osmo_fd *bfd)
 		return ret;
 	}
 
-	if (0/*invertbits*/) {
-		flip_buf_bits(msg->data, ret);
-	}
+	if (0/*invertbits*/)
+		osmo_revbytebits_buf(msg->data, ret);
 
 	msgb_put(msg, ret);
 
@@ -763,8 +732,6 @@ static int dahdi_e1_line_update(struct e1inp_line *line)
 
 int e1inp_dahdi_init(void)
 {
-	init_flip_bits();
-
 	/* register the driver with the core */
 	return e1inp_driver_register(&dahdi_driver);
 }
