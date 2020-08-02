@@ -23,6 +23,7 @@
  */
 
 #include "config.h"
+#include "internal.h"
 
 #ifdef HAVE_E1D
 
@@ -245,7 +246,7 @@ e1d_line_update(struct e1inp_line *line)
 			}
 			if (bfd->fd <= 0) {
 				bfd->fd = osmo_e1dp_client_ts_open(g_e1d, e1d_intf, e1d_line, ts,
-								   E1DP_TSMODE_HDLCFCS, D_TSX_ALLOC_SIZE);
+								   E1DP_TSMODE_HDLCFCS, D_BCHAN_TX_GRAN);
 			}
 			if (bfd->fd < 0) {
 				LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Could not open timeslot %d\n", ts);
@@ -275,7 +276,7 @@ e1d_line_update(struct e1inp_line *line)
 			}
 			if (bfd->fd <= 0) {
 				bfd->fd = osmo_e1dp_client_ts_open(g_e1d, e1d_intf, e1d_line, ts,
-								   E1DP_TSMODE_HDLCFCS, D_TSX_ALLOC_SIZE);
+								   E1DP_TSMODE_HDLCFCS, D_BCHAN_TX_GRAN);
 			}
 			if (bfd->fd < 0) {
 				LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Could not open timeslot %d\n", ts);
@@ -298,7 +299,7 @@ e1d_line_update(struct e1inp_line *line)
 			}
 			if (bfd->fd <= 0) {
 				bfd->fd = osmo_e1dp_client_ts_open(g_e1d, e1d_intf, e1d_line, ts,
-								   E1DP_TSMODE_RAW, D_TSX_ALLOC_SIZE);
+								   E1DP_TSMODE_RAW, D_BCHAN_TX_GRAN);
 			}
 			if (bfd->fd < 0) {
 				LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Could not open timeslot %d\n", ts);

@@ -25,6 +25,7 @@
  */
 
 #include "config.h"
+#include "internal.h"
 
 #include <stdio.h>
 #include <unistd.h>
@@ -355,7 +356,6 @@ static uint8_t * flip_buf_bits ( uint8_t * buf , int len)
         return start;
 }
 
-#define D_BCHAN_TX_GRAN 160
 /* write to a B channel TS */
 static int handle_tsX_write(struct osmo_fd *bfd)
 {

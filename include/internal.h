@@ -3,6 +3,9 @@
 
 #include <stdint.h>
 
+/* Amount of data to write to a B-channel in every write() call */
+#define D_BCHAN_TX_GRAN 160
+
 struct osmo_fd;
 struct e1inp_sign_link;
 struct e1inp_ts;
