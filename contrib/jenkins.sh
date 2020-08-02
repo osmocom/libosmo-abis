@@ -23,6 +23,9 @@ osmo-build-dep.sh libosmocore "" --disable-doxygen
 
 export PKG_CONFIG_PATH="$inst/lib/pkgconfig:$PKG_CONFIG_PATH"
 export LD_LIBRARY_PATH="$inst/lib"
+export PATH="$inst/bin:$PATH"
+
+osmo-build-dep.sh osmo-e1d
 
 set +x
 echo
@@ -33,7 +36,7 @@ echo
 set -x
 
 autoreconf --install --force
-./configure --enable-sanitize --enable-werror
+./configure --enable-sanitize --enable-werror --enable-e1d
 $MAKE $PARALLEL_MAKE
 $MAKE distcheck \
   || cat-testlogs.sh
