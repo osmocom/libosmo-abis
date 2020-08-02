@@ -1223,6 +1223,43 @@ static int encode8_oam(ubit_t *trau_bits, const struct osmo_trau_frame *fr)
  *  \return 0 number of unpacked output bits generated; negative in case of error */
 int osmo_trau_frame_encode(ubit_t *bits, size_t n_bits, const struct osmo_trau_frame *fr)
 {
+	/* check for sufficient space provided by caller in output buffer */
+	switch (fr->type) {
+	case OSMO_TRAU16_FT_FR:
+	case OSMO_TRAU16_FT_EFR:
+	case OSMO_TRAU16_FT_HR:
+	case OSMO_TRAU16_FT_AMR:
+		/* timing alignment may happen: increased space requirement */
+		if (n_bits < 2 * 40 * 8 - 1)
+			return -ENOSPC;
+		break;
+	case OSMO_TRAU16_FT_OAM:
+	case OSMO_TRAU16_FT_IDLE:
+	case OSMO_TRAU16_FT_DATA_HR:
+	case OSMO_TRAU16_FT_DATA:
+	case OSMO_TRAU16_FT_D145_SYNC:
+	case OSMO_TRAU16_FT_EDATA:
+		if (n_bits < 1 * 40 * 8)
+			return -ENOSPC;
+		break;
+	case OSMO_TRAU8_SPEECH:
+	case OSMO_TRAU8_AMR_LOW:
+	case OSMO_TRAU8_AMR_6k7:
+	case OSMO_TRAU8_AMR_7k4:
+		/* timing alignment may happen: increased space requirement */
+		if (n_bits < 2 * 20 * 8 - 1)
+			return -ENOSPC;
+	case OSMO_TRAU8_DATA:
+	case OSMO_TRAU8_OAM:
+		if (n_bits < 1 * 20 * 8)
+			return -ENOSPC;
+		break;
+	case OSMO_TRAU_FT_NONE:
+		break;
+	default:
+		return -EINVAL;
+	}
+
 	switch (fr->type) {
 	case OSMO_TRAU16_FT_FR:
 	case OSMO_TRAU16_FT_EFR:
