@@ -30,6 +30,7 @@ BuildRequires:  xz
 BuildRequires:  pkgconfig(libosmocore) >= 1.1.0
 BuildRequires:  pkgconfig(libosmogsm) >= 1.1.0
 BuildRequires:  pkgconfig(libosmovty) >= 1.1.0
+BuildRequires:  pkgconfig(libosmocodec) >= 1.1.0
 BuildRequires:  pkgconfig(ortp) >= 0.22
 BuildRequires:  pkgconfig(talloc)
 
