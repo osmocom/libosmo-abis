@@ -524,5 +524,5 @@ static void __attribute__((constructor)) on_dso_load_sync(void)
 
 	for (i = 0; i < ARRAY_SIZE(sync_patterns); i++)
 		sync_pattern_register(&sync_patterns[i]);
-	osmo_fsm_register(&trau_sync_fsm);
+	OSMO_ASSERT(osmo_fsm_register(&trau_sync_fsm) == 0);
 }
