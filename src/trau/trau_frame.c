@@ -1249,6 +1249,7 @@ int osmo_trau_frame_encode(ubit_t *bits, size_t n_bits, const struct osmo_trau_f
 		/* timing alignment may happen: increased space requirement */
 		if (n_bits < 2 * 20 * 8 - 1)
 			return -ENOSPC;
+		break;
 	case OSMO_TRAU8_DATA:
 	case OSMO_TRAU8_OAM:
 		if (n_bits < 1 * 20 * 8)
