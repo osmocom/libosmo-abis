@@ -817,7 +817,7 @@ static ubit_t compute_odd_parity(const ubit_t *in, unsigned int num_bits)
 			sum++;
 	}
 
-	if (sum % 1)
+	if (sum & 1)
 		return 0;
 	else
 		return 1;
