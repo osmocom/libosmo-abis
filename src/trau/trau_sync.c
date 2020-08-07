@@ -499,7 +499,6 @@ osmo_trau_sync_alloc(void *ctx, const char *name, frame_out_cb_t frame_out_cb,
 
 	tss->out_cb = frame_out_cb;
 	tss->user_data = user_data;
-	/* FIXME: this must be configurable */
 	tss->pattern = &sync_patterns[pat_id];
 
 	/* An unusued E1 timeslot normally would send an idle signal that
@@ -509,6 +508,14 @@ osmo_trau_sync_alloc(void *ctx, const char *name, frame_out_cb_t frame_out_cb,
 	memset(tss->history, 1, sizeof(tss->history));
 
 	return fi;
+}
+
+void osmo_trau_sync_set_pat(struct osmo_fsm_inst *fi, enum osmo_tray_sync_pat_id pat_id)
+{
+	struct trau_rx_sync_state *tss = fi->priv;
+
+	tss->pattern = &sync_patterns[pat_id];
+	osmo_fsm_inst_state_chg(fi, FRAME_ALIGNMENT_LOST, 0, 0);
 }
 
 void osmo_trau_sync_rx_ubits(struct osmo_fsm_inst *fi, const ubit_t *bits, size_t n_bits)
