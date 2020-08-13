@@ -1,3 +1,80 @@
+libosmo-abis (1.0.0) unstable; urgency=medium
+
+  [ Neels Hofmeyr ]
+  * add/clean big-endian packed structs (struct_endianess.py)
+
+  [ Harald Welte ]
+  * dahdi: Don't use perror() directly, use osmocom logging instead
+  * introduce and use logging macros with context on E1 line / timeslot
+  * e1d: Use HAVE_E1D in C source, not ENABLE_E1D
+  * e1d: add missing forward-declaration of e1inp_e1d_init()
+  * e1d: Don't use perror() directly, use osmocom logging instead
+  * e1d: Remove EXCEPTFD handling
+  * e1d: Remove bogus vty_show function.
+  * e1d: Use line->port_nr to specify e1d interface/line
+  * e1d: Use LOGPIL/LOGPITS logging macros to give context
+  * e1d: Don't connect to e1d at program start time
+  * e1d: Implement varions non-LAPD timeslot modes
+  * Add rtp_test to show the double-bind bug of OS#4444
+  * ortp: disable SO_REUSEADDR + SO_REUSEPORT
+  * subchan_demux: Use 'ubit_t' for unpacked bit buffer; use const
+  * trau_frame: use 'ubit_t' for unpacked bits
+  * subchan_demux: Use ubit_t where appropriate
+  * trau_frame.h: Fix definition of TRAU_FT_OM_UP
+  * Fix subchan_demux_test compiler warning on some gcc versions
+  * trau_frame: Fix AMR frame decoding
+  * lapd: Always print context information when logging
+  * fix compilation with --enable-e1d
+  * lapd: Replace magic numbers with #defines
+  * input/lapd.c: Enlarge message buffers for DL-SAP primitives
+  * input/dahdi.c: Don't simply read beyond end of msgb
+  * subchan_demux: Fix out-of-bounds write
+  * e1d: Add new osmo_e1dp_client_ts_open() argument
+  * e1d: Fix compilation after I4a088f91f23aaad05c5ab84a4783c1915d85aca6
+  * contrib/jenkins.sh: Test builds with --enable-e1d
+  * dahdi: Use osmo_revbytebits_buf() instead of local flip table
+  * input/e1d: Fix support for TRAU slots
+  * input/e1d: Add missing "RAW" timeslot support
+  * e1_input_vty: Fix VTY help strings
+
+  [ Sylvain Munaut ]
+  * e1d: Initial osmo-e1d support
+  * e1_input: Allow to change the pcap fd and/or unset it
+  * e1_input: Add VTY command to enable PCAP debug output
+
+  [ Oliver Smith ]
+  * ipaccess.c: line_already_initialized: int -> bool
+  * osmo_ortp: add osmo_rtp_socket_set_dscp()
+  * contrib: import RPM spec
+  * contrib: integrate RPM spec
+  * Makefile.am: EXTRA_DIST: debian, contrib/*.spec.in
+  * src/input/ipaccess.c: set TCP_NODELAY
+
+  [ Eric Wild ]
+  * add ipa ping/pong keepalive for OML/RSL links between bts and bsc
+
+  [ Eric ]
+  * configure.ac: fix libtool issue  with clang and sanitizer
+
+  [ Pau Espin Pedrol ]
+  * e1_input: refcount inc line during e1_sign_link_create, not during line update
+  * ipaccess.c: Drop repeated ipaccess_keepalive_fsm_cleanup in write error path
+  * ipaccess: Fix log formatting of RESP_ID IPA attributes
+  * cosmetic: e1_input.h: Fix trailing whitespace
+  * e1_input: Use osmo_use_count in e1inp_line
+  * ipaccess: Drop e1inp_line reference in ipacess_drop()
+  * ipacces: Fix e1inp_line reference put in ipaccess_close
+  * ipaccess: Set bfd->data to NULL before releasing its reference
+  * ipaccess_recvmsg: Clean up release steps upon error condition
+  * ipaccess_recvmsg: Assert the new bfd from new line differs from the old one
+  * ipaccess_recvmsg: Untangle code updating line
+  * cosmetic: lapd: Fix trailing whitespace
+  * lapd: Use lapd_dl_init2 instead of deprecated lapd_dl_init
+  * tests: Use API e1inp_line_put2 instead of deprecated e1inp_line_put
+  * ipaccess: Fix use-after-free in ipaccess_drop()
+
+ -- Harald Welte <laforge@osmocom.org>  Thu, 13 Aug 2020 12:09:39 +0200
+
 libosmo-abis (0.8.0) unstable; urgency=medium
 
   [ Alexander Couzens ]

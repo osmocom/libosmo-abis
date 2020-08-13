@@ -7,8 +7,3 @@
 # If any interfaces have been added since the last public release: c:r:a + 1.
 # If any interfaces have been removed or changed since the last public release: c:r:0.
 #library	what		description / commit summary line
-libosmo-abis	API change	major: add parameter to struct e1inp_line
-libosmo-trau	API change	add new function osmo_rtp_socket_set_dscp()
-libosmo-abis	API change	major: add parameter to struct lapd_instance
-libosmo-abis	Field added	struct e1inp_line "use_count". REMINDER: Upon LIBVERSION c bump, take the chance to drop struct e1inp_line "refcnt" field.
-libosmo-abis	libosmogsm dep Use of lapd_dl_init2() requires libosmocore > 1.3.0 (not yet released, 00b2faf8217338d4d7d1f4d27331af3151447350)
