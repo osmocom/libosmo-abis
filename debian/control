@@ -11,7 +11,7 @@ Build-Depends: debhelper (>= 9),
                dh-autoreconf,
                libdpkg-perl,
                git,
-               libosmocore-dev (>= 1.1.0),
+               libosmocore-dev (>= 1.4.0),
                pkg-config,
                libortp-dev
 Standards-Version: 3.9.7
@@ -22,20 +22,16 @@ Homepage: https://projects.osmocom.org/projects/libosmo-abis
 Package: libosmo-abis
 Section: oldlibs
 Architecture: any
-Depends: libosmoabis6 (= ${binary:Version}), libosmotrau2 (= ${binary:Version}), ${misc:Depends}
+Depends: libosmoabis9 (= ${binary:Version}), libosmotrau2 (= ${binary:Version}), ${misc:Depends}
 Multi-Arch: same
 Description: Legacy package for libosmo-abis
  libosmo-abis is an empty package helping in the transition to one
  package per DSO.
 
-Package: libosmoabis6
+Package: libosmoabis9
 Section: libs
 Architecture: any
 Multi-Arch: same
-# Due to previous release issues, libosmoabis5 actually installed same libosmoabis.so.6 file.
-# Once major is increased to 7, following two lines below can be dropped:
-Conflicts: libosmoabis5
-Replaces: libosmoabis5
 Depends: ${shlibs:Depends},
          ${misc:Depends}
 Description: GSM A-bis handling
@@ -64,7 +60,7 @@ Multi-Arch: same
 Section: libdevel
 Depends: ${misc:Depends},
          libosmotrau2 (= ${binary:Version}),
-         libosmoabis6 (= ${binary:Version})
+         libosmoabis9 (= ${binary:Version})
 Description: Development headers for A-bis interface
  The libosmo-abis library contains common/shared code regarding the A-bis
  interface between GSM BTS and BSC. This package in particular contains the
@@ -76,7 +72,7 @@ Architecture: any
 Multi-Arch: same
 Section: debug
 Priority: extra
-Depends: libosmoabis6 (= ${binary:Version}),
+Depends: libosmoabis9 (= ${binary:Version}),
          libosmotrau2 (= ${binary:Version}),
          ${misc:Depends}
 Description: Debug symbols for A-bis interface
