@@ -127,7 +127,7 @@ make %{?_smp_mflags} check || (find . -name testsuite.log -exec cat {} +)
 
 %files -n libosmoabis9
 %defattr(-,root,root)
-%_libdir/libosmoabis.so.6*
+%_libdir/libosmoabis.so.9*
 
 %files -n libosmoabis-devel
 %defattr(-,root,root)
