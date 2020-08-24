@@ -24,6 +24,11 @@
 
 struct osmo_trau2rtp_state {
 	enum osmo_trau_frame_type type;
+	struct {
+		enum osmo_amr_type last_cmi;
+		enum osmo_amr_type last_cmr;
+		bool cmi_cmr_phase;
+	} amr;
 };
 
 

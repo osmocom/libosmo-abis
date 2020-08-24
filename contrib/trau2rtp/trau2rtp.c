@@ -35,7 +35,7 @@ const int g_remote_port = 9000;
 const int g_local_port = 8000;
 
 /* codec; can be OSMO_TRAU16_FT_FR or OSMO_TRAU16_FT_EFR */
-const enum osmo_trau_frame_type g_ftype = OSMO_TRAU16_FT_EFR;
+const enum osmo_trau_frame_type g_ftype = OSMO_TRAU16_FT_AMR;
 
 /***********************************************************************
  * END CONFIGURATION
@@ -114,21 +114,35 @@ static void sync_frame_out_cb(void *user_data, const ubit_t *bits, unsigned int 
 	if (g_local_loop) {
 		/* Mirror back to other sub-slot */
 		struct sc_state *peer = opposite_schan(sc);
-		if (peer) {
-			struct msgb *msg = msgb_alloc(2*40*8, "mirror");
+		if (!peer)
+			return;
+
+		struct msgb *msg = msgb_alloc(2*40*8, "mirror");
+
+		if (fr.type == OSMO_TRAU16_FT_AMR) {
+			//fr.c_bits[12-1] = FIXME; /* Req/Ind flag; use from UL */
+			fr.c_bits[13-1] = 1; /* UFT: no errors */
+			memset(&fr.c_bits[14-1], 0, 3); /* Config_Prot: no TFO */
+			memset(&fr.c_bits[17-1], 0, 2); /* Message_No: no TFO */
+			fr.c_bits[19-1] = 1; /* Reserved */
+			fr.c_bits[20-1] = 1; /* Reserved */
+
+		} else {
 			fr.c_bits[12-1] = 1; /* C12 = good u-link frame */
 			memset(&fr.c_bits[13-1], 1, 3); /* C13..C15: spare  */
 			fr.c_bits[16-1] = 1; /* C16 = SP[eech]; no DTX */
 			memset(&fr.c_bits[6-1], 0, 6); /* C6..C11: tie alignment */
-			fr.dir = OSMO_TRAU_DIR_DL;
-			rc = osmo_trau_frame_encode(msgb_data(msg), 2*40*8, &fr);
-			OSMO_ASSERT(rc >= 0);
-			msgb_put(msg, rc);
-			osmo_i460_mux_enqueue(peer->i460_sc, msg);
 		}
+		fr.dir = OSMO_TRAU_DIR_DL;
+		rc = osmo_trau_frame_encode(msgb_data(msg), 2*40*8, &fr);
+		OSMO_ASSERT(rc >= 0);
+		msgb_put(msg, rc);
+		osmo_i460_mux_enqueue(peer->i460_sc, msg);
 	} else {
 		/* Convert to RTP */
-		if (fr.type != OSMO_TRAU16_FT_FR && fr.type != OSMO_TRAU16_FT_EFR)
+		if (fr.type != OSMO_TRAU16_FT_FR &&
+		    fr.type != OSMO_TRAU16_FT_EFR &&
+		    fr.type != OSMO_TRAU16_FT_AMR)
 			goto skip;
 
 		uint8_t rtpbuf[35];
