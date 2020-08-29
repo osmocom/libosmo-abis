@@ -12,7 +12,6 @@ Build-Depends: debhelper (>= 9),
                libdpkg-perl,
                git,
                libosmocore-dev (>= 1.4.0),
-               libosmo-e1d-dev,
                pkg-config,
                libortp-dev
 Standards-Version: 3.9.7
