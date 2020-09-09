@@ -79,6 +79,7 @@ const struct log_info log_info = {
 int main(int argc, char **argv)
 {
 	osmo_init_logging2(NULL, NULL);
+	log_set_use_color(osmo_stderr_target, 0);
 	osmo_fsm_log_addr(false);
 	log_set_print_filename2(osmo_stderr_target, LOG_FILENAME_NONE);
 	test_body();

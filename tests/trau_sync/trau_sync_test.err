@@ -1,15 +1,14 @@
 <0000> trau_sync(test){WAIT_FRAME_ALIGN}: Allocated
-[0;m<0000> trau_sync(test){WAIT_FRAME_ALIGN}: Received Event RX_BITS
-[0;m<0000> trau_sync(test){WAIT_FRAME_ALIGN}: Received Event RX_BITS
-[0;m<0000> trau_sync(test){WAIT_FRAME_ALIGN}: Received Event RX_BITS
-[0;m<0000> trau_sync(test){WAIT_FRAME_ALIGN}: state_chg to FRAME_ALIGNED
-[0;m<0000> trau_sync(test){FRAME_ALIGNED}: Received Event RX_BITS
-[0;m<0000> trau_sync(test){FRAME_ALIGNED}: Received Event RX_BITS
-[0;m<0000> trau_sync(test){FRAME_ALIGNED}: Received Event RX_BITS
-[0;m<0000> trau_sync(test){FRAME_ALIGNED}: Received Event RX_BITS
-[0;m<0000> trau_sync(test){FRAME_ALIGNED}: Received Event RX_BITS
-[0;m<0000> trau_sync(test){FRAME_ALIGNED}: Received Event RX_BITS
-[0;m<0000> trau_sync(test){FRAME_ALIGNED}: Received Event RX_BITS
-[0;m<0000> trau_sync(test){FRAME_ALIGNED}: state_chg to FRAME_ALIGNMENT_LOST
-[0;m<0000> trau_sync(test){FRAME_ALIGNMENT_LOST}: Received Event RX_BITS
-[0;m
+<0000> trau_sync(test){WAIT_FRAME_ALIGN}: Received Event RX_BITS
+<0000> trau_sync(test){WAIT_FRAME_ALIGN}: Received Event RX_BITS
+<0000> trau_sync(test){WAIT_FRAME_ALIGN}: Received Event RX_BITS
+<0000> trau_sync(test){WAIT_FRAME_ALIGN}: state_chg to FRAME_ALIGNED
+<0000> trau_sync(test){FRAME_ALIGNED}: Received Event RX_BITS
+<0000> trau_sync(test){FRAME_ALIGNED}: Received Event RX_BITS
+<0000> trau_sync(test){FRAME_ALIGNED}: Received Event RX_BITS
+<0000> trau_sync(test){FRAME_ALIGNED}: Received Event RX_BITS
+<0000> trau_sync(test){FRAME_ALIGNED}: Received Event RX_BITS
+<0000> trau_sync(test){FRAME_ALIGNED}: Received Event RX_BITS
+<0000> trau_sync(test){FRAME_ALIGNED}: Received Event RX_BITS
+<0000> trau_sync(test){FRAME_ALIGNED}: state_chg to FRAME_ALIGNMENT_LOST
+<0000> trau_sync(test){FRAME_ALIGNMENT_LOST}: Received Event RX_BITS
