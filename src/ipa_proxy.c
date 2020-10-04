@@ -643,15 +643,15 @@ void ipa_proxy_vty_init(void)
 	tall_ipa_proxy_ctx =
 		talloc_named_const(libosmo_abis_ctx, 1, "ipa_proxy");
 
-	install_element(ENABLE_NODE, &ipa_instance_add_cmd);
-	install_element(ENABLE_NODE, &ipa_instance_del_cmd);
-	install_element(ENABLE_NODE, &ipa_instance_show_cmd);
-	install_element(ENABLE_NODE, &ipa_route_add_cmd);
-	install_element(ENABLE_NODE, &ipa_route_del_cmd);
-	install_element(ENABLE_NODE, &ipa_route_show_cmd);
+	install_lib_element(ENABLE_NODE, &ipa_instance_add_cmd);
+	install_lib_element(ENABLE_NODE, &ipa_instance_del_cmd);
+	install_lib_element(ENABLE_NODE, &ipa_instance_show_cmd);
+	install_lib_element(ENABLE_NODE, &ipa_route_add_cmd);
+	install_lib_element(ENABLE_NODE, &ipa_route_del_cmd);
+	install_lib_element(ENABLE_NODE, &ipa_route_show_cmd);
 
-	install_element(CONFIG_NODE, &ipa_cfg_cmd);
+	install_lib_element(CONFIG_NODE, &ipa_cfg_cmd);
 	install_node(&ipa_node, ipa_cfg_write);
-	install_element(L_IPA_NODE, &ipa_instance_cfg_add_cmd);
-	install_element(L_IPA_NODE, &ipa_route_cfg_add_cmd);
+	install_lib_element(L_IPA_NODE, &ipa_instance_cfg_add_cmd);
+	install_lib_element(L_IPA_NODE, &ipa_route_cfg_add_cmd);
 }

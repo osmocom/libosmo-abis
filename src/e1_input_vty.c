@@ -462,27 +462,27 @@ struct cmd_node e1inp_node = {
 
 int e1inp_vty_init(void)
 {
-	install_element(CONFIG_NODE, &cfg_e1inp_cmd);
+	install_lib_element(CONFIG_NODE, &cfg_e1inp_cmd);
 	install_node(&e1inp_node, e1inp_config_write);
 
-	install_element(L_E1INP_NODE, &cfg_e1_pcap_cmd);
-	install_element(L_E1INP_NODE, &cfg_e1_no_pcap_cmd);
+	install_lib_element(L_E1INP_NODE, &cfg_e1_pcap_cmd);
+	install_lib_element(L_E1INP_NODE, &cfg_e1_no_pcap_cmd);
 
-	install_element(L_E1INP_NODE, &cfg_e1_line_driver_cmd);
-	install_element(L_E1INP_NODE, &cfg_e1_line_port_cmd);
-	install_element(L_E1INP_NODE, &cfg_e1_line_socket_cmd);
-	install_element(L_E1INP_NODE, &cfg_e1_line_name_cmd);
-	install_element(L_E1INP_NODE, &cfg_e1_line_keepalive_cmd);
-	install_element(L_E1INP_NODE, &cfg_e1_line_keepalive_params_cmd);
-	install_element(L_E1INP_NODE, &cfg_e1_line_no_keepalive_cmd);
-	install_element(L_E1INP_NODE, &cfg_e1_line_ipa_keepalive_cmd);
-	install_element(L_E1INP_NODE, &cfg_e1_line_no_ipa_keepalive_cmd);
+	install_lib_element(L_E1INP_NODE, &cfg_e1_line_driver_cmd);
+	install_lib_element(L_E1INP_NODE, &cfg_e1_line_port_cmd);
+	install_lib_element(L_E1INP_NODE, &cfg_e1_line_socket_cmd);
+	install_lib_element(L_E1INP_NODE, &cfg_e1_line_name_cmd);
+	install_lib_element(L_E1INP_NODE, &cfg_e1_line_keepalive_cmd);
+	install_lib_element(L_E1INP_NODE, &cfg_e1_line_keepalive_params_cmd);
+	install_lib_element(L_E1INP_NODE, &cfg_e1_line_no_keepalive_cmd);
+	install_lib_element(L_E1INP_NODE, &cfg_e1_line_ipa_keepalive_cmd);
+	install_lib_element(L_E1INP_NODE, &cfg_e1_line_no_ipa_keepalive_cmd);
 
-	install_element(L_E1INP_NODE, &cfg_ipa_bind_cmd);
+	install_lib_element(L_E1INP_NODE, &cfg_ipa_bind_cmd);
 
-	install_element_ve(&show_e1drv_cmd);
-	install_element_ve(&show_e1line_cmd);
-	install_element_ve(&show_e1ts_cmd);
+	install_lib_element_ve(&show_e1drv_cmd);
+	install_lib_element_ve(&show_e1line_cmd);
+	install_lib_element_ve(&show_e1ts_cmd);
 
 	return 0;
 }
