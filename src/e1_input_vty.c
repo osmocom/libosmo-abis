@@ -43,6 +43,8 @@
 #include <osmocom/abis/e1_input.h>
 #include <osmocom/abis/ipa.h>
 
+#define X(x) (1 << x)
+
 /* CONFIG */
 
 #define E1_DRIVER_NAMES		"(misdn|misdn_lapd|dahdi|e1d|ipa|unixsocket)"
@@ -55,6 +57,8 @@
 
 #define E1_LINE_HELP		"Configure E1/T1/J1 Line\n" "Line Number\n"
 
+/* Note: This requires a full restart of the application, since once created
+ * an E1 line can not be destroyed again. */
 DEFUN(cfg_e1line_driver, cfg_e1_line_driver_cmd,
 	"e1_line <0-255> driver " E1_DRIVER_NAMES,
 	E1_LINE_HELP "Set driver for this line\n"
@@ -77,10 +81,11 @@ DEFUN(cfg_e1line_driver, cfg_e1_line_driver_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_e1line_port, cfg_e1_line_port_cmd,
-	"e1_line <0-255> port <0-255>",
-	E1_LINE_HELP "Set physical port/span/card number\n"
-	"E1/T1 Port/Span/Card number\n")
+DEFUN_USRATTR(cfg_e1line_port, cfg_e1_line_port_cmd,
+	      X(OSMO_ABIS_LIB_ATTR_LINE_UPD),
+	      "e1_line <0-255> port <0-255>",
+	      E1_LINE_HELP "Set physical port/span/card number\n"
+	      "E1/T1 Port/Span/Card number\n")
 {
 	struct e1inp_line *line;
 	int e1_nr = atoi(argv[0]);
@@ -96,10 +101,11 @@ DEFUN(cfg_e1line_port, cfg_e1_line_port_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_e1line_socket, cfg_e1_line_socket_cmd,
-	"e1_line <0-255> socket .SOCKET",
-	E1_LINE_HELP "Set socket path for unixsocket\n"
-	"socket path\n")
+DEFUN_USRATTR(cfg_e1line_socket, cfg_e1_line_socket_cmd,
+	      X(OSMO_ABIS_LIB_ATTR_LINE_UPD),
+	      "e1_line <0-255> socket .SOCKET",
+	      E1_LINE_HELP "Set socket path for unixsocket\n"
+	      "socket path\n")
 {
 	struct e1inp_line *line;
 	int e1_nr = atoi(argv[0]);
@@ -146,29 +152,32 @@ static int set_keepalive_params(struct vty *vty, int e1_nr,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_e1line_keepalive, cfg_e1_line_keepalive_cmd,
-	"e1_line <0-255> keepalive",
-	E1_LINE_HELP KEEPALIVE_HELP)
+DEFUN_USRATTR(cfg_e1line_keepalive, cfg_e1_line_keepalive_cmd,
+	      X(OSMO_ABIS_LIB_ATTR_IPA_NEW_LNK),
+	      "e1_line <0-255> keepalive",
+	      E1_LINE_HELP KEEPALIVE_HELP)
 {
 	return set_keepalive_params(vty, atoi(argv[0]),
 				    E1INP_USE_DEFAULT, E1INP_USE_DEFAULT,
 				    E1INP_USE_DEFAULT);
 }
 
-DEFUN(cfg_e1line_keepalive_params, cfg_e1_line_keepalive_params_cmd,
-	"e1_line <0-255> keepalive <1-300> <1-20> <1-300>",
-	E1_LINE_HELP KEEPALIVE_HELP
-	"Idle interval in seconds before probes are sent\n"
-	"Number of probes to sent\n"
-	"Delay between probe packets in seconds\n")
+DEFUN_USRATTR(cfg_e1line_keepalive_params, cfg_e1_line_keepalive_params_cmd,
+	      X(OSMO_ABIS_LIB_ATTR_IPA_NEW_LNK),
+	      "e1_line <0-255> keepalive <1-300> <1-20> <1-300>",
+	      E1_LINE_HELP KEEPALIVE_HELP
+	      "Idle interval in seconds before probes are sent\n"
+	      "Number of probes to sent\n"
+	      "Delay between probe packets in seconds\n")
 {
 	return set_keepalive_params(vty, atoi(argv[0]),
 				    atoi(argv[1]), atoi(argv[2]), atoi(argv[3]));
 }
 
-DEFUN(cfg_e1line_no_keepalive, cfg_e1_line_no_keepalive_cmd,
-	"no e1_line <0-255> keepalive",
-	NO_STR E1_LINE_HELP KEEPALIVE_HELP)
+DEFUN_USRATTR(cfg_e1line_no_keepalive, cfg_e1_line_no_keepalive_cmd,
+	      X(OSMO_ABIS_LIB_ATTR_IPA_NEW_LNK),
+	      "no e1_line <0-255> keepalive",
+	      NO_STR E1_LINE_HELP KEEPALIVE_HELP)
 {
 	return set_keepalive_params(vty, atoi(argv[0]), 0, 0, 0);
 }
@@ -198,25 +207,26 @@ static int set_ipa_keepalive_params(struct vty *vty, int e1_nr, int interval, in
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_e1line_ipa_keepalive, cfg_e1_line_ipa_keepalive_cmd,
-	"e1_line <0-255> ipa-keepalive <1-300> <1-300>",
-	E1_LINE_HELP IPA_KEEPALIVE_HELP
-	"Idle interval in seconds before probes are sent\n"
-	"Time to wait for PONG response\n")
+DEFUN_ATTR(cfg_e1line_ipa_keepalive, cfg_e1_line_ipa_keepalive_cmd,
+	   "e1_line <0-255> ipa-keepalive <1-300> <1-300>",
+	   E1_LINE_HELP IPA_KEEPALIVE_HELP
+	   "Idle interval in seconds before probes are sent\n"
+	   "Time to wait for PONG response\n", CMD_ATTR_IMMEDIATE)
 {
 	return set_ipa_keepalive_params(vty, atoi(argv[0]), atoi(argv[1]), atoi(argv[2]));
 }
 
-DEFUN(cfg_e1line_no_ipa_keepalive, cfg_e1_line_no_ipa_keepalive_cmd,
-	"no e1_line <0-255> ipa-keepalive",
-	NO_STR E1_LINE_HELP IPA_KEEPALIVE_HELP)
+DEFUN_ATTR(cfg_e1line_no_ipa_keepalive, cfg_e1_line_no_ipa_keepalive_cmd,
+	   "no e1_line <0-255> ipa-keepalive",
+	   NO_STR E1_LINE_HELP IPA_KEEPALIVE_HELP, CMD_ATTR_IMMEDIATE)
 {
 	return set_ipa_keepalive_params(vty, atoi(argv[0]), 0, 0);
 }
 
-DEFUN(cfg_e1line_name, cfg_e1_line_name_cmd,
-	"e1_line <0-255> name .LINE",
-	E1_LINE_HELP "Set name for this line\n" "Human readable name\n")
+DEFUN_ATTR(cfg_e1line_name, cfg_e1_line_name_cmd,
+	   "e1_line <0-255> name .LINE",
+	   E1_LINE_HELP "Set name for this line\n" "Human readable name\n",
+	   CMD_ATTR_IMMEDIATE)
 {
 	struct e1inp_line *line;
 	int e1_nr = atoi(argv[0]);
@@ -235,10 +245,10 @@ DEFUN(cfg_e1line_name, cfg_e1_line_name_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_e1_pcap, cfg_e1_pcap_cmd,
-	"pcap .FILE",
-	"Setup a pcap recording of all E1 traffic\n"
-	"Filename to save the packets to\n")
+DEFUN_ATTR(cfg_e1_pcap, cfg_e1_pcap_cmd,
+	   "pcap .FILE",
+	   "Setup a pcap recording of all E1 traffic\n"
+	   "Filename to save the packets to\n", CMD_ATTR_IMMEDIATE)
 {
 	int fd;
 
@@ -253,29 +263,31 @@ DEFUN(cfg_e1_pcap, cfg_e1_pcap_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_e1_no_pcap, cfg_e1_no_pcap_cmd,
-	"no pcap",
-	NO_STR "Disable pcap recording of all E1 traffic\n")
+DEFUN_ATTR(cfg_e1_no_pcap, cfg_e1_no_pcap_cmd,
+	   "no pcap",
+	   NO_STR "Disable pcap recording of all E1 traffic\n",
+	   CMD_ATTR_IMMEDIATE)
 {
 	e1_set_pcap_fd(-1);
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_e1inp, cfg_e1inp_cmd,
-	"e1_input",
-	"Configure E1/T1/J1 TDM input\n")
+DEFUN_ATTR(cfg_e1inp, cfg_e1inp_cmd,
+	   "e1_input",
+	   "Configure E1/T1/J1 TDM input\n", CMD_ATTR_IMMEDIATE)
 {
 	vty->node = L_E1INP_NODE;
 
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_ipa_bind,
-      cfg_ipa_bind_cmd,
-      "ipa bind A.B.C.D",
-      "ipa driver config\n"
-      "Set ipa local bind address\n"
-      "Listen on this IP address (default 0.0.0.0)\n")
+DEFUN_USRATTR(cfg_ipa_bind,
+	      cfg_ipa_bind_cmd,
+	      X(OSMO_ABIS_LIB_ATTR_LINE_UPD),
+	      "ipa bind A.B.C.D",
+	      "ipa driver config\n"
+	      "Set ipa local bind address\n"
+	      "Listen on this IP address (default 0.0.0.0)\n")
 {
 	e1inp_ipa_set_bind_addr(argv[0]);
 	return CMD_SUCCESS;
