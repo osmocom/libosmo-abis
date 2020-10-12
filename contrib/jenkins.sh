@@ -38,8 +38,8 @@ set -x
 autoreconf --install --force
 ./configure --enable-sanitize --enable-werror --enable-e1d
 $MAKE $PARALLEL_MAKE
-$MAKE distcheck \
+$MAKE $PARALLEL_MAKE distcheck \
   || cat-testlogs.sh
-$MAKE maintainer-clean
+$MAKE $PARALLEL_MAKE maintainer-clean
 
 osmo-clean-workspace.sh
