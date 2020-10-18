@@ -217,7 +217,7 @@ static int ts_want_write(struct e1inp_ts *e1i_ts)
 	    e1i_ts->type == E1INP_TS_TYPE_I460)
 		return 0;
 
-	e1i_ts->driver.misdn.fd.when |= OSMO_FD_WRITE;
+	osmo_fd_write_enable(&e1i_ts->driver.misdn.fd);
 
 	return 0;
 }
@@ -243,7 +243,7 @@ static int handle_ts1_write(struct osmo_fd *bfd)
 	uint8_t *l2_data;
 	int ret;
 
-	bfd->when &= ~OSMO_FD_WRITE;
+	osmo_fd_write_disable(bfd);
 
 	/* get the next msg for this timeslot */
 	msg = e1inp_tx_ts(e1i_ts, &sign_link);

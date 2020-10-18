@@ -434,7 +434,7 @@ err:
 
 static int ts_want_write(struct e1inp_ts *e1i_ts)
 {
-	e1i_ts->driver.ipaccess.fd.when |= OSMO_FD_WRITE;
+	osmo_fd_write_enable(&e1i_ts->driver.ipaccess.fd);
 
 	return 0;
 }
@@ -486,7 +486,7 @@ static int __handle_ts1_write(struct osmo_fd *bfd, struct e1inp_line *line)
 	int ret;
 
 	e1i_ts = ipaccess_line_ts(bfd, line);
-	bfd->when &= ~OSMO_FD_WRITE;
+	osmo_fd_write_disable(bfd);
 
 	/* get the next msg for this timeslot */
 	msg = e1inp_tx_ts(e1i_ts, &sign_link);
@@ -501,7 +501,7 @@ static int __handle_ts1_write(struct osmo_fd *bfd, struct e1inp_line *line)
 	case E1INP_SIGN_OSMO:
 		break;
 	default:
-		bfd->when |= OSMO_FD_WRITE; /* come back for more msg */
+		osmo_fd_write_enable(bfd); /* come back for more msg */
 		ret = -EINVAL;
 		goto out;
 	}

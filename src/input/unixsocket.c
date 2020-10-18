@@ -147,7 +147,7 @@ static int unixsocket_write_cb(struct osmo_fd *bfd)
 	struct msgb *msg;
 	struct e1inp_sign_link *sign_link;
 
-	bfd->when &= ~OSMO_FD_WRITE;
+	osmo_fd_write_disable(bfd);
 
 	/* get the next msg for this timeslot */
 	msg = e1inp_tx_ts(e1i_ts, &sign_link);
@@ -185,7 +185,7 @@ static int ts_want_write(struct e1inp_ts *e1i_ts)
 {
 	struct unixsocket_line *line = e1i_ts->line->driver_data;
 
-	line->fd.when |= OSMO_FD_WRITE;
+	osmo_fd_write_enable(&line->fd);
 
 	return 0;
 }

@@ -218,7 +218,7 @@ static int osmo_rtp_fd_cb(struct osmo_fd *fd, unsigned int what)
 	if (what & OSMO_FD_READ) {
 		/* in polling mode, we don't want to be called here */
 		if (rs->flags & OSMO_RTP_F_POLL) {
-			fd->when &= ~OSMO_FD_READ;
+			osmo_fd_read_disable(fd);
 			return 0;
 		}
 		if (!recv_with_cb(rs))

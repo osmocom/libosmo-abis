@@ -100,7 +100,7 @@ handle_ts_sign_write(struct osmo_fd *bfd)
 	struct e1inp_sign_link *sign_link;
 	struct msgb *msg;
 
-	bfd->when &= ~OSMO_FD_WRITE;
+	osmo_fd_write_disable(bfd);
 
 	/* get the next msg for this timeslot */
 	msg = e1inp_tx_ts(e1i_ts, &sign_link);
@@ -316,7 +316,7 @@ e1d_want_write(struct e1inp_ts *e1i_ts)
 		return 0;
 	}
 
-	e1i_ts->driver.e1d.fd.when |= OSMO_FD_WRITE;
+	osmo_fd_write_enable(&e1i_ts->driver.e1d.fd);
 
 	return 0;
 }
