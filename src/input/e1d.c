@@ -100,7 +100,7 @@ handle_ts_sign_write(struct osmo_fd *bfd)
 	struct e1inp_sign_link *sign_link;
 	struct msgb *msg;
 
-	bfd->when &= ~BSC_FD_WRITE;
+	bfd->when &= ~OSMO_FD_WRITE;
 
 	/* get the next msg for this timeslot */
 	msg = e1inp_tx_ts(e1i_ts, &sign_link);
@@ -280,21 +280,21 @@ e1d_fd_cb(struct osmo_fd *bfd, unsigned int what)
 
 	switch (e1i_ts->type) {
 	case E1INP_TS_TYPE_SIGN:
-		if (what & BSC_FD_READ)
+		if (what & OSMO_FD_READ)
 			ret = handle_ts_sign_read(bfd);
-		if (what & BSC_FD_WRITE)
+		if (what & OSMO_FD_WRITE)
 			ret = handle_ts_sign_write(bfd);
 		break;
 	case E1INP_TS_TYPE_TRAU:
-		if (what & BSC_FD_READ)
+		if (what & OSMO_FD_READ)
 			ret = handle_ts_trau_read(bfd);
-		if (what & BSC_FD_WRITE)
+		if (what & OSMO_FD_WRITE)
 			ret = handle_ts_trau_write(bfd);
 		break;
 	case E1INP_TS_TYPE_RAW:
-		if (what & BSC_FD_READ)
+		if (what & OSMO_FD_READ)
 			ret = handle_ts_raw_read(bfd);
-		if (what & BSC_FD_WRITE)
+		if (what & OSMO_FD_WRITE)
 			ret = handle_ts_raw_write(bfd);
 		break;
 	default:
@@ -315,7 +315,7 @@ e1d_want_write(struct e1inp_ts *e1i_ts)
 		return 0;
 	}
 
-	e1i_ts->driver.e1d.fd.when |= BSC_FD_WRITE;
+	e1i_ts->driver.e1d.fd.when |= OSMO_FD_WRITE;
 
 	return 0;
 }
@@ -400,7 +400,7 @@ e1d_line_update(struct e1inp_line *line)
 				talloc_free(ts_info);
 				return -EIO;
 			}
-			bfd->when = BSC_FD_READ;
+			bfd->when = OSMO_FD_READ;
 
 			if (!e1i_ts->lapd) {
 				char name[32];
@@ -430,7 +430,7 @@ e1d_line_update(struct e1inp_line *line)
 				talloc_free(ts_info);
 				return -EIO;
 			}
-			bfd->when = BSC_FD_READ;
+			bfd->when = OSMO_FD_READ;
 			break;
 		case E1INP_TS_TYPE_TRAU:
 		case E1INP_TS_TYPE_RAW:
@@ -453,7 +453,7 @@ e1d_line_update(struct e1inp_line *line)
 				talloc_free(ts_info);
 				return -EIO;
 			}
-			bfd->when = BSC_FD_READ;
+			bfd->when = OSMO_FD_READ;
 			break;
 		};
 

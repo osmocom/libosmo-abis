@@ -422,7 +422,7 @@ err:
 
 static int ts_want_write(struct e1inp_ts *e1i_ts)
 {
-	e1i_ts->driver.ipaccess.fd.when |= BSC_FD_WRITE;
+	e1i_ts->driver.ipaccess.fd.when |= OSMO_FD_WRITE;
 
 	return 0;
 }
@@ -474,7 +474,7 @@ static int __handle_ts1_write(struct osmo_fd *bfd, struct e1inp_line *line)
 	int ret;
 
 	e1i_ts = ipaccess_line_ts(bfd, line);
-	bfd->when &= ~BSC_FD_WRITE;
+	bfd->when &= ~OSMO_FD_WRITE;
 
 	/* get the next msg for this timeslot */
 	msg = e1inp_tx_ts(e1i_ts, &sign_link);
@@ -489,7 +489,7 @@ static int __handle_ts1_write(struct osmo_fd *bfd, struct e1inp_line *line)
 	case E1INP_SIGN_OSMO:
 		break;
 	default:
-		bfd->when |= BSC_FD_WRITE; /* come back for more msg */
+		bfd->when |= OSMO_FD_WRITE; /* come back for more msg */
 		ret = -EINVAL;
 		goto out;
 	}
@@ -540,9 +540,9 @@ int ipaccess_fd_cb(struct osmo_fd *bfd, unsigned int what)
 {
 	int rc = 0;
 
-	if (what & BSC_FD_READ)
+	if (what & OSMO_FD_READ)
 		rc = handle_ts1_read(bfd);
-	if (rc != -EBADF && (what & BSC_FD_WRITE))
+	if (rc != -EBADF && (what & OSMO_FD_WRITE))
 		rc = handle_ts1_write(bfd);
 
 	return rc;
@@ -649,7 +649,7 @@ static int ipaccess_bsc_oml_cb(struct ipa_server_link *link, int fd)
 	e1i_ts = e1inp_line_ipa_oml_ts(line);
 
 	bfd = &e1i_ts->driver.ipaccess.fd;
-	osmo_fd_setup(bfd, fd, BSC_FD_READ, ipaccess_fd_cb, line, E1INP_SIGN_OML);
+	osmo_fd_setup(bfd, fd, OSMO_FD_READ, ipaccess_fd_cb, line, E1INP_SIGN_OML);
 	ret = osmo_fd_register(bfd);
 	if (ret < 0) {
 		LOGP(DLINP, LOGL_ERROR, "could not register FD\n");
@@ -702,7 +702,7 @@ static int ipaccess_bsc_rsl_cb(struct ipa_server_link *link, int fd)
 	e1i_ts = e1inp_line_ipa_rsl_ts(line, 0);
 
 	bfd = &e1i_ts->driver.ipaccess.fd;
-	osmo_fd_setup(bfd, fd, BSC_FD_READ, ipaccess_fd_cb, line, E1INP_SIGN_RSL);
+	osmo_fd_setup(bfd, fd, OSMO_FD_READ, ipaccess_fd_cb, line, E1INP_SIGN_RSL);
 	ret = osmo_fd_register(bfd);
 	if (ret < 0) {
 		LOGP(DLINP, LOGL_ERROR, "could not register FD\n");

@@ -204,7 +204,7 @@ static int ts_want_write(struct e1inp_ts *e1i_ts)
 		return 0;
 	}
 
-	e1i_ts->driver.dahdi.fd.when |= BSC_FD_WRITE;
+	e1i_ts->driver.dahdi.fd.when |= OSMO_FD_WRITE;
 
 	return 0;
 }
@@ -250,7 +250,7 @@ static int handle_ts1_write(struct osmo_fd *bfd)
 	struct e1inp_sign_link *sign_link;
 	struct msgb *msg;
 
-	bfd->when &= ~BSC_FD_WRITE;
+	bfd->when &= ~OSMO_FD_WRITE;
 
 	/* get the next msg for this timeslot */
 	msg = e1inp_tx_ts(e1i_ts, &sign_link);
@@ -472,38 +472,38 @@ static int dahdi_fd_cb(struct osmo_fd *bfd, unsigned int what)
 
 	switch (e1i_ts->type) {
 	case E1INP_TS_TYPE_SIGN:
-		if (what & BSC_FD_EXCEPT)
+		if (what & OSMO_FD_EXCEPT)
 			handle_dahdi_exception(e1i_ts);
-		if (what & BSC_FD_READ)
+		if (what & OSMO_FD_READ)
 			rc = handle_ts1_read(bfd);
-		if (what & BSC_FD_WRITE)
+		if (what & OSMO_FD_WRITE)
 			rc = handle_ts1_write(bfd);
 		break;
 	case E1INP_TS_TYPE_HDLC:
-		if (what & BSC_FD_EXCEPT)
+		if (what & OSMO_FD_EXCEPT)
 			handle_dahdi_exception(e1i_ts);
-		if (what & BSC_FD_READ)
+		if (what & OSMO_FD_READ)
 			rc = handle_hdlc_read(bfd);
-		if (what & BSC_FD_WRITE)
+		if (what & OSMO_FD_WRITE)
 			handle_hdlc_write(bfd);
 		break;
 	case E1INP_TS_TYPE_TRAU:
-		if (what & BSC_FD_EXCEPT)
+		if (what & OSMO_FD_EXCEPT)
 			handle_dahdi_exception(e1i_ts);
-		if (what & BSC_FD_READ)
+		if (what & OSMO_FD_READ)
 			rc = handle_tsX_read(bfd);
-		if (what & BSC_FD_WRITE)
+		if (what & OSMO_FD_WRITE)
 			rc = handle_tsX_write(bfd);
 		/* We never include the DAHDI B-Channel FD into the
 		 * writeset, since it doesn't support poll() based
 		 * write flow control */
 		break;
 	case E1INP_TS_TYPE_RAW:
-		if (what & BSC_FD_EXCEPT)
+		if (what & OSMO_FD_EXCEPT)
 			handle_dahdi_exception(e1i_ts);
-		if (what & BSC_FD_READ)
+		if (what & OSMO_FD_READ)
 			rc = handle_ts_raw_read(bfd);
-		if (what & BSC_FD_WRITE)
+		if (what & OSMO_FD_WRITE)
 			rc = handle_ts_raw_write(bfd);
 		/* We never include the DAHDI B-Channel FD into the
 		 * writeset, since it doesn't support poll() based
@@ -665,7 +665,7 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 				bfd->fd = dahdi_open_slot(dev_nr);
 			if (bfd->fd < 0)
 				return -EIO;
-			bfd->when = BSC_FD_READ | BSC_FD_EXCEPT;
+			bfd->when = OSMO_FD_READ | OSMO_FD_EXCEPT;
 			ret = dahdi_set_bufinfo(bfd->fd, 1);
 			if (ret < 0)
 				return ret;
@@ -683,7 +683,7 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 				bfd->fd = dahdi_open_slot(dev_nr);
 			if (bfd->fd < 0)
 				return -EIO;
-			bfd->when = BSC_FD_READ | BSC_FD_EXCEPT;
+			bfd->when = OSMO_FD_READ | OSMO_FD_EXCEPT;
 			ret = dahdi_set_bufinfo(bfd->fd, 1);
 			if (ret < 0)
 				return ret;
@@ -705,7 +705,7 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 			/* We never include the DAHDI B-Channel FD into the
 			 * writeset, since it doesn't support poll() based
 			 * write flow control */
-			bfd->when = BSC_FD_READ | BSC_FD_EXCEPT;// | BSC_FD_WRITE;
+			bfd->when = OSMO_FD_READ | OSMO_FD_EXCEPT;// | OSMO_FD_WRITE;
 			break;
 		}
 

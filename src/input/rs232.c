@@ -86,7 +86,7 @@ static int handle_ser_write(struct osmo_fd *bfd)
 	struct msgb *msg;
 	int written;
 
-	bfd->when &= ~BSC_FD_WRITE;
+	bfd->when &= ~OSMO_FD_WRITE;
 
 	/* get the next msg for this timeslot */
 	msg = e1inp_tx_ts(e1i_ts, &sign_link);
@@ -193,13 +193,13 @@ static int serial_fd_cb(struct osmo_fd *bfd, unsigned int what)
 {
 	int rc = 0;
 
-	if (what & BSC_FD_READ)
+	if (what & OSMO_FD_READ)
 		rc = handle_ser_read(bfd);
 
 	if (rc < 0)
 		return rc;
 
-	if (what & BSC_FD_WRITE)
+	if (what & OSMO_FD_WRITE)
 		rc = handle_ser_write(bfd);
 
 	return rc;
@@ -207,7 +207,7 @@ static int serial_fd_cb(struct osmo_fd *bfd, unsigned int what)
 
 static int rs232_want_write(struct e1inp_ts *e1i_ts)
 {
-	e1i_ts->driver.rs232.fd.when |= BSC_FD_WRITE;
+	e1i_ts->driver.rs232.fd.when |= OSMO_FD_WRITE;
 
 	return 0;
 }
@@ -256,7 +256,7 @@ rs232_setup(struct e1inp_line *line, const char *serial_port, unsigned int delay
 	ser_handle->line = line;
 	ser_handle->delay_ms = delay_ms;
 
-	bfd->when = BSC_FD_READ;
+	bfd->when = OSMO_FD_READ;
 	bfd->cb = serial_fd_cb;
 	bfd->data = ser_handle;
 

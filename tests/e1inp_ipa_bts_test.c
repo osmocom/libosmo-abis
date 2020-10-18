@@ -309,7 +309,7 @@ int main(void)
 	}
 	bts_eventfd.fd = eventfds[0];
 	bts_eventfd.cb = test_bts_gsm_12_21_cb;
-	bts_eventfd.when = BSC_FD_READ;
+	bts_eventfd.when = OSMO_FD_READ;
 	bts_eventfd.data = &bts_dev_info;
 	if (osmo_fd_register(&bts_eventfd) < 0) {
 		LOGP(DBTSTEST, LOGL_ERROR, "could not register event fd\n");

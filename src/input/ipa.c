@@ -89,7 +89,7 @@ static int ipa_client_write_default_cb(struct ipa_client_conn *link)
 	LOGIPA(link, LOGL_DEBUG, "sending data\n");
 
 	if (llist_empty(&link->tx_queue)) {
-		ofd->when &= ~BSC_FD_WRITE;
+		ofd->when &= ~OSMO_FD_WRITE;
 		return 0;
 	}
 	lh = link->tx_queue.next;
@@ -124,18 +124,18 @@ static int ipa_client_fd_cb(struct osmo_fd *ofd, unsigned int what)
 				link->updown_cb(link, 0);
 			return 0;
 		}
-		ofd->when &= ~BSC_FD_WRITE;
+		ofd->when &= ~OSMO_FD_WRITE;
 		LOGIPA(link, LOGL_NOTICE, "connection done\n");
 		link->state = IPA_CLIENT_LINK_STATE_CONNECTED;
 		if (link->updown_cb)
 			link->updown_cb(link, 1);
 		break;
 	case IPA_CLIENT_LINK_STATE_CONNECTED:
-		if (what & BSC_FD_READ) {
+		if (what & OSMO_FD_READ) {
 			LOGIPA(link, LOGL_DEBUG, "connected read\n");
 			ret = ipa_client_read(link);
 		}
-		if (ret != -EBADF && (what & BSC_FD_WRITE)) {
+		if (ret != -EBADF && (what & OSMO_FD_WRITE)) {
 			LOGIPA(link, LOGL_DEBUG, "connected write\n");
 			ipa_client_write(link);
 		}
@@ -189,7 +189,7 @@ ipa_client_conn_create2(void *ctx, struct e1inp_ts *ts,
 		}
 	}
 
-	ipa_link->ofd->when |= BSC_FD_READ | BSC_FD_WRITE;
+	ipa_link->ofd->when |= OSMO_FD_READ | OSMO_FD_WRITE;
 	ipa_link->ofd->priv_nr = priv_nr;
 	ipa_link->ofd->cb = ipa_client_fd_cb;
 	ipa_link->ofd->data = ipa_link;
@@ -232,7 +232,7 @@ int ipa_client_conn_open(struct ipa_client_conn *link)
 	if (ret < 0)
 		return ret;
 	link->ofd->fd = ret;
-	link->ofd->when |= BSC_FD_WRITE;
+	link->ofd->when |= OSMO_FD_WRITE;
 	if (osmo_fd_register(link->ofd) < 0) {
 		close(ret);
 		link->ofd->fd = -1;
@@ -245,7 +245,7 @@ int ipa_client_conn_open(struct ipa_client_conn *link)
 void ipa_client_conn_send(struct ipa_client_conn *link, struct msgb *msg)
 {
 	msgb_enqueue(&link->tx_queue, msg);
-	link->ofd->when |= BSC_FD_WRITE;
+	link->ofd->when |= OSMO_FD_WRITE;
 }
 
 size_t ipa_client_conn_clear_queue(struct ipa_client_conn *link)
@@ -258,7 +258,7 @@ size_t ipa_client_conn_clear_queue(struct ipa_client_conn *link)
 		deleted += 1;
 	}
 
-	link->ofd->when &= ~BSC_FD_WRITE;
+	link->ofd->when &= ~OSMO_FD_WRITE;
 	return deleted;
 }
 
@@ -312,7 +312,7 @@ ipa_server_link_create(void *ctx, struct e1inp_line *line,
 	if (!ipa_link)
 		return NULL;
 
-	ipa_link->ofd.when |= BSC_FD_READ | BSC_FD_WRITE;
+	ipa_link->ofd.when |= OSMO_FD_READ | OSMO_FD_WRITE;
 	ipa_link->ofd.cb = ipa_server_fd_cb;
 	ipa_link->ofd.fd = -1;
 	ipa_link->ofd.data = ipa_link;
@@ -394,7 +394,7 @@ static void ipa_server_conn_write(struct ipa_server_conn *conn)
 	msg = msgb_dequeue(&conn->tx_queue);
 
 	if (!msg) {
-		conn->ofd.when &= ~BSC_FD_WRITE;
+		conn->ofd.when &= ~OSMO_FD_WRITE;
 		return;
 	}
 
@@ -411,9 +411,9 @@ static int ipa_server_conn_cb(struct osmo_fd *ofd, unsigned int what)
 	int rc = 0;
 
 	LOGP(DLINP, LOGL_DEBUG, "connected read/write\n");
-	if (what & BSC_FD_READ)
+	if (what & OSMO_FD_READ)
 		rc = ipa_server_conn_read(conn);
-	if (rc != -EBADF && (what & BSC_FD_WRITE))
+	if (rc != -EBADF && (what & OSMO_FD_WRITE))
 		ipa_server_conn_write(conn);
 
 	return 0;
@@ -438,7 +438,7 @@ ipa_server_conn_create(void *ctx, struct ipa_server_link *link, int fd,
 	conn->ofd.fd = fd;
 	conn->ofd.data = conn;
 	conn->ofd.cb = ipa_server_conn_cb;
-	conn->ofd.when = BSC_FD_READ;
+	conn->ofd.when = OSMO_FD_READ;
 	conn->cb = cb;
 	conn->closed_cb = closed_cb;
 	conn->data = data;
@@ -542,5 +542,5 @@ void ipa_server_conn_destroy(struct ipa_server_conn *conn)
 void ipa_server_conn_send(struct ipa_server_conn *conn, struct msgb *msg)
 {
 	msgb_enqueue(&conn->tx_queue, msg);
-	conn->ofd.when |= BSC_FD_WRITE;
+	conn->ofd.when |= OSMO_FD_WRITE;
 }

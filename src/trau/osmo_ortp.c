@@ -213,10 +213,10 @@ static int osmo_rtp_fd_cb(struct osmo_fd *fd, unsigned int what)
 {
 	struct osmo_rtp_socket *rs = fd->data;
 
-	if (what & BSC_FD_READ) {
+	if (what & OSMO_FD_READ) {
 		/* in polling mode, we don't want to be called here */
 		if (rs->flags & OSMO_RTP_F_POLL) {
-			fd->when &= ~BSC_FD_READ;
+			fd->when &= ~OSMO_FD_READ;
 			return 0;
 		}
 		if (!recv_with_cb(rs))
@@ -224,7 +224,7 @@ static int osmo_rtp_fd_cb(struct osmo_fd *fd, unsigned int what)
 			     rs->rx_user_ts);
 		rs->rx_user_ts += 160;
 	}
-	/* writing is not queued at the moment, so BSC_FD_WRITE
+	/* writing is not queued at the moment, so OSMO_FD_WRITE
 	 * shouldn't occur */
 	return 0;
 }
@@ -249,7 +249,7 @@ static int osmo_rtp_socket_fdreg(struct osmo_rtp_socket *rs)
 
 	rs->rtp_bfd.fd = rtp_session_get_rtp_socket(rs->sess);
 	rs->rtcp_bfd.fd = rtp_session_get_rtcp_socket(rs->sess);
-	rs->rtp_bfd.when = rs->rtcp_bfd.when = BSC_FD_READ;
+	rs->rtp_bfd.when = rs->rtcp_bfd.when = OSMO_FD_READ;
 	rs->rtp_bfd.data = rs->rtcp_bfd.data = rs;
 	rs->rtp_bfd.cb = osmo_rtp_fd_cb;
 	rs->rtcp_bfd.cb = osmo_rtcp_fd_cb;

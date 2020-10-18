@@ -216,7 +216,7 @@ static int ts_want_write(struct e1inp_ts *e1i_ts)
 	if (e1i_ts->type == E1INP_TS_TYPE_TRAU)
 		return 0;
 
-	e1i_ts->driver.misdn.fd.when |= BSC_FD_WRITE;
+	e1i_ts->driver.misdn.fd.when |= OSMO_FD_WRITE;
 
 	return 0;
 }
@@ -242,7 +242,7 @@ static int handle_ts1_write(struct osmo_fd *bfd)
 	uint8_t *l2_data;
 	int ret;
 
-	bfd->when &= ~BSC_FD_WRITE;
+	bfd->when &= ~OSMO_FD_WRITE;
 
 	/* get the next msg for this timeslot */
 	msg = e1inp_tx_ts(e1i_ts, &sign_link);
@@ -481,20 +481,20 @@ static int misdn_fd_cb(struct osmo_fd *bfd, unsigned int what)
 
 	switch (e1i_ts->type) {
 	case E1INP_TS_TYPE_SIGN:
-		if (what & BSC_FD_READ)
+		if (what & OSMO_FD_READ)
 			rc = handle_ts1_read(bfd);
-		if (what & BSC_FD_WRITE)
+		if (what & OSMO_FD_WRITE)
 			rc = handle_ts1_write(bfd);
 		break;
 	case E1INP_TS_TYPE_TRAU:
-		if (what & BSC_FD_READ)
+		if (what & OSMO_FD_READ)
 			rc = handle_tsX_read(bfd);
 		/* We never include the mISDN B-Channel FD into the
 		 * writeset, since it doesn't support poll() based
 		 * write flow control */		
 		break;
 	case E1INP_TS_TYPE_RAW:
-		if (what & BSC_FD_READ)
+		if (what & OSMO_FD_READ)
 			rc = handle_ts_raw_read(bfd);
 		/* We never include the mISDN B-Channel FD into the
 		 * writeset, since it doesn't support poll() based
@@ -603,7 +603,7 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 		case E1INP_TS_TYPE_HDLC:
 			bfd->fd = socket(PF_ISDN, SOCK_DGRAM,
 				ISDN_P_B_HDLC);
-			bfd->when = BSC_FD_READ;
+			bfd->when = OSMO_FD_READ;
 			break;
 		case E1INP_TS_TYPE_SIGN:
 			if (mline->use_userspace_lapd)
@@ -612,7 +612,7 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 			else
 				bfd->fd = socket(PF_ISDN, SOCK_DGRAM,
 					ISDN_P_LAPD_NT);
-			bfd->when = BSC_FD_READ;
+			bfd->when = OSMO_FD_READ;
 			break;
 		case E1INP_TS_TYPE_TRAU:
 		case E1INP_TS_TYPE_RAW:
@@ -620,7 +620,7 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 			/* We never include the mISDN B-Channel FD into the
 	 		* writeset, since it doesn't support poll() based
 	 		* write flow control */		
-			bfd->when = BSC_FD_READ;
+			bfd->when = OSMO_FD_READ;
 			break;
 		}
 

@@ -147,7 +147,7 @@ static int unixsocket_write_cb(struct osmo_fd *bfd)
 	struct msgb *msg;
 	struct e1inp_sign_link *sign_link;
 
-	bfd->when &= ~BSC_FD_WRITE;
+	bfd->when &= ~OSMO_FD_WRITE;
 
 	/* get the next msg for this timeslot */
 	msg = e1inp_tx_ts(e1i_ts, &sign_link);
@@ -173,9 +173,9 @@ static int unixsocket_cb(struct osmo_fd *bfd, unsigned int what)
 {
 	int ret = 0;
 
-	if (what & BSC_FD_READ)
+	if (what & OSMO_FD_READ)
 		ret = unixsocket_read_cb(bfd);
-	if (what & BSC_FD_WRITE)
+	if (what & OSMO_FD_WRITE)
 		ret = unixsocket_write_cb(bfd);
 
 	return ret;
@@ -185,7 +185,7 @@ static int ts_want_write(struct e1inp_ts *e1i_ts)
 {
 	struct unixsocket_line *line = e1i_ts->line->driver_data;
 
-	line->fd.when |= BSC_FD_WRITE;
+	line->fd.when |= OSMO_FD_WRITE;
 
 	return 0;
 }
@@ -243,7 +243,7 @@ static int unixsocket_line_update(struct e1inp_line *line)
 
 	config = line->driver_data;
 	config->fd.data = line;
-	config->fd.when = BSC_FD_READ;
+	config->fd.when = OSMO_FD_READ;
 	config->fd.cb = unixsocket_cb;
 
 	/* Open unix domain socket */
