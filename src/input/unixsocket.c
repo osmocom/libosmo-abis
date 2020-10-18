@@ -242,9 +242,6 @@ static int unixsocket_line_update(struct e1inp_line *line)
 	}
 
 	config = line->driver_data;
-	config->fd.data = line;
-	config->fd.when = OSMO_FD_READ;
-	config->fd.cb = unixsocket_cb;
 
 	/* Open unix domain socket */
 	if (line->sock_path == NULL) {
@@ -274,7 +271,7 @@ static int unixsocket_line_update(struct e1inp_line *line)
 	}
 	LOGPIL(line, DLINP, LOGL_DEBUG, "successfully opend (new) socket: %s (line=%p, fd=%d, ret=%d)\n",
 		sock_path, line, config->fd.fd, ret);
-	config->fd.fd = ret;
+	osmo_fd_setup(&config->fd, ret, OSMO_FD_READ, unixsocket_cb, line, 0);
 
 	/* Register socket in select loop */
 	if (osmo_fd_register(&config->fd) < 0) {

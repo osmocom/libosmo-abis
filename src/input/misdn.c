@@ -592,10 +592,6 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 		struct osmo_fd *bfd = &e1i_ts->driver.misdn.fd;
 		struct sockaddr_mISDN addr;
 
-		bfd->data = line;
-		bfd->priv_nr = ts;
-		bfd->cb = misdn_fd_cb;
-
 		switch (e1i_ts->type) {
 		case E1INP_TS_TYPE_NONE:
 			continue;
@@ -681,6 +677,8 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 		 * use them to conserve CPU power */
 		if (e1i_ts->type == E1INP_TS_TYPE_TRAU)
 			activate_bchan(line, ts, 1);
+
+		osmo_fd_setup(bfd, bfd->fd, bfd->when, misdn_fd_cb, line, ts);
 
 		ret = osmo_fd_register(bfd);
 		if (ret < 0) {

@@ -364,10 +364,6 @@ e1d_line_update(struct e1inp_line *line)
 		if (bfd->list.next && bfd->list.next != LLIST_POISON1)
 			osmo_fd_unregister(bfd);
 
-		bfd->data = line;
-		bfd->priv_nr = ts;
-		bfd->cb = e1d_fd_cb;
-
 		if (e1i_ts->type != E1INP_TS_TYPE_NONE && ts >= num_ts_info) {
 			LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Timeslot configured, but not existent "
 				"on E1D side; skipping\n");
@@ -457,6 +453,7 @@ e1d_line_update(struct e1inp_line *line)
 			break;
 		};
 
+		osmo_fd_setup(bfd, bfd->fd, bfd->when, e1d_fd_cb, line, ts);
 		ret = osmo_fd_register(bfd);
 		if (ret < 0) {
 			LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "could not register FD: %s\n", strerror(ret));

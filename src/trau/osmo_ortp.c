@@ -247,12 +247,8 @@ static int osmo_rtp_socket_fdreg(struct osmo_rtp_socket *rs)
 {
 	int rc;
 
-	rs->rtp_bfd.fd = rtp_session_get_rtp_socket(rs->sess);
-	rs->rtcp_bfd.fd = rtp_session_get_rtcp_socket(rs->sess);
-	rs->rtp_bfd.when = rs->rtcp_bfd.when = OSMO_FD_READ;
-	rs->rtp_bfd.data = rs->rtcp_bfd.data = rs;
-	rs->rtp_bfd.cb = osmo_rtp_fd_cb;
-	rs->rtcp_bfd.cb = osmo_rtcp_fd_cb;
+	osmo_fd_setup(&rs->rtp_bfd, rtp_session_get_rtp_socket(rs->sess), OSMO_FD_READ, osmo_rtp_fd_cb, rs, 0);
+	osmo_fd_setup(&rs->rtcp_bfd, rtp_session_get_rtcp_socket(rs->sess), OSMO_FD_READ, osmo_rtcp_fd_cb, rs, 0);
 
 	rc = osmo_fd_register(&rs->rtp_bfd);
 	if (rc < 0)

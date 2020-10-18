@@ -643,10 +643,6 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 		 * board will be 32 */
 		dev_nr = scfg->chan_base + idx;
 
-		bfd->data = line;
-		bfd->priv_nr = ts;
-		bfd->cb = dahdi_fd_cb;
-
 		switch (e1i_ts->type) {
 		case E1INP_TS_TYPE_NONE:
 			/* close/release LAPD instance, if any */
@@ -712,6 +708,7 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 		if (bfd->fd < 0)
 			return bfd->fd;
 
+		osmo_fd_setup(bfd, bfd->fd, bfd->when, dahdi_fd_cb, line, ts);
 		ret = osmo_fd_register(bfd);
 		if (ret < 0) {
 			LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "could not register FD: %s\n", strerror(ret));

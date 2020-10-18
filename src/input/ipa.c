@@ -189,11 +189,7 @@ ipa_client_conn_create2(void *ctx, struct e1inp_ts *ts,
 		}
 	}
 
-	ipa_link->ofd->when |= OSMO_FD_READ | OSMO_FD_WRITE;
-	ipa_link->ofd->priv_nr = priv_nr;
-	ipa_link->ofd->cb = ipa_client_fd_cb;
-	ipa_link->ofd->data = ipa_link;
-	ipa_link->ofd->fd = -1;
+	osmo_fd_setup(ipa_link->ofd, -1, OSMO_FD_READ|OSMO_FD_WRITE, ipa_client_fd_cb, ipa_link, priv_nr);
 	ipa_link->state = IPA_CLIENT_LINK_STATE_CONNECTING;
 	ipa_link->local_addr = talloc_strdup(ipa_link, loc_addr);
 	ipa_link->local_port = loc_port;
@@ -312,10 +308,7 @@ ipa_server_link_create(void *ctx, struct e1inp_line *line,
 	if (!ipa_link)
 		return NULL;
 
-	ipa_link->ofd.when |= OSMO_FD_READ | OSMO_FD_WRITE;
-	ipa_link->ofd.cb = ipa_server_fd_cb;
-	ipa_link->ofd.fd = -1;
-	ipa_link->ofd.data = ipa_link;
+	osmo_fd_setup(&ipa_link->ofd, -1, OSMO_FD_READ|OSMO_FD_WRITE, ipa_server_fd_cb, ipa_link, 0);
 	if (addr)
 		ipa_link->addr = talloc_strdup(ipa_link, addr);
 	ipa_link->port = port;
@@ -435,10 +428,7 @@ ipa_server_conn_create(void *ctx, struct ipa_server_link *link, int fd,
 		return NULL;
 	}
 	conn->server = link;
-	conn->ofd.fd = fd;
-	conn->ofd.data = conn;
-	conn->ofd.cb = ipa_server_conn_cb;
-	conn->ofd.when = OSMO_FD_READ;
+	osmo_fd_setup(&conn->ofd, fd, OSMO_FD_READ, ipa_server_conn_cb, conn, 0);
 	conn->cb = cb;
 	conn->closed_cb = closed_cb;
 	conn->data = data;

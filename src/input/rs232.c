@@ -256,9 +256,7 @@ rs232_setup(struct e1inp_line *line, const char *serial_port, unsigned int delay
 	ser_handle->line = line;
 	ser_handle->delay_ms = delay_ms;
 
-	bfd->when = OSMO_FD_READ;
-	bfd->cb = serial_fd_cb;
-	bfd->data = ser_handle;
+	osmo_fd_setup(bfd, bfd->fd, OSMO_FD_READ, serial_fd_cb, ser_handle, 0);
 
 	rc = osmo_fd_register(bfd);
 	if (rc < 0) {
