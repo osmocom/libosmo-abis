@@ -526,7 +526,7 @@ static void dahdi_vty_show(struct vty *vty, struct e1inp_line *line)
 
 	scfg = span_cfgs[line->port_nr];
 	if (!scfg) {
-		vty_out(vty, "DAHDI Span %u non-existant%s",
+		vty_out(vty, "DAHDI Span %u non-existent%s",
 			line->port_nr+1, VTY_NEWLINE);
 		return;
 	}

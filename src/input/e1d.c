@@ -369,7 +369,7 @@ e1d_line_update(struct e1inp_line *line)
 		bfd->cb = e1d_fd_cb;
 
 		if (e1i_ts->type != E1INP_TS_TYPE_NONE && ts >= num_ts_info) {
-			LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Timeslot configured, but not existant "
+			LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Timeslot configured, but not existent "
 				"on E1D side; skipping\n");
 			continue;
 		}
