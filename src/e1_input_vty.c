@@ -245,32 +245,66 @@ DEFUN_ATTR(cfg_e1line_name, cfg_e1_line_name_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN_ATTR(cfg_e1_pcap, cfg_e1_pcap_cmd,
-	   "pcap .FILE",
-	   "Setup a pcap recording of all E1 traffic\n"
+DEFUN_ATTR(cfg_e1line_pcap, cfg_e1line_pcap_cmd,
+	   "e1_line <0-255> pcap .FILE",
+	   E1_LINE_HELP "Setup a pcap recording of E1 traffic for line\n"
 	   "Filename to save the packets to\n", CMD_ATTR_IMMEDIATE)
 {
+	struct e1inp_line *line;
 	int fd;
+	int rc;
+	int e1_nr = atoi(argv[0]);
 
-	fd = open(argv[0], O_WRONLY | O_CREAT | O_TRUNC, 0660);
-	if (fd < 0) {
-		vty_out(vty, "Failed to setup E1 pcap recording to %s.%s", argv[0], VTY_NEWLINE);
+	line = e1inp_line_find(e1_nr);
+	if (!line) {
+		vty_out(vty, "%% Line %d doesn't exist%s", e1_nr, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
-	e1_set_pcap_fd(fd);
+	fd = open(argv[1], O_WRONLY | O_CREAT | O_TRUNC, 0660);
+	if (fd < 0) {
+		vty_out(vty, "Failed to setup E1 pcap recording to %s%s", argv[1], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
 
+	rc = e1_set_pcap_fd2(line, fd);
+	if (rc < 0) {
+		vty_out(vty, "Failed to write to E1 pcap file %s%s", argv[1], VTY_NEWLINE);
+		close(fd);
+		return CMD_WARNING;
+	}
+
+	osmo_talloc_replace_string(line, &line->pcap_file, argv[1]);
 	return CMD_SUCCESS;
 }
 
-DEFUN_ATTR(cfg_e1_no_pcap, cfg_e1_no_pcap_cmd,
-	   "no pcap",
-	   NO_STR "Disable pcap recording of all E1 traffic\n",
+DEFUN_ATTR(cfg_e1line_no_pcap, cfg_e1line_no_pcap_cmd,
+	   "no e1_line <0-255> pcap",
+	   NO_STR E1_LINE_HELP "Disable pcap recording of E1 traffic for line\n",
 	   CMD_ATTR_IMMEDIATE)
 {
-	e1_set_pcap_fd(-1);
+	struct e1inp_line *line;
+	int e1_nr = atoi(argv[0]);
+	line = e1inp_line_find(e1_nr);
+
+	e1_set_pcap_fd2(line, -1);
+	if (line->pcap_file) {
+		talloc_free(line->pcap_file);
+		line->pcap_file = NULL;
+	}
 	return CMD_SUCCESS;
 }
+
+DEFUN_DEPRECATED(cfg_e1_pcap_deprec, cfg_e1_pcap_deprec_cmd,
+	     "pcap .FILE", "Legacy")
+{
+	vty_out(vty, "%% 'pcap' is deprecated and has no effect: use e1_line <0-255> pcap%s",
+		VTY_NEWLINE);
+	return CMD_WARNING;
+}
+
+ALIAS_DEPRECATED(cfg_e1_pcap_deprec, cfg_e1_pcap_deprec_no_cmd,
+	     "no pcap", NO_STR);
 
 DEFUN_ATTR(cfg_e1inp, cfg_e1inp_cmd,
 	   "e1_input",
@@ -329,6 +363,9 @@ static int e1inp_config_write(struct vty *vty)
 			vty_out(vty, " e1_line %u ipa-keepalive %d %d%s", line->num,
 				line->ipa_kap->interval, line->ipa_kap->wait_for_resp,
 				VTY_NEWLINE);
+		if (line->pcap_file)
+			vty_out(vty, " e1_line %u pcap %s%s", line->num,
+				line->pcap_file, VTY_NEWLINE);
 	}
 
 	const char *ipa_bind = e1inp_ipa_get_bind_addr();
@@ -365,6 +402,8 @@ static void e1line_dump_vty(struct vty *vty, struct e1inp_line *line,
 	vty_out(vty, "E1 Line Number %u, Name %s, Driver %s%s",
 		line->num, line->name ? line->name : "",
 		line->driver->name, VTY_NEWLINE);
+	if (line->pcap_file)
+		vty_out(vty, "PCAP %s%s", line->pcap_file, VTY_NEWLINE);
 	if (line->driver->vty_show)
 		line->driver->vty_show(vty, line);
 	if (stats)
@@ -477,8 +516,10 @@ int e1inp_vty_init(void)
 	install_lib_element(CONFIG_NODE, &cfg_e1inp_cmd);
 	install_node(&e1inp_node, e1inp_config_write);
 
-	install_lib_element(L_E1INP_NODE, &cfg_e1_pcap_cmd);
-	install_lib_element(L_E1INP_NODE, &cfg_e1_no_pcap_cmd);
+	install_lib_element(L_E1INP_NODE, &cfg_e1line_pcap_cmd);
+	install_lib_element(L_E1INP_NODE, &cfg_e1line_no_pcap_cmd);
+	install_lib_element(L_E1INP_NODE, &cfg_e1_pcap_deprec_cmd);
+	install_lib_element(L_E1INP_NODE, &cfg_e1_pcap_deprec_no_cmd);
 
 	install_lib_element(L_E1INP_NODE, &cfg_e1_line_driver_cmd);
 	install_lib_element(L_E1INP_NODE, &cfg_e1_line_port_cmd);

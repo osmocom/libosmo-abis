@@ -139,6 +139,40 @@ osmo_static_assert(offsetof(struct fake_linux_lapd_header, addr) == 6,      addr
 osmo_static_assert(offsetof(struct fake_linux_lapd_header, protocol) == 14, proto_offset);
 osmo_static_assert(sizeof(struct fake_linux_lapd_header) == 16,	       lapd_header_size);
 
+int e1_set_pcap_fd2(struct e1inp_line *line, int fd)
+{
+	static const struct pcap_hdr header = {
+		.magic_number	= 0xa1b2c3d4,
+		.version_major	= 2,
+		.version_minor	= 4,
+		.thiszone	= 0,
+		.sigfigs	= 0,
+		.snaplen	= 65535,
+		.network	= DLT_LINUX_LAPD,
+	};
+	int i;
+
+	/* write header */
+	if (fd >= 0) {
+		int rc = write(fd, &header, sizeof(header));
+		if (rc < 0)
+			return rc;
+	}
+
+	/* Set the PCAP file descriptor for all timeslots that have
+	 * software LAPD instances, to ensure the osmo_lapd_pcap code is
+	 * used to write PCAP files (if requested) */
+	for (i = 0; i < ARRAY_SIZE(line->ts); i++) {
+		struct e1inp_ts *e1i_ts = &line->ts[i];
+		if (e1i_ts->lapd)
+			e1i_ts->lapd->pcap_fd = fd;
+	}
+	/* close previous and update */
+	if (line->pcap_fd >= 0)
+		close(line->pcap_fd);
+	line->pcap_fd = fd;
+	return 0;
+}
 
 static int pcap_fd = -1;
 
@@ -185,7 +219,7 @@ int e1_set_pcap_fd(int fd)
 
 /* This currently only works for the D-Channel */
 static void write_pcap_packet(int direction, int sapi, int tei,
-			      struct msgb *msg) {
+			      struct msgb *msg, int pcap_fd) {
 	if (pcap_fd < 0)
 		return;
 
@@ -286,7 +320,7 @@ int abis_sendmsg(struct msgb *msg)
 	 * the _actual_ LAPD packet */
 	if (!e1i_ts->lapd) {
 		write_pcap_packet(PCAP_OUTPUT, sign_link->sapi,
-				  sign_link->tei, msg);
+				  sign_link->tei, msg, e1i_ts->line->pcap_fd);
 	}
 
 	return 0;
@@ -460,6 +494,7 @@ e1inp_line_create(uint8_t e1_nr, const char *driver_name)
 
 	line->driver = driver;
 	line->num = e1_nr;
+	line->pcap_fd = -1;
 
 	line->rate_ctr = rate_ctr_group_alloc(line, &e1inp_ctr_g_d, line->num);
 	if (!line->rate_ctr) {
@@ -664,7 +699,7 @@ int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
 		 * the libosmocore LAPD implementation, it will take
 		 * care of writing the _actual_ LAPD packet */
 		if (!ts->lapd)
-			write_pcap_packet(PCAP_INPUT, sapi, tei, msg);
+			write_pcap_packet(PCAP_INPUT, sapi, tei, msg, ts->line->pcap_fd);
 		/* consult the list of signalling links */
 		link = e1inp_lookup_sign_link(ts, tei, sapi);
 		if (!link) {
@@ -901,7 +936,7 @@ int e1inp_line_update(struct e1inp_line *line)
 	for (i = 0; i < ARRAY_SIZE(line->ts); i++) {
 		struct e1inp_ts *e1i_ts = &line->ts[i];
 		if (e1i_ts->lapd)
-			e1i_ts->lapd->pcap_fd = pcap_fd;
+			e1i_ts->lapd->pcap_fd = line->pcap_fd;
 	}
 
 	/* Send a signal to anyone who is interested in new lines being
@@ -916,13 +951,16 @@ int e1inp_line_update(struct e1inp_line *line)
 static int e1i_sig_cb(unsigned int subsys, unsigned int signal,
 		      void *handler_data, void *signal_data)
 {
+	struct e1inp_line *line;
+
 	if (subsys != SS_L_GLOBAL ||
 	    signal != S_L_GLOBAL_SHUTDOWN)
 		return 0;
 
-	if (pcap_fd) {
-		close(pcap_fd);
-		pcap_fd = -1;
+	llist_for_each_entry(line, &e1inp_line_list, list) {
+		if (line->pcap_fd >=0)
+			close(line->pcap_fd);
+		line->pcap_fd = -1;
 	}
 
 	return 0;

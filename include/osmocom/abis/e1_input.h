@@ -223,6 +223,10 @@ struct e1inp_line {
 	void *driver_data;
 
 	struct osmo_use_count use_count;
+
+	/* file name and file descriptor of pcap for this line */
+	char *pcap_file;
+	int pcap_fd;
 };
 #define e1inp_line_ipa_oml_ts(line) (&line->ts[0])
 #define e1inp_line_ipa_rsl_ts(line, trx_id) (&line->ts[1 + (trx_id)])
@@ -317,7 +321,10 @@ void e1inp_dlsap_up(struct osmo_dlsap_prim *odp, uint8_t tei, uint8_t sapi,
         void *rx_cbdata);
 
 /* Write LAPD frames to the fd. */
+OSMO_DEPRECATED("Use e1_set_pcap_fd2() instead")
 int e1_set_pcap_fd(int fd);
+
+int e1_set_pcap_fd2(struct e1inp_line *line, int fd);
 
 /* called by TRAU muxer to obtain the destination mux entity */
 struct subch_mux *e1inp_get_mux(uint8_t e1_nr, uint8_t ts_nr);
