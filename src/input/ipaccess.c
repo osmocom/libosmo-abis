@@ -88,8 +88,7 @@ static int ipaccess_drop(struct osmo_fd *bfd, struct e1inp_line *line)
 
 	/* Error case: we did not see any ID_RESP yet for this socket. */
 	if (bfd->fd != -1) {
-		LOGP(DLINP, LOGL_ERROR, "Forcing socket shutdown with "
-					"no signal link set\n");
+		LOGPITS(e1i_ts, DLINP, LOGL_NOTICE, "Forcing socket shutdown\n");
 		osmo_fd_unregister(bfd);
 		close(bfd->fd);
 		bfd->fd = -1;
@@ -101,6 +100,9 @@ static int ipaccess_drop(struct osmo_fd *bfd, struct e1inp_line *line)
 		e1inp_line_put2(line, "ipa_bfd");
 
 		ret = -ENOENT;
+	} else {
+		LOGPITS(e1i_ts, DLINP, LOGL_ERROR,
+			"Forcing socket shutdown with no signal link set\n");
 	}
 
 	msgb_free(e1i_ts->pending_msg);
