@@ -509,7 +509,7 @@ static int __handle_ts1_write(struct osmo_fd *bfd, struct e1inp_line *line)
 	msg->l2h = msg->data;
 	ipa_prepend_header(msg, sign_link->tei);
 
-	LOGPITS(e1i_ts, DLMI, LOGL_NOTICE, "TX %u: %s\n", ts_nr,
+	LOGPITS(e1i_ts, DLMI, LOGL_DEBUG, "TX %u: %s\n", ts_nr,
 		osmo_hexdump(msg->l2h, msgb_l2len(msg)));
 
 	ret = send(bfd->fd, msg->data, msg->len, 0);
