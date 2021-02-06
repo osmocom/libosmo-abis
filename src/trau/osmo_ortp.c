@@ -202,8 +202,10 @@ int osmo_rtp_socket_poll(struct osmo_rtp_socket *rs)
 	if (recv_with_cb(rs))
 		return 1;
 
-	LOGP(DLMIB, LOGL_INFO, "osmo_rtp_socket_poll(%u): ERROR!\n",
-	     rs->rx_user_ts);
+	/* this happens every time we miss an incoming RTP frame, which is quite common
+	 * when a voice channel is first activated, or also in case of packet loss.
+	 * See also https://osmocom.org/issues/4464 */
+	LOGP(DLMIB, LOGL_DEBUG, "osmo_rtp_socket_poll(%u): No message received\n", rs->rx_user_ts);
 	return 0;
 }
 
