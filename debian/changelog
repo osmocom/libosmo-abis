@@ -1,3 +1,50 @@
+libosmo-abis (1.1.0) unstable; urgency=medium
+
+  [ Harald Welte ]
+  * trau_frame: New API
+  * trau_frame: Introduce support for Downlink Time Alignment
+  * osmo_trau_frame_encode(): Check for sufficiently sized output buffer
+  * Add new TRAU frame sync code
+  * TRAU frame RTP conversion
+  * Add 'trau2rtp' demo program illustrating the use of new TRAU code
+  * Add missing build dependency to libosmocodec-dev
+  * trau_frame: Fix computation of odd parity while encoding HR frames
+  * trau_sync: Check return value of osmo_fsm_register()
+  * trau_frame: Add missing break statement in osmo_trau_frame_encode()
+  * Fix RPM spec file (.so.6 -> .so.9)
+  * debian: Build libosmo-abis with osmo-e1d support
+  * Revert "debian: Build libosmo-abis with osmo-e1d support"
+  * Use OSMO_FD_* instead of deprecated BSC_FD_*
+  * Use osmo_fd_setup() wherever applicable
+  * e1_input: Support I.460 timeslot type
+  * osmo_ortp: Don't print ERROR message for every missing RTP frame
+  * migrate to osmo_fd_{read,write}_{enable,disable}()
+
+  [ Philipp Maier ]
+  * trau_sync: prevent false positive synchronization on startup
+  * trau_sync: make sync pattern configurable
+  * vty: add attributes to VTY commands indicating when they apply
+
+  [ Vadim Yanitskiy ]
+  * debian/control: change maintainer to the Osmocom team / mailing list
+  * vty: use install_lib_element() and install_lib_element_ve()
+  * cosmetic: fix spelling in logging messages: existAnt -> existEnt
+  * ipaccess: fix verbosive logging in __handle_ts1_write()
+
+  [ Pau Espin Pedrol ]
+  * tests: Disable stderr log color in trau_sync_test
+  * contrib/jenkins: Enable parallel make in make distcheck
+  * ipaccess: Use LOGPITS macro in __handle_ts1_write
+  * ipaccess: Fix log error printed on wrong conditional branch
+  * ipaccess: Fix wrong assertion in ipaccess_drop() when used by BTS code
+  * tests: trau_sync: Explicitly drop category from log
+  * gitignore: Ignore autofoo files *~
+
+  [ Oliver Smith ]
+  * configure.ac: set -std=gnu11
+
+ -- Pau Espin Pedrol <pespin@sysmocom.de>  Tue, 23 Feb 2021 16:21:49 +0100
+
 libosmo-abis (1.0.0) unstable; urgency=medium
 
   [ Neels Hofmeyr ]

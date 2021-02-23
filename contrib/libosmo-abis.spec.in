@@ -27,10 +27,10 @@ BuildRequires:  automake >= 1.6
 BuildRequires:  libtool >= 2
 BuildRequires:  pkgconfig >= 0.20
 BuildRequires:  xz
-BuildRequires:  pkgconfig(libosmocore) >= 1.1.0
-BuildRequires:  pkgconfig(libosmogsm) >= 1.1.0
-BuildRequires:  pkgconfig(libosmovty) >= 1.1.0
-BuildRequires:  pkgconfig(libosmocodec) >= 1.1.0
+BuildRequires:  pkgconfig(libosmocore) >= 1.5.0
+BuildRequires:  pkgconfig(libosmogsm) >= 1.5.0
+BuildRequires:  pkgconfig(libosmovty) >= 1.5.0
+BuildRequires:  pkgconfig(libosmocodec) >= 1.5.0
 BuildRequires:  pkgconfig(ortp) >= 0.22
 BuildRequires:  pkgconfig(talloc)
 
@@ -39,12 +39,12 @@ In GSM, A-bis is a BSS-internal interface link between the BTS and
 BSC. This interface allows control of the radio equipment and radio
 frequency allocation in the BTS.
 
-%package -n libosmoabis9
+%package -n libosmoabis10
 Summary:        Osmocom GSM A-bis interface library
 License:        AGPL-3.0-or-later
 Group:          System/Libraries
 
-%description -n libosmoabis9
+%description -n libosmoabis10
 In the GSM system architecture, A-bis is a Base Station
 System-internal interface linking the Base Transceiver Stations (BTS)
 and Base Station Controller (BSC). This interface allows control of
@@ -58,7 +58,7 @@ cards, as well as some A-bis/IP dialects.
 Summary:        Development files for the Osmocom GSM A-bis library
 License:        AGPL-3.0-or-later
 Group:          Development/Libraries/C and C++
-Requires:       libosmoabis9 = %version
+Requires:       libosmoabis10 = %version
 Requires:       libosmocore-devel >= 0.3.0
 Requires:       libosmogsm-devel >= 0.3.10
 
@@ -120,12 +120,12 @@ find "$b/%_libdir" -type f -name "*.la" -delete
 %check
 make %{?_smp_mflags} check || (find . -name testsuite.log -exec cat {} +)
 
-%post   -n libosmoabis9 -p /sbin/ldconfig
-%postun -n libosmoabis9 -p /sbin/ldconfig
+%post   -n libosmoabis10 -p /sbin/ldconfig
+%postun -n libosmoabis10 -p /sbin/ldconfig
 %post   -n libosmotrau2 -p /sbin/ldconfig
 %postun -n libosmotrau2 -p /sbin/ldconfig
 
-%files -n libosmoabis9
+%files -n libosmoabis10
 %defattr(-,root,root)
 %_libdir/libosmoabis.so.9*
 

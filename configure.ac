@@ -23,7 +23,7 @@ AC_PROG_CC
 AC_PROG_INSTALL
 LT_INIT([pic-only])
 
-dnl patching ${archive_cmds} to affect generation of file "libtool" to fix linking with clang 
+dnl patching ${archive_cmds} to affect generation of file "libtool" to fix linking with clang
 AS_CASE(["$LD"],[*clang*],
   [AS_CASE(["${host_os}"],
      [*linux*],[archive_cmds='$CC -shared $pic_flag $libobjs $deplibs $compiler_flags $wl-soname $wl$soname -o $lib'])])
@@ -66,10 +66,10 @@ AC_SUBST(SYMBOL_VISIBILITY)
 dnl Generate the output
 AM_CONFIG_HEADER(config.h)
 
-PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 1.4.0)
-PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 1.4.0)
-PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 1.4.0)
-PKG_CHECK_MODULES(LIBOSMOCODEC, libosmocodec >= 1.4.0)
+PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 1.5.0)
+PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 1.5.0)
+PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 1.5.0)
+PKG_CHECK_MODULES(LIBOSMOCODEC, libosmocodec >= 1.5.0)
 PKG_CHECK_MODULES(ORTP, ortp >= 0.22.0)
 
 AC_ARG_ENABLE([dahdi],
