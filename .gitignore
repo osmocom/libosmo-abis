@@ -23,6 +23,7 @@ install-sh
 stamp-h1
 #libosmo-abis-*
 tests/*_test
+*~
 
 # libtool and e.g. arm-poky-linux-gnueabi-libtool
 *libtool
