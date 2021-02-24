@@ -1,3 +1,9 @@
+libosmo-abis (1.1.1) unstable; urgency=medium
+
+  * attempt to fix RPM spec file after recent soversion bump
+
+ -- Harald Welte <laforge@osmocom.org>  Wed, 24 Feb 2021 09:32:29 +0100
+
 libosmo-abis (1.1.0) unstable; urgency=medium
 
   [ Harald Welte ]
