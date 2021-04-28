@@ -1,6 +1,6 @@
 /* OpenBSC Abis input driver for ip.access */
 
-/* (C) 2009 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2009-2021 by Harald Welte <laforge@gnumonks.org>
  * (C) 2010 by Holger Hans Peter Freyther
  * (C) 2010 by On-Waves
  *
@@ -50,6 +50,9 @@
 #include <osmocom/abis/ipa.h>
 #include <osmocom/core/backtrace.h>
 #include <osmocom/gsm/ipa.h>
+
+/* global parameters of IPA input driver */
+struct ipa_pars g_e1inp_ipaccess_pars;
 
 static void *tall_ipa_ctx;
 
@@ -1041,6 +1044,8 @@ static int ipaccess_line_update(struct e1inp_line *line)
 				"BSC link: %s\n", strerror(errno));
 			return -ENOMEM;
 		}
+		oml_link->dscp = g_e1inp_ipaccess_pars.oml.dscp;
+		oml_link->priority = g_e1inp_ipaccess_pars.oml.priority;
 		if (ipa_server_link_open(oml_link) < 0) {
 			LOGP(DLINP, LOGL_ERROR, "cannot open OML BSC link: %s\n",
 				strerror(errno));
@@ -1055,6 +1060,8 @@ static int ipaccess_line_update(struct e1inp_line *line)
 				"BSC link: %s\n", strerror(errno));
 			return -ENOMEM;
 		}
+		rsl_link->dscp = g_e1inp_ipaccess_pars.rsl.dscp;
+		rsl_link->priority = g_e1inp_ipaccess_pars.rsl.priority;
 		if (ipa_server_link_open(rsl_link) < 0) {
 			LOGP(DLINP, LOGL_ERROR, "cannot open RSL BSC link: %s\n",
 				strerror(errno));
@@ -1087,6 +1094,8 @@ static int ipaccess_line_update(struct e1inp_line *line)
 				"BTS link: %s\n", strerror(errno));
 			return -ENOMEM;
 		}
+		link->dscp = g_e1inp_ipaccess_pars.oml.dscp;
+		link->priority = g_e1inp_ipaccess_pars.oml.priority;
 		if (ipa_client_conn_open(link) < 0) {
 			LOGP(DLINP, LOGL_ERROR, "cannot open OML BTS link: %s\n",
 				strerror(errno));
@@ -1141,6 +1150,8 @@ int e1inp_ipa_bts_rsl_connect_n(struct e1inp_line *line,
 			"BTS link: %s\n", strerror(errno));
 		return -ENOMEM;
 	}
+	rsl_link->dscp = g_e1inp_ipaccess_pars.rsl.dscp;
+	rsl_link->priority = g_e1inp_ipaccess_pars.rsl.priority;
 	if (ipa_client_conn_open(rsl_link) < 0) {
 		LOGP(DLINP, LOGL_ERROR, "cannot open RSL BTS link: %s\n",
 			strerror(errno));

@@ -10,6 +10,19 @@ struct osmo_fd;
 struct e1inp_sign_link;
 struct e1inp_ts;
 
+struct ipa_proto_pars {
+	uint8_t dscp;
+	uint8_t priority;
+};
+
+struct ipa_pars {
+	struct ipa_proto_pars oml;
+	struct ipa_proto_pars rsl;
+};
+
+/* global parameters of IPA input driver */
+extern struct ipa_pars g_e1inp_ipaccess_pars;
+
 /* talloc context for libosmo-abis. */
 extern void *libosmo_abis_ctx;
 

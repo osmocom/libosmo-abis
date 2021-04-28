@@ -1,5 +1,5 @@
 /* E1 vty interface */
-/* (C) 2011 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2011-2021 by Harald Welte <laforge@gnumonks.org>
  * All Rights Reserved
  *
  * SPDX-License-Identifier: AGPL-3.0+
@@ -327,6 +327,38 @@ DEFUN_USRATTR(cfg_ipa_bind,
 	return CMD_SUCCESS;
 }
 
+DEFUN_USRATTR(cfg_ipa_dscp, cfg_ipa_dscp_cmd,
+	      X(OSMO_ABIS_LIB_ATTR_IPA_NEW_LNK),
+	      "ipa ip-dscp (oml|rsl) <0-63>",
+	      "ipa driver config\n"
+	      "Set IP DSCP value for outbound packets\n"
+	      "Set IP DSCP for OML link\n"
+	      "Set IP DSCP for RSL link\n"
+	      "IP DSCP Value to use\n")
+{
+	if (!strcmp(argv[0], "oml"))
+		g_e1inp_ipaccess_pars.oml.dscp = atoi(argv[1]);
+	else
+		g_e1inp_ipaccess_pars.rsl.dscp = atoi(argv[1]);
+	return CMD_SUCCESS;
+}
+
+DEFUN_USRATTR(cfg_ipa_priority, cfg_ipa_priority_cmd,
+	      X(OSMO_ABIS_LIB_ATTR_IPA_NEW_LNK),
+	      "ipa socket-priority (oml|rsl) <0-255>",
+	      "ipa driver config\n"
+	      "Set socket priority value for outbound packets\n"
+	      "Set socket priority for OML link\n"
+	      "Set socket priority for RSL link\n"
+	      "socket priority value to use (>6 requires CAP_NET_ADMIN)\n")
+{
+	if (!strcmp(argv[0], "oml"))
+		g_e1inp_ipaccess_pars.oml.priority = atoi(argv[1]);
+	else
+		g_e1inp_ipaccess_pars.rsl.priority = atoi(argv[1]);
+	return CMD_SUCCESS;
+}
+
 static int e1inp_config_write(struct vty *vty)
 {
 	struct e1inp_line *line;
@@ -372,6 +404,15 @@ static int e1inp_config_write(struct vty *vty)
 	if (ipa_bind && (strcmp(ipa_bind, "0.0.0.0") != 0))
 		vty_out(vty, " ipa bind %s%s",
 			ipa_bind, VTY_NEWLINE);
+
+	if (g_e1inp_ipaccess_pars.oml.dscp)
+		vty_out(vty, " ipa ip-dscp oml %u%s", g_e1inp_ipaccess_pars.oml.dscp, VTY_NEWLINE);
+	if (g_e1inp_ipaccess_pars.rsl.dscp)
+		vty_out(vty, " ipa ip-dscp rsl %u%s", g_e1inp_ipaccess_pars.rsl.dscp, VTY_NEWLINE);
+	if (g_e1inp_ipaccess_pars.oml.priority)
+		vty_out(vty, " ipa socket-priority oml %u%s", g_e1inp_ipaccess_pars.oml.priority, VTY_NEWLINE);
+	if (g_e1inp_ipaccess_pars.rsl.priority)
+		vty_out(vty, " ipa socket-priority rsl %u%s", g_e1inp_ipaccess_pars.rsl.priority, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -532,6 +573,8 @@ int e1inp_vty_init(void)
 	install_lib_element(L_E1INP_NODE, &cfg_e1_line_no_ipa_keepalive_cmd);
 
 	install_lib_element(L_E1INP_NODE, &cfg_ipa_bind_cmd);
+	install_lib_element(L_E1INP_NODE, &cfg_ipa_dscp_cmd);
+	install_lib_element(L_E1INP_NODE, &cfg_ipa_priority_cmd);
 
 	install_lib_element_ve(&show_e1drv_cmd);
 	install_lib_element_ve(&show_e1line_cmd);
