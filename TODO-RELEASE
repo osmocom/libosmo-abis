@@ -7,3 +7,6 @@
 # If any interfaces have been added since the last public release: c:r:a + 1.
 # If any interfaces have been removed or changed since the last public release: c:r:0.
 #library	what		description / commit summary line
+update libosmocore dependency to > 1.5.1 for OSMO_SOCK_F_{DSCP,PRIO}()
+libosmo-abis	new member	ipa_client_conn new struct members dscp, priority
+libosmo-abis	new member	ipa_server_link new struct members dscp, priority

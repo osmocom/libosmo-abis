@@ -19,6 +19,8 @@ struct ipa_server_link {
 	uint16_t			port;
 	int (*accept_cb)(struct ipa_server_link *link, int fd);
 	void				*data;
+	uint8_t				dscp;
+	uint8_t				priority;
 };
 
 struct ipa_server_link *
@@ -80,6 +82,8 @@ struct ipa_client_conn {
 	struct msgb			*pending_msg;
 	const char			*local_addr;
 	uint16_t			local_port;
+	uint8_t				dscp;
+	uint8_t				priority;
 };
 
 struct ipa_client_conn *

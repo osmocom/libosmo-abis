@@ -224,7 +224,8 @@ int ipa_client_conn_open(struct ipa_client_conn *link)
 	ret = osmo_sock_init2(AF_INET, SOCK_STREAM, IPPROTO_TCP,
 			     link->local_addr, link->local_port,
 			     link->addr, link->port,
-			     OSMO_SOCK_F_BIND|OSMO_SOCK_F_CONNECT|OSMO_SOCK_F_NONBLOCK);
+			     OSMO_SOCK_F_BIND|OSMO_SOCK_F_CONNECT|OSMO_SOCK_F_NONBLOCK|
+			     OSMO_SOCK_F_DSCP(link->dscp) | OSMO_SOCK_F_PRIO(link->priority));
 	if (ret < 0)
 		return ret;
 	link->ofd->fd = ret;
@@ -282,6 +283,10 @@ static int ipa_server_fd_cb(struct osmo_fd *ofd, unsigned int what)
 	LOGIPA(link, LOGL_NOTICE, "accept()ed new link from %s:%u\n",
 		inet_ntoa(sa.sin_addr), ntohs(sa.sin_port));
 
+	/* make new fd inherit DSCP + priority of listen-socket */
+	osmo_sock_set_dscp(fd, link->dscp);
+	osmo_sock_set_priority(fd, link->priority);
+
 	ret = link->accept_cb(link, fd);
 	if (ret < 0) {
 		LOGP(DLINP, LOGL_ERROR,
@@ -330,7 +335,8 @@ int ipa_server_link_open(struct ipa_server_link *link)
 	int ret;
 
 	ret = osmo_sock_init(AF_INET, SOCK_STREAM, IPPROTO_TCP,
-			     link->addr, link->port, OSMO_SOCK_F_BIND);
+			     link->addr, link->port, OSMO_SOCK_F_BIND|
+			     OSMO_SOCK_F_DSCP(link->dscp) | OSMO_SOCK_F_PRIO(link->priority));
 	if (ret < 0)
 		return ret;
 
