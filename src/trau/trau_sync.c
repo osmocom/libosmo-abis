@@ -487,7 +487,7 @@ osmo_trau_sync_alloc(void *ctx, const char *name, frame_out_cb_t frame_out_cb,
 	if (pat_id >= ARRAY_SIZE(sync_patterns))
 		return NULL;
 
-	fi = osmo_fsm_inst_alloc(&trau_sync_fsm, ctx, NULL, LOGL_NOTICE, name);
+	fi = osmo_fsm_inst_alloc(&trau_sync_fsm, ctx, NULL, LOGL_INFO, name);
 	if (!fi)
 		return NULL;
 	tss = talloc_zero(fi, struct trau_rx_sync_state);
