@@ -1,4 +1,4 @@
-/* (C) 2011 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2011-2021 by Harald Welte <laforge@gnumonks.org>
  * (C) 2011 by On-Waves e.h.f
  * All Rights Reserved
  *
@@ -33,6 +33,7 @@
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/utils.h>
 #include <osmocom/core/select.h>
+#include <osmocom/core/socket.h>
 #include <osmocom/trau/osmo_ortp.h>
 
 #include <ortp/ortp.h>
@@ -590,6 +591,21 @@ int osmo_rtp_socket_set_pt(struct osmo_rtp_socket *rs, int payload_type)
 int osmo_rtp_socket_set_dscp(struct osmo_rtp_socket *rs, int dscp)
 {
 	return rtp_session_set_dscp(rs->sess, dscp);
+}
+
+/*! \brief Set the socket priority for outgoing RTP packets
+ *  \param[in] rs OsmoRTP socket
+ *  \param[in] prio socket priority
+ *  \returns 0 on success, < 0 otherwise
+ */
+int osmo_rtp_socket_set_priority(struct osmo_rtp_socket *rs, uint8_t prio)
+{
+	int rc;
+
+	rc = osmo_sock_set_priority(rs->rtp_bfd.fd, prio);
+	if (rc < 0)
+		return rc;
+	return osmo_sock_set_priority(rs->rtcp_bfd.fd, prio);
 }
 
 /*! \brief completely close the RTP socket and release all resources
