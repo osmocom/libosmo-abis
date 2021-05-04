@@ -453,7 +453,7 @@ static void e1line_dump_vty(struct vty *vty, struct e1inp_line *line,
 
 DEFUN(show_e1line,
       show_e1line_cmd,
-      "show e1_line [line_nr] [stats]",
+      "show e1_line [<0-255>] [stats]",
 	SHOW_STR "Display information about a E1 line\n"
 	"E1 Line Number\n" "Include statistics\n")
 {
@@ -487,13 +487,13 @@ static void e1ts_dump_vty(struct vty *vty, struct e1inp_ts *ts)
 	if (ts->type == E1INP_TS_TYPE_NONE)
 		return;
 	vty_out(vty, "E1 Timeslot %2u of Line %u is Type %s%s",
-		ts->num, ts->line->num, e1inp_tstype_name(ts->type),
+		ts->num-1, ts->line->num, e1inp_tstype_name(ts->type),
 		VTY_NEWLINE);
 }
 
 DEFUN(show_e1ts,
       show_e1ts_cmd,
-      "show e1_timeslot [line_nr] [ts_nr]",
+      "show e1_timeslot [<0-255>] [<0-31>]",
 	SHOW_STR "Display information about a E1 timeslot\n"
 	"E1 Line Number\n" "E1 Timeslot Number\n")
 {
