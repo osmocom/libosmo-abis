@@ -1025,8 +1025,6 @@ static int ipaccess_line_update(struct e1inp_line *line)
 	if (il->line_already_initialized)
 		return 0;
 
-	il->line_already_initialized = true;
-
 	switch(line->ops->cfg.ipa.role) {
 	case E1INP_LINE_R_BSC: {
 		struct ipa_server_link *oml_link, *rsl_link;
@@ -1112,6 +1110,8 @@ static int ipaccess_line_update(struct e1inp_line *line)
 	default:
 		break;
 	}
+
+	il->line_already_initialized = true;
 	return ret;
 }
 
