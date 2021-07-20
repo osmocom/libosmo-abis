@@ -142,8 +142,8 @@ static void ortp_sig_cb_ssrc(RtpSession *rs, void *data)
 	uint32_t ssrc = rtp_session_get_recv_ssrc(rs);
 
 	LOGP(DLMIB, LOGL_INFO,
-	     "osmo-ortp(%d): ssrc_changed to 0x%08x, resetting\n", port, ssrc);
-	rtp_session_reset(rs);
+	     "osmo-ortp(%d): ssrc_changed to 0x%08x, resyncing\n", port, ssrc);
+	rtp_session_resync(rs);
 }
 
 static void ortp_sig_cb_pt(RtpSession *rs, void *data)
