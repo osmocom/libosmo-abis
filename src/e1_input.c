@@ -470,6 +470,14 @@ struct e1inp_line *e1inp_line_find(uint8_t e1_nr)
 	return NULL;
 }
 
+/*! Create a new e1inp line object.
+ * \param[in] e1_nr The line number of the new line to be created.
+ * \param[in] driver_name String identifying the driver (see e1inp_driver_register() for more info).
+ * \returns pointer to the new object created.
+ *
+ * The allocated object is returned with a count reference with name "ctor",
+ * which must be dropped in order to free the object [e1inp_line_put2(line, "ctor")].
+ */
 struct e1inp_line *
 e1inp_line_create(uint8_t e1_nr, const char *driver_name)
 {
