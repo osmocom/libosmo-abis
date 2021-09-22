@@ -452,6 +452,8 @@ static int e1inp_line_use_cb(struct osmo_use_count_entry *use_count_entry, int32
 		if (line->driver_data)
 			talloc_unlink(line, line->driver_data);
 	}
+
+	llist_del(&line->list);
 	talloc_free(line);
 	return 0;
 }
