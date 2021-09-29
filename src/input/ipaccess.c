@@ -1005,6 +1005,7 @@ err:
 
 struct ipaccess_line {
 	bool line_already_initialized;
+	struct ipa_client_conn *ipa_cli;
 };
 
 static int ipaccess_line_update(struct e1inp_line *line)
@@ -1021,12 +1022,11 @@ static int ipaccess_line_update(struct e1inp_line *line)
 	}
 	il = line->driver_data;
 
-	/* We only initialize this line once. */
-	if (il->line_already_initialized)
-		return 0;
-
 	switch(line->ops->cfg.ipa.role) {
 	case E1INP_LINE_R_BSC: {
+		/* We only initialize this line once. */
+		if (il->line_already_initialized)
+			return 0;
 		struct ipa_server_link *oml_link, *rsl_link;
 		const char *ipa = e1inp_ipa_get_bind_addr();
 
@@ -1077,6 +1077,13 @@ static int ipaccess_line_update(struct e1inp_line *line)
 		     "OML connecting to %s:%u\n", line->ops->cfg.ipa.addr,
 		     IPA_TCP_PORT_OML);
 
+		/* Drop previous line */
+		if (il->ipa_cli) {
+			ipa_client_conn_close(il->ipa_cli);
+			ipa_client_conn_destroy(il->ipa_cli);
+			il->ipa_cli = NULL;
+		}
+
 		link = ipa_client_conn_create2(tall_ipa_ctx,
 					      e1inp_line_ipa_oml_ts(line),
 					      E1INP_SIGN_OML,
@@ -1104,6 +1111,7 @@ static int ipaccess_line_update(struct e1inp_line *line)
 
 		e1i_ts = e1inp_line_ipa_oml_ts(line);
 		ipaccess_bts_keepalive_fsm_alloc(e1i_ts, link, "oml_bts_to_bsc");
+		il->ipa_cli = link;
 		ret = 0;
 		break;
 	}
