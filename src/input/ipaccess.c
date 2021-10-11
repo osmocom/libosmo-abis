@@ -1005,7 +1005,7 @@ err:
 
 struct ipaccess_line {
 	bool line_already_initialized;
-	struct ipa_client_conn *ipa_cli;
+	struct ipa_client_conn *ipa_cli[NUM_E1_TS]; /* 0=OML, 1+N=TRX_N */
 };
 
 static int ipaccess_line_update(struct e1inp_line *line)
@@ -1078,10 +1078,10 @@ static int ipaccess_line_update(struct e1inp_line *line)
 		     IPA_TCP_PORT_OML);
 
 		/* Drop previous line */
-		if (il->ipa_cli) {
-			ipa_client_conn_close(il->ipa_cli);
-			ipa_client_conn_destroy(il->ipa_cli);
-			il->ipa_cli = NULL;
+		if (il->ipa_cli[0]) {
+			ipa_client_conn_close(il->ipa_cli[0]);
+			ipa_client_conn_destroy(il->ipa_cli[0]);
+			il->ipa_cli[0] = NULL;
 		}
 
 		link = ipa_client_conn_create2(tall_ipa_ctx,
@@ -1111,7 +1111,7 @@ static int ipaccess_line_update(struct e1inp_line *line)
 
 		e1i_ts = e1inp_line_ipa_oml_ts(line);
 		ipaccess_bts_keepalive_fsm_alloc(e1i_ts, link, "oml_bts_to_bsc");
-		il->ipa_cli = link;
+		il->ipa_cli[0] = link;
 		ret = 0;
 		break;
 	}
@@ -1137,11 +1137,23 @@ int e1inp_ipa_bts_rsl_connect_n(struct e1inp_line *line,
 {
 	struct ipa_client_conn *rsl_link;
 	struct e1inp_ts *e1i_ts = e1inp_line_ipa_rsl_ts(line, trx_nr);
+	struct ipaccess_line *il;
 
 	if (E1INP_SIGN_RSL+trx_nr-1 >= NUM_E1_TS) {
 		LOGP(DLINP, LOGL_ERROR, "cannot create RSL BTS link: "
 			"trx_nr (%d) out of range\n", trx_nr);
 		return -EINVAL;
+	}
+
+	if (!line->driver_data)
+		line->driver_data = talloc_zero(line, struct ipaccess_line);
+	il = line->driver_data;
+
+	/* Drop previous line */
+	if (il->ipa_cli[1 + trx_nr]) {
+		ipa_client_conn_close(il->ipa_cli[1 + trx_nr]);
+		ipa_client_conn_destroy(il->ipa_cli[1 + trx_nr]);
+		il->ipa_cli[1 + trx_nr] = NULL;
 	}
 
 	rsl_link = ipa_client_conn_create2(tall_ipa_ctx,
@@ -1167,8 +1179,8 @@ int e1inp_ipa_bts_rsl_connect_n(struct e1inp_line *line,
 		ipa_client_conn_destroy(rsl_link);
 		return -EIO;
 	}
-
 	ipaccess_bts_keepalive_fsm_alloc(e1i_ts, rsl_link, "rsl_bts_to_bsc");
+	il->ipa_cli[1 + trx_nr] = rsl_link;
 	return 0;
 }
 
