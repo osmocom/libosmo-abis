@@ -563,6 +563,8 @@ e1inp_line_clone(void *ctx, struct e1inp_line *line, const char *use)
 		.use_cb = e1inp_line_use_cb,
 		.use_counts = {0},
 	};
+	/* initialize list so it can be safely deleted without affecting original line */
+	INIT_LLIST_HEAD(&clone->list);
 	e1inp_line_get2(clone, use); /* Clone is used internally for bfd */
 	return clone;
 }
