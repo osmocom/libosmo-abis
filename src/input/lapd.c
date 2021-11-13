@@ -74,13 +74,13 @@
 #define LAPD_SET_K(n, o)  {n,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o}
 
 #define LOGLI(li, level, fmt, args ...) \
-	LOGP(DLLAPD, level, "%s: " fmt, (li)->name, ## args)
+	LOGP(DLLAPD, level, "(%s): " fmt, (li)->name, ## args)
 
 #define LOGTEI(teip, level, fmt, args ...) \
 	LOGP(DLLAPD, level, "(%s-T%u): " fmt, (teip)->li->name, (teip)->tei, ## args)
 
 #define LOGSAP(sap, level, fmt, args ...) \
-	LOGP(DLLAPD, level, "%s: " fmt, (sap)->dl.name, ## args)
+	LOGP(DLLAPD, level, "(%s): " fmt, (sap)->dl.name, ## args)
 
 #define DLSAP_MSGB_SIZE		128
 #define DLSAP_MSGB_HEADROOM	56
@@ -240,14 +240,14 @@ static struct lapd_sap *lapd_sap_alloc(struct lapd_tei *teip, uint8_t sapi)
 	char name[256];
 	int k;
 
-	snprintf(name, sizeof(name), "(%s-T%u-S%u)", li->name, teip->tei, sapi);
+	snprintf(name, sizeof(name), "%s-T%u-S%u", li->name, teip->tei, sapi);
 
 	sap = talloc_zero(teip, struct lapd_sap);
 	if (!sap)
 		return NULL;
 
 	LOGP(DLLAPD, LOGL_NOTICE,
-	     "%s: LAPD Allocating SAP for SAPI=%u / TEI=%u (dl=%p, sap=%p)\n",
+	     "(%s): LAPD Allocating SAP for SAPI=%u / TEI=%u (dl=%p, sap=%p)\n",
 	     name, sapi, teip->tei, &sap->dl, sap);
 
 	sap->sapi = sapi;
@@ -256,7 +256,7 @@ static struct lapd_sap *lapd_sap_alloc(struct lapd_tei *teip, uint8_t sapi)
 	profile = &li->profile;
 
 	k = profile->k[sapi & 0x3f];
-	LOGP(DLLAPD, LOGL_NOTICE, "%s: k=%d N200=%d N201=%d T200=%d.%d T203=%d.%d\n",
+	LOGP(DLLAPD, LOGL_NOTICE, "(%s): k=%d N200=%d N201=%d T200=%d.%d T203=%d.%d\n",
 		name, k, profile->n200, profile->n201, profile->t200_sec,
 		profile->t200_usec, profile->t203_sec, profile->t203_usec);
 	lapd_dl_init2(dl, k, 128, profile->n201, name);
