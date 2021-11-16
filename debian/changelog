@@ -1,3 +1,29 @@
+libosmo-abis (1.2.0) unstable; urgency=medium
+
+  [ Keith ]
+  * Configure E1 pcap file per line
+  * Log TRAU FSM at INFO not NOTICE
+  * Fix up vty 'show' commands for E1 line/timeslots
+
+  [ Harald Welte ]
+  * ipa: Introduce support for user-specific DSCP and priority
+  * e1_input: Allow (vty) configuration of IP DSCP and socket priority
+  * trau: Introduce osmo_rtp_socket_set_priority()
+
+  [ Philipp Maier ]
+  * ipaccess: do not block ipaccess_line_update on failure
+
+  [ Pau Espin Pedrol ]
+  * Use new stat item/ctr getter APIs
+  * osmo_ortp: Fix seqno reset to 0 upon ssrc_changed
+  * e1_input: Fix line not removed from e1inp_line_list when freed
+  * e1_input: Document e1inp_line_create()
+  * ipaccess: Allow reconfiguring the ipa line during line_update()
+  * ipaccess: e1inp_ipa_bts_rsl_connect: Fix memleak recreating ipa_client_conn
+  * e1inp_input: Fix e1inp_line_clone removing original line from global list when freed
+
+ -- Pau Espin Pedrol <pespin@sysmocom.de>  Tue, 16 Nov 2021 14:18:45 +0100
+
 libosmo-abis (1.1.1) unstable; urgency=medium
 
   * attempt to fix RPM spec file after recent soversion bump
