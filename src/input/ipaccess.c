@@ -50,6 +50,7 @@
 #include <osmocom/abis/ipa.h>
 #include <osmocom/core/backtrace.h>
 #include <osmocom/gsm/ipa.h>
+#include <osmocom/core/stats_tcp.h>
 
 /* global parameters of IPA input driver */
 struct ipa_pars g_e1inp_ipaccess_pars;
@@ -341,6 +342,7 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 				     "could not register FD\n");
 				goto err;
 			}
+			osmo_stats_tcp_osmo_fd_register(newbfd, "ipa-rsl");
 
 			e1i_ts = ipaccess_line_ts(newbfd, new_line);
 			ipaccess_bsc_keepalive_fsm_alloc(e1i_ts, newbfd, "rsl_bsc_to_bts");
@@ -671,6 +673,7 @@ static int ipaccess_bsc_oml_cb(struct ipa_server_link *link, int fd)
 		LOGP(DLINP, LOGL_ERROR, "could not register FD\n");
 		goto err_line;
 	}
+	osmo_stats_tcp_osmo_fd_register(bfd, "ipa-oml");
 
 	update_fd_settings(line, bfd->fd);
 
@@ -724,6 +727,8 @@ static int ipaccess_bsc_rsl_cb(struct ipa_server_link *link, int fd)
 		LOGP(DLINP, LOGL_ERROR, "could not register FD\n");
 		goto err_line;
 	}
+	osmo_stats_tcp_osmo_fd_register(bfd, "ipa-rsl");
+
 	/* Request ID. FIXME: request LOCATION, HW/SW VErsion, Unit Name, Serno */
 	ret = ipa_ccm_send_id_req(bfd->fd);
 	if (ret < 0) {
