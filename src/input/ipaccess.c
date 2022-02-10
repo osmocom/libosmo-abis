@@ -342,7 +342,9 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 				     "could not register FD\n");
 				goto err;
 			}
-			osmo_stats_tcp_osmo_fd_register(newbfd, "ipa-rsl");
+			char stat_name[16];
+			snprintf(stat_name, sizeof(stat_name), "ipa-rsl-%u", unit_data.trx_id);
+			osmo_stats_tcp_osmo_fd_register(newbfd, stat_name);
 
 			e1i_ts = ipaccess_line_ts(newbfd, new_line);
 			ipaccess_bsc_keepalive_fsm_alloc(e1i_ts, newbfd, "rsl_bsc_to_bts");
