@@ -296,6 +296,7 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 			struct e1inp_ts *ts;
 			struct osmo_fd *newbfd;
 			struct e1inp_line *new_line;
+			char tcp_stat_name[32];
 
 			sign_link =
 				line->ops->sign_link_up(&unit_data, line,
@@ -342,9 +343,9 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 				     "could not register FD\n");
 				goto err;
 			}
-			char stat_name[16];
-			snprintf(stat_name, sizeof(stat_name), "ipa-rsl-%u", unit_data.trx_id);
-			osmo_stats_tcp_osmo_fd_register(newbfd, stat_name);
+			snprintf(tcp_stat_name, sizeof(tcp_stat_name), "bts.%u.ipa-rsl.%u",
+				unit_data.bts_id, unit_data.trx_id);
+			osmo_stats_tcp_osmo_fd_register(newbfd, tcp_stat_name);
 
 			e1i_ts = ipaccess_line_ts(newbfd, new_line);
 			ipaccess_bsc_keepalive_fsm_alloc(e1i_ts, newbfd, "rsl_bsc_to_bts");
