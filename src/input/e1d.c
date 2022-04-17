@@ -242,7 +242,7 @@ static int handle_ts_raw_read(struct osmo_fd *bfd)
 	msgb_put(msg, ret);
 
 	msg->l2h = msg->data;
-	LOGPITS(e1i_ts, DLMIB, LOGL_DEBUG, "RAW CHAN RX: %s\n", osmo_hexdump(msgb_l2(msg), ret));
+	LOGPITS(e1i_ts, DLMIB, LOGL_DEBUG, "RAW CHAN RX: %s\n", msgb_hexdump_l2(msg));
 	ret = e1inp_rx_ts(e1i_ts, msg, 0, 0);
 	/* physical layer indicates that data has been sent,
 	 * we thus can send some more data */
