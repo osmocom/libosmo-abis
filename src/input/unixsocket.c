@@ -128,14 +128,6 @@ fail:
 	return ret;
 }
 
-static void timeout_ts1_write(void *data)
-{
-	struct e1inp_ts *e1i_ts = (struct e1inp_ts *)data;
-
-	/* trigger write of ts1, due to tx delay timer */
-	ts_want_write(e1i_ts);
-}
-
 static int unixsocket_write_cb(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
@@ -143,20 +135,13 @@ static int unixsocket_write_cb(struct osmo_fd *bfd)
 	struct msgb *msg;
 	struct e1inp_sign_link *sign_link;
 
-	osmo_fd_write_disable(bfd);
-
 	/* get the next msg for this timeslot */
 	msg = e1inp_tx_ts(e1i_ts, &sign_link);
 	if (!msg) {
-		/* no message after tx delay timer */
+		osmo_fd_write_disable(bfd);
 		LOGPITS(e1i_ts, DLINP, LOGL_INFO, "no message available (line=%p)\n", line);
 		return 0;
 	}
-
-	/* set tx delay timer for next event */
-	osmo_timer_setup(&e1i_ts->sign.tx_timer, timeout_ts1_write, e1i_ts);
-
-	osmo_timer_schedule(&e1i_ts->sign.tx_timer, 0, e1i_ts->sign.delay);
 
 	LOGPITS(e1i_ts, DLINP, LOGL_DEBUG, "sending: %s (line=%p)\n", msgb_hexdump(msg), line);
 	lapd_transmit(e1i_ts->lapd, sign_link->tei,
