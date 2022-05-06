@@ -494,12 +494,12 @@ static int __handle_ts1_write(struct osmo_fd *bfd, struct e1inp_line *line)
 	int ret;
 
 	e1i_ts = ipaccess_line_ts(bfd, line);
-	osmo_fd_write_disable(bfd);
 
 	/* get the next msg for this timeslot */
 	msg = e1inp_tx_ts(e1i_ts, &sign_link);
 	if (!msg) {
 		/* no message after tx delay timer */
+		osmo_fd_write_disable(bfd);
 		return 0;
 	}
 
@@ -527,11 +527,15 @@ static int __handle_ts1_write(struct osmo_fd *bfd, struct e1inp_line *line)
 		goto err;
 	}
 
-	/* set tx delay timer for next event */
-	osmo_timer_setup(&e1i_ts->sign.tx_timer, timeout_ts1_write, e1i_ts);
-
-	/* Reducing this might break the nanoBTS 900 init. */
-	osmo_timer_schedule(&e1i_ts->sign.tx_timer, 0, e1i_ts->sign.delay);
+	/* this is some ancient code that apparently exists to slow down writes towards
+	 * some even more ancient nanoBTS 900 units. See git commit
+	 * d49fc5ae24fc9d44d2b284392ab619cc7a69a876 of openbsc.git (now osmo-bsc.git) */
+	if (e1i_ts->sign.delay) {
+		osmo_fd_write_disable(bfd);
+		/* set tx delay timer for next event */
+		osmo_timer_setup(&e1i_ts->sign.tx_timer, timeout_ts1_write, e1i_ts);
+		osmo_timer_schedule(&e1i_ts->sign.tx_timer, 0, e1i_ts->sign.delay);
+	}
 
 out:
 	msgb_free(msg);
