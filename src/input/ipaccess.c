@@ -509,7 +509,7 @@ static int __handle_ts1_write(struct osmo_fd *bfd, struct e1inp_line *line)
 	case E1INP_SIGN_OSMO:
 		break;
 	default:
-		osmo_fd_write_enable(bfd); /* come back for more msg */
+		/* leave WRITE flag enabled, come back for more msg */
 		ret = -EINVAL;
 		goto out;
 	}
