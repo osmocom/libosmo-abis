@@ -477,12 +477,24 @@ static void ipaccess_close(struct e1inp_sign_link *sign_link)
 	}
 }
 
+static bool e1i_ts_has_pending_tx_msgs(struct e1inp_ts *e1i_ts)
+{
+	struct e1inp_sign_link *link;
+	llist_for_each_entry(link, &e1i_ts->sign.sign_links, list) {
+		if (!llist_empty(&link->tx_list)) {
+			return true;
+		}
+	}
+	return false;
+}
+
 static void timeout_ts1_write(void *data)
 {
 	struct e1inp_ts *e1i_ts = (struct e1inp_ts *)data;
 
 	/* trigger write of ts1, due to tx delay timer */
-	ts_want_write(e1i_ts);
+	if (e1i_ts_has_pending_tx_msgs(e1i_ts))
+		ts_want_write(e1i_ts);
 }
 
 static int __handle_ts1_write(struct osmo_fd *bfd, struct e1inp_line *line)
@@ -535,9 +547,11 @@ static int __handle_ts1_write(struct osmo_fd *bfd, struct e1inp_line *line)
 		/* set tx delay timer for next event */
 		osmo_timer_setup(&e1i_ts->sign.tx_timer, timeout_ts1_write, e1i_ts);
 		osmo_timer_schedule(&e1i_ts->sign.tx_timer, 0, e1i_ts->sign.delay);
-	}
-
+	} else {
 out:
+		if (!e1i_ts_has_pending_tx_msgs(e1i_ts))
+			osmo_fd_write_disable(bfd);
+	}
 	msgb_free(msg);
 	return ret;
 err:
