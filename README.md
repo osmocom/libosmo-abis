@@ -29,9 +29,9 @@ GIT Repository
 
 You can clone from the official libosmo-abis.git repository using
 
-	git clone git://git.osmocom.org/libosmo-abis.git
+	git clone https://gitea.osmocom.org/osmocom/libosmo-abis
 
-There is a cgit interface at <http://git.osmocom.org/libosmo-abis/>
+There is a web interface at <https://gitea.osmocom.org/osmocom/libosmo-abis>
 
 Documentation
 -------------

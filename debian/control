@@ -15,8 +15,8 @@ Build-Depends: debhelper (>= 9),
                pkg-config,
                libortp-dev
 Standards-Version: 3.9.7
-Vcs-Git: git://git.osmocom.org/libosmo-abis.git
-Vcs-Browser: http://git.osmocom.org/libosmo-abis/
+Vcs-Git: https://gitea.osmocom.org/osmocom/libosmo-abis
+Vcs-Browser: https://gitea.osmocom.org/osmocom/libosmo-abis
 Homepage: https://projects.osmocom.org/projects/libosmo-abis
 
 Package: libosmo-abis
