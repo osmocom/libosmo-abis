@@ -127,50 +127,45 @@ int osmo_pcap_lapd_open(char *filename, mode_t mode)
 /* This currently only works for the D-Channel */
 int osmo_pcap_lapd_write(int fd, int direction, struct msgb *msg)
 {
-	int numbytes = 0;
 	struct timeval tv;
-	struct pcap_rechdr pcap_rechdr;
-	struct pcap_lapdhdr header;
-	char buf[sizeof(struct pcap_rechdr) +
-		 sizeof(struct pcap_lapdhdr) + msg->len];
+	struct {
+		struct pcap_rechdr pcap_rechdr;
+		struct pcap_lapdhdr header;
+		char buf[msg->len];
+	} __attribute__((packed)) s;
 
 	/* PCAP file has not been opened, skip. */
 	if (fd < 0)
 		return 0;
 
-	pcap_rechdr.ts_sec	= 0;
-	pcap_rechdr.ts_usec	= 0;
-	pcap_rechdr.incl_len   = msg->len + sizeof(struct pcap_lapdhdr);
-	pcap_rechdr.orig_len   = msg->len + sizeof(struct pcap_lapdhdr);
+	memset(&s, 0, sizeof(s));
+
+	s.pcap_rechdr.ts_sec	= 0;
+	s.pcap_rechdr.ts_usec	= 0;
+	s.pcap_rechdr.incl_len   = msg->len + sizeof(struct pcap_lapdhdr);
+	s.pcap_rechdr.orig_len   = msg->len + sizeof(struct pcap_lapdhdr);
 
 	if (direction == OSMO_LAPD_PCAP_OUTPUT)
-		header.pkttype		= htons(LINUX_SLL_OUTGOING);
+		s.header.pkttype		= htons(LINUX_SLL_OUTGOING);
 	else
-		header.pkttype		= htons(LINUX_SLL_HOST);
-	header.hatype		= 0;
-	header.halen		= 0;
-	header.addr[0]		= 0x01;	/* we are the network side */
-	header.protocol		= ntohs(48);
+		s.header.pkttype		= htons(LINUX_SLL_HOST);
+	s.header.hatype		= 0;
+	s.header.halen		= 0;
+	s.header.addr[0]		= 0x01;	/* we are the network side */
+	s.header.protocol		= ntohs(48);
 
 	gettimeofday(&tv, NULL);
-	pcap_rechdr.ts_sec = tv.tv_sec;
-	pcap_rechdr.ts_usec = tv.tv_usec;
+	s.pcap_rechdr.ts_sec = tv.tv_sec;
+	s.pcap_rechdr.ts_usec = tv.tv_usec;
 
-	memcpy(buf + numbytes, &pcap_rechdr, sizeof(pcap_rechdr));
-	numbytes += sizeof(pcap_rechdr);
+	memcpy(s.buf, msg->data, msg->len);
 
-	memcpy(buf + numbytes, &header, sizeof(header));
-	numbytes += sizeof(header);
-
-	memcpy(buf + numbytes, msg->data, msg->len);
-	numbytes += msg->len;
-
-	if (write(fd, buf, numbytes) != numbytes) {
+	if (write(fd, &s, sizeof(s)) != sizeof(s)) {
 		LOGP(DLLAPD, LOGL_ERROR, "cannot write packet to PCAP: %s\n",
 			strerror(errno));
 		return -1;
 	}
-	return numbytes;
+	return sizeof(s);
 }
 
 int osmo_pcap_lapd_close(int fd)
