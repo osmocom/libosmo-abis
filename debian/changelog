@@ -1,3 +1,33 @@
+libosmo-abis (1.3.0) unstable; urgency=medium
+
+  [ Harald Welte ]
+  * lapd: don't add parenthesis around datalink name
+  * input/ipaccess: Don't start zero-ms timer on every write
+  * update git URLs (git -> https; gitea)
+  * update git URLs (git -> https; gitea)
+  * osmo_pcap_lapd_write: Fix write of uninitialized byte(s)
+
+  [ Oliver Smith ]
+  * treewide: remove FSF address
+
+  [ Philipp Maier ]
+  * ipaccess.c: register RSL/OML related osmo_fds for monitoring
+
+  [ Michael Iedema ]
+  * stats: add RSL line number to TCP stats name
+  * stats: add BTS index to IPA RSL TCP stats name
+  * stats: add site_id scope to ipa-rsl tcp stat names
+
+  [ Vadim Yanitskiy ]
+  * input/e1d: fix a memleak in handle_ts_raw_read()
+  * input/e1d: use msgb_hexdump_l2() in handle_ts_raw_read()
+
+  [ Pau Espin Pedrol ]
+  * input/ipaccess: Remove unneeded osmo_fd_write_enable()
+  * input/ipaccess: Avoid extra poll() call when e1i_ts tx queue becomes empty
+
+ -- Pau Espin Pedrol <pespin@sysmocom.de>  Tue, 28 Jun 2022 17:59:38 +0200
+
 libosmo-abis (1.2.0) unstable; urgency=medium
 
   [ Keith ]
