@@ -95,7 +95,7 @@ AC_ARG_ENABLE([e1d],
 		ENABLE_E1D="no"
 	])
 AS_IF([test "x$ENABLE_E1D" = "xyes"], [
-	PKG_CHECK_MODULES(LIBOSMOE1D, libosmo-e1d)
+	PKG_CHECK_MODULES(LIBOSMOE1D, libosmo-e1d >= 0.4.0)
 ])
 AM_CONDITIONAL(ENABLE_E1D, test "x$ENABLE_E1D" = "xyes")
 AC_SUBST(ENABLE_E1D)
