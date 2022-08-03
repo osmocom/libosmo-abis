@@ -11,7 +11,10 @@ COMMONLIBS = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOVTY_LIBS) $(LIBOSMO
 
 lib_LTLIBRARIES = libosmoabis.la libosmotrau.la
 
-libosmoabis_la_LDFLAGS = $(AM_LDFLAGS) -version-info $(ABIS_LIBVERSION)
+libosmoabis_la_LDFLAGS = $(AM_LDFLAGS) \
+			 -version-info $(ABIS_LIBVERSION) \
+			 -no-undefined \
+			 $(NULL)
 libosmoabis_la_LIBADD = $(COMMONLIBS)
 libosmoabis_la_SOURCES = init.c \
 			 e1_input.c \
@@ -33,7 +36,10 @@ libosmoabis_la_SOURCES += input/dahdi.c
 endif
 
 libosmotrau_la_CFLAGS = $(AM_CFLAGS) $(ORTP_CFLAGS)
-libosmotrau_la_LDFLAGS = $(AM_LDFLAGS) -version-info $(TRAU_LIBVERSION)
+libosmotrau_la_LDFLAGS = $(AM_LDFLAGS) \
+			 -version-info $(TRAU_LIBVERSION) \
+			 -no-undefined \
+			 $(NULL)
 libosmotrau_la_LIBADD = $(COMMONLIBS) $(ORTP_LIBS)
 libosmotrau_la_SOURCES = trau/osmo_ortp.c \
 			 trau/trau_frame.c \
