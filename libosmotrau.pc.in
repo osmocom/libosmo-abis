@@ -8,3 +8,4 @@ Description: C Utility Library
 Version: @VERSION@
 Libs: -L${libdir} -losmotrau
 Cflags: -I${includedir}/
+Requires: libosmocore
