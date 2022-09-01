@@ -12,6 +12,7 @@ enum osmo_trau_sync_pat_id {
 	OSMO_TRAU_SYNCP_8_AMR_6K7,
 	OSMO_TRAU_SYNCP_8_AMR_7K4,
 	OSMO_TRAU_SYNCP_V110,
+	OSMO_TRAU_SYNCP_16_ER_CCU,
 };
 
 typedef void (*frame_out_cb_t)(void *user_data, const ubit_t *bits, unsigned int num_bits);
