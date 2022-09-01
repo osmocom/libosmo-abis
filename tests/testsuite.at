@@ -35,3 +35,9 @@ cat $abs_srcdir/trau_sync/trau_sync_test.ok > expout
 cat $abs_srcdir/trau_sync/trau_sync_test.err > experr
 AT_CHECK([$abs_top_builddir/tests/trau_sync/trau_sync_test], [0], [expout], [experr])
 AT_CLEANUP
+
+AT_SETUP([trau_pcu_ericsson])
+AT_KEYWORDS([trau_pcu_ericsson])
+cat $abs_srcdir/trau_pcu_ericsson/trau_pcu_ericsson_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/trau_pcu_ericsson/trau_pcu_ericsson_test], [0], [expout], [ignore])
+AT_CLEANUP

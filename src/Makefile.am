@@ -43,6 +43,7 @@ libosmotrau_la_LDFLAGS = $(AM_LDFLAGS) \
 libosmotrau_la_LIBADD = $(COMMONLIBS) $(ORTP_LIBS)
 libosmotrau_la_SOURCES = trau/osmo_ortp.c \
 			 trau/trau_frame.c \
+			 trau/trau_pcu_ericsson.c \
 			 trau/trau_sync.c \
 			 trau/trau_rtp_conv.c
 

@@ -7,4 +7,5 @@ nobase_include_HEADERS = osmocom/abis/ipa.h osmocom/abis/trau_frame.h	\
  osmocom/abis/unixsocket_proto.h \
  osmocom/trau/trau_frame.h \
  osmocom/trau/trau_sync.h \
+ osmocom/trau/trau_pcu_ericsson.h \
  osmocom/trau/trau_rtp.h

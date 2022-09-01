@@ -8,7 +8,8 @@ check_PROGRAMS = e1inp_ipa_bsc_test	\
 		  subchan_demux/subchan_demux_test \
 		  ipa_recv/ipa_recv_test \
 		  rtp_test/rtp_test \
-		  trau_sync/trau_sync_test
+		  trau_sync/trau_sync_test \
+		  trau_pcu_ericsson/trau_pcu_ericsson_test
 
 e1inp_ipa_bsc_test_SOURCES = e1inp_ipa_bsc_test.c
 e1inp_ipa_bsc_test_LDADD = $(top_builddir)/src/libosmoabis.la \
@@ -41,6 +42,9 @@ trau_sync_trau_sync_test_SOURCES = trau_sync/trau_sync_test.c
 trau_sync_trau_sync_test_LDADD = $(top_builddir)/src/libosmotrau.la \
 			$(LIBOSMOCORE_LIBS)
 
+trau_pcu_ericsson_trau_pcu_ericsson_test_SOURCES = trau_pcu_ericsson/trau_pcu_ericsson_test.c
+trau_pcu_ericsson_trau_pcu_ericsson_test_LDADD = $(top_builddir)/src/libosmotrau.la \
+			$(LIBOSMOCORE_LIBS)
 
 # boilerplate for the tests
 # The `:;' works around a Bash 3.2 bug when the output is not writeable.
@@ -65,7 +69,8 @@ EXTRA_DIST = testsuite.at $(srcdir)/package.m4 $(TESTSUITE) \
 	subchan_demux/subchan_demux_test.ok \
 	ipa_recv/ipa_recv_test.ok \
 	rtp_test/rtp_test.ok \
-	trau_sync/trau_sync_test.ok trau_sync/trau_sync_test.err
+	trau_sync/trau_sync_test.ok trau_sync/trau_sync_test.err \
+	trau_pcu_ericsson/trau_pcu_ericsson_test.ok
 
 TESTSUITE = $(srcdir)/testsuite
 
