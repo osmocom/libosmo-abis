@@ -336,7 +336,8 @@ int e1inp_ipa_bts_rsl_connect(struct e1inp_line *line,
 
 int e1inp_ipa_bts_rsl_connect_n(struct e1inp_line *line,
 			      const char *rem_addr, uint16_t rem_port,
-			      uint8_t trx_id);
+			      uint8_t trx_nr);
+int e1inp_ipa_bts_rsl_close_n(struct e1inp_line *line, uint8_t trx_nr);
 
 void e1inp_sign_link_destroy(struct e1inp_sign_link *link);
 int e1inp_line_update(struct e1inp_line *line);

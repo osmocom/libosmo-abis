@@ -1163,6 +1163,7 @@ int e1inp_ipa_bts_rsl_connect_n(struct e1inp_line *line,
 	struct ipa_client_conn *rsl_link;
 	struct e1inp_ts *e1i_ts = e1inp_line_ipa_rsl_ts(line, trx_nr);
 	struct ipaccess_line *il;
+	int rc;
 
 	if (E1INP_SIGN_RSL+trx_nr-1 >= NUM_E1_TS) {
 		LOGP(DLINP, LOGL_ERROR, "cannot create RSL BTS link: "
@@ -1170,16 +1171,13 @@ int e1inp_ipa_bts_rsl_connect_n(struct e1inp_line *line,
 		return -EINVAL;
 	}
 
+	/* Drop previous line */
+	if ((rc = e1inp_ipa_bts_rsl_close_n(line, trx_nr)) < 0)
+		return rc;
+
 	if (!line->driver_data)
 		line->driver_data = talloc_zero(line, struct ipaccess_line);
 	il = line->driver_data;
-
-	/* Drop previous line */
-	if (il->ipa_cli[1 + trx_nr]) {
-		ipa_client_conn_close(il->ipa_cli[1 + trx_nr]);
-		ipa_client_conn_destroy(il->ipa_cli[1 + trx_nr]);
-		il->ipa_cli[1 + trx_nr] = NULL;
-	}
 
 	rsl_link = ipa_client_conn_create2(tall_ipa_ctx,
 					  e1inp_line_ipa_rsl_ts(line, trx_nr),
@@ -1206,6 +1204,29 @@ int e1inp_ipa_bts_rsl_connect_n(struct e1inp_line *line,
 	}
 	ipaccess_bts_keepalive_fsm_alloc(e1i_ts, rsl_link, "rsl_bts_to_bsc");
 	il->ipa_cli[1 + trx_nr] = rsl_link;
+	return 0;
+}
+
+/* Close the underlying IPA TCP socket of an RSL link */
+int e1inp_ipa_bts_rsl_close_n(struct e1inp_line *line, uint8_t trx_nr)
+{
+	struct ipaccess_line *il;
+
+	if (E1INP_SIGN_RSL+trx_nr-1 >= NUM_E1_TS) {
+		LOGP(DLINP, LOGL_ERROR,
+		     "cannot close RSL BTS link: trx_nr (%d) out of range\n", trx_nr);
+		return -EINVAL;
+	}
+
+	il = line->driver_data;
+	if (!il)
+		return 0; /* Nothing to do, no lines created */
+
+	if (il->ipa_cli[1 + trx_nr]) {
+		ipa_client_conn_close(il->ipa_cli[1 + trx_nr]);
+		ipa_client_conn_destroy(il->ipa_cli[1 + trx_nr]);
+		il->ipa_cli[1 + trx_nr] = NULL;
+	}
 	return 0;
 }
 
