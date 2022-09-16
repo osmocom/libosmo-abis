@@ -123,7 +123,8 @@ static int ipaccess_drop(struct osmo_fd *bfd, struct e1inp_line *line)
 	e1i_ts->pending_msg = NULL;
 
 	/* e1inp_sign_link_destroy releases the socket descriptors for us. */
-	line->ops->sign_link_down(line);
+	if (line->ops->sign_link_down)
+		line->ops->sign_link_down(line);
 
 	e1inp_line_put2(line, __func__);
 	return ret;
