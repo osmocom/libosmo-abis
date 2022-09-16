@@ -452,15 +452,11 @@ static void ipaccess_close(struct e1inp_sign_link *sign_link)
 	struct e1inp_ts *e1i_ts = sign_link->ts;
 	struct osmo_fd *bfd = &e1i_ts->driver.ipaccess.fd;
 	struct e1inp_line *line = e1i_ts->line;
+	struct osmo_fsm_inst *ka_fsm = e1i_ts->driver.ipaccess.ka_fsm;
 
-	/* line might not exist if != bsc||bts */
-	if (line) {
-		/* depending on caller the fsm might be dead */
-		struct osmo_fsm_inst* ka_fsm = ipaccess_line_ts(bfd, line)->driver.ipaccess.ka_fsm;
-		if (ka_fsm)
-			ipa_keepalive_fsm_stop(ka_fsm);
-
-	}
+	/* depending on caller the fsm might be dead */
+	if (ka_fsm)
+		ipa_keepalive_fsm_stop(ka_fsm);
 
 	e1inp_int_snd_event(e1i_ts, sign_link, S_L_INP_TEI_DN);
 	/* the first e1inp_sign_link_destroy call closes the socket. */
