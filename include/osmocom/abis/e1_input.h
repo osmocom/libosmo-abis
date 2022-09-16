@@ -229,7 +229,7 @@ struct e1inp_line {
 	int pcap_fd;
 };
 #define e1inp_line_ipa_oml_ts(line) (&line->ts[0])
-#define e1inp_line_ipa_rsl_ts(line, trx_id) (&line->ts[1 + (trx_id)])
+#define e1inp_line_ipa_rsl_ts(line, trx_id) (((1 + (trx_id)) < NUM_E1_TS) ? (&line->ts[1 + (trx_id)]) : NULL)
 
 /* SS_L_INPUT signals */
 enum e1inp_signal_input {
