@@ -1149,7 +1149,6 @@ static int ipaccess_line_update(struct e1inp_line *line)
 	return ret;
 }
 
-
 /* backwards compatibility */
 int e1inp_ipa_bts_rsl_connect(struct e1inp_line *line,
 			      const char *rem_addr, uint16_t rem_port)
