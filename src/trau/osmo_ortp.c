@@ -262,7 +262,7 @@ static int osmo_rtp_socket_fdreg(struct osmo_rtp_socket *rs)
 	return 0;
 }
 
-static void create_payload_types()
+static void create_payload_types(void)
 {
 	PayloadType *pt;
 
