@@ -31,7 +31,7 @@
 
 #define S(x)	(1 << (x))
 
-#define MAX_TRAU_BYTES 	40
+#define MAX_TRAU_BYTES	160
 
 #define T_SYNC		1
 
