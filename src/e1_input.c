@@ -506,6 +506,10 @@ e1inp_line_create(uint8_t e1_nr, const char *driver_name)
 	line->num = e1_nr;
 	line->pcap_fd = -1;
 
+	line->keepalive_idle_timeout = E1INP_USE_DEFAULT;
+	line->keepalive_num_probes = E1INP_USE_DEFAULT;
+	line->keepalive_probe_interval = E1INP_USE_DEFAULT;
+
 	line->rate_ctr = rate_ctr_group_alloc(line, &e1inp_ctr_g_d, line->num);
 	if (!line->rate_ctr) {
 		LOGPIL(line, DLINP, LOGL_ERROR, "Cannot allocate counter group\n");

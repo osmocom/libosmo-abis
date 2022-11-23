@@ -379,12 +379,9 @@ static int e1inp_config_write(struct vty *vty)
 		if (!line->keepalive_num_probes)
 			vty_out(vty, " no e1_line %u keepalive%s", line->num,
 				VTY_NEWLINE);
-		else if (line->keepalive_idle_timeout == E1INP_USE_DEFAULT &&
-			 line->keepalive_num_probes == E1INP_USE_DEFAULT &&
-			 line->keepalive_probe_interval == E1INP_USE_DEFAULT)
-			vty_out(vty, " e1_line %u keepalive%s", line->num,
-				VTY_NEWLINE);
-		else
+		else if (line->keepalive_idle_timeout != E1INP_USE_DEFAULT ||
+			 line->keepalive_num_probes != E1INP_USE_DEFAULT ||
+			 line->keepalive_probe_interval != E1INP_USE_DEFAULT)
 			vty_out(vty, " e1_line %u keepalive %d %d %d%s",
 				line->num,
 				line->keepalive_idle_timeout,
