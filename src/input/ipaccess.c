@@ -610,7 +610,6 @@ static void update_fd_settings(struct e1inp_line *line, int fd)
 		else
 			LOGP(DLINP, LOGL_NOTICE, "Keepalive is set: %i\n", ret);
 
-#if defined(TCP_KEEPIDLE) && defined(TCP_KEEPINTVL) && defined(TCP_KEEPCNT)
 		/* The following options are not portable! */
 		val = line->keepalive_idle_timeout > 0 ?
 			line->keepalive_idle_timeout :
@@ -639,7 +638,6 @@ static void update_fd_settings(struct e1inp_line *line, int fd)
 			LOGP(DLINP, LOGL_NOTICE,
 			     "Failed to set keepalive count: %s\n",
 			     strerror(errno));
-#if defined(TCP_USER_TIMEOUT)
                 val = 1000 * line->keepalive_num_probes *
                         line->keepalive_probe_interval +
                         line->keepalive_idle_timeout;
@@ -649,8 +647,6 @@ static void update_fd_settings(struct e1inp_line *line, int fd)
                         LOGP(DLINP, LOGL_NOTICE,
                              "Failed to set user timoeut: %s\n",
                              strerror(errno));
-#endif
-#endif
 	}
 
 	val = 1;
