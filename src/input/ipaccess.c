@@ -605,7 +605,7 @@ static void update_fd_settings(struct e1inp_line *line, int fd)
 		val = 1;
 		ret = setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &val, sizeof(val));
 		if (ret < 0)
-			LOGP(DLINP, LOGL_NOTICE, "Failed to set keepalive: %s\n",
+			LOGP(DLINP, LOGL_ERROR, "Failed to set keepalive: %s\n",
 			     strerror(errno));
 		else
 			LOGP(DLINP, LOGL_NOTICE, "Keepalive is set: %i\n", ret);
@@ -617,7 +617,7 @@ static void update_fd_settings(struct e1inp_line *line, int fd)
 		ret = setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE,
 				 &val, sizeof(val));
 		if (ret < 0)
-			LOGP(DLINP, LOGL_NOTICE,
+			LOGP(DLINP, LOGL_ERROR,
 			     "Failed to set keepalive idle time: %s\n",
 			     strerror(errno));
 		val = line->keepalive_probe_interval > -1 ?
@@ -626,7 +626,7 @@ static void update_fd_settings(struct e1inp_line *line, int fd)
 		ret = setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL,
 				 &val, sizeof(val));
 		if (ret < 0)
-			LOGP(DLINP, LOGL_NOTICE,
+			LOGP(DLINP, LOGL_ERROR,
 			     "Failed to set keepalive interval: %s\n",
 			     strerror(errno));
 		val = line->keepalive_num_probes > 0 ?
@@ -635,7 +635,7 @@ static void update_fd_settings(struct e1inp_line *line, int fd)
 		ret = setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT,
 				 &val, sizeof(val));
 		if (ret < 0)
-			LOGP(DLINP, LOGL_NOTICE,
+			LOGP(DLINP, LOGL_ERROR,
 			     "Failed to set keepalive count: %s\n",
 			     strerror(errno));
                 val = 1000 * line->keepalive_num_probes *
@@ -644,7 +644,7 @@ static void update_fd_settings(struct e1inp_line *line, int fd)
                 ret = setsockopt(fd, IPPROTO_TCP, TCP_USER_TIMEOUT,
                                  &val, sizeof(val));
                 if (ret < 0)
-                        LOGP(DLINP, LOGL_NOTICE,
+			LOGP(DLINP, LOGL_ERROR,
                              "Failed to set user timoeut: %s\n",
                              strerror(errno));
 	}
