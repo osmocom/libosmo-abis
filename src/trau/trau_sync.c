@@ -145,6 +145,19 @@ static struct sync_pattern sync_patterns[] = {
 		},
 		.byte_len = 20,
 	},
+	[OSMO_TRAU_SYNCP_V110] = {
+		/* See Table 2 of ITU-T V.110 */
+		.name = "V110",
+		.byte_pattern = {
+			0x00, 0x80, 0x80, 0x80, 0x80,
+			0x80, 0x80, 0x80, 0x80, 0x80,
+		},
+		.byte_mask = {
+			0xff, 0x80, 0x80, 0x80, 0x80,
+			0x80, 0x80, 0x80, 0x80, 0x80,
+		},
+		.byte_len = 10,
+	},
 };
 
 #if 0
