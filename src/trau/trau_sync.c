@@ -492,7 +492,7 @@ static struct osmo_fsm trau_sync_fsm = {
 
 struct osmo_fsm_inst *
 osmo_trau_sync_alloc(void *ctx, const char *name, frame_out_cb_t frame_out_cb,
-		     enum osmo_tray_sync_pat_id pat_id, void *user_data)
+		     enum osmo_trau_sync_pat_id pat_id, void *user_data)
 {
 	struct trau_rx_sync_state *tss;
 	struct osmo_fsm_inst *fi;
@@ -523,7 +523,7 @@ osmo_trau_sync_alloc(void *ctx, const char *name, frame_out_cb_t frame_out_cb,
 	return fi;
 }
 
-void osmo_trau_sync_set_pat(struct osmo_fsm_inst *fi, enum osmo_tray_sync_pat_id pat_id)
+void osmo_trau_sync_set_pat(struct osmo_fsm_inst *fi, enum osmo_trau_sync_pat_id pat_id)
 {
 	struct trau_rx_sync_state *tss = fi->priv;
 
