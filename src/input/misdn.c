@@ -372,9 +372,10 @@ static int handle_tsX_read(struct osmo_fd *bfd)
 
 	switch (hh->prim) {
 	case PH_DATA_IND:
-		msg->l2h = msg->data + MISDN_HEADER_LEN;
+		/* remove the Misdn Header */
+		msg->l2h = msgb_pull(msg, MISDN_HEADER_LEN);
 		LOGPITS(e1i_ts, DLMIB, LOGL_DEBUG, "BCHAN RX: %s\n",
-			osmo_hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN));
+			osmo_hexdump(msgb_l2(msg), msgb_l2len(msg)));
 		/* the number of bytes received indicates that data to send */
 		handle_tsX_write(bfd, msgb_l2len(msg));
 		return e1inp_rx_ts(e1i_ts, msg, 0, 0);
@@ -454,9 +455,10 @@ static int handle_ts_raw_read(struct osmo_fd *bfd)
 
 	switch (hh->prim) {
 	case PH_DATA_IND:
-		msg->l2h = msg->data + MISDN_HEADER_LEN;
+		/* remove the Misdn Header */
+		msg->l2h = msgb_pull(msg, MISDN_HEADER_LEN);
 		LOGPITS(e1i_ts, DLMIB, LOGL_DEBUG, "RAW CHAN RX: %s\n",
-			osmo_hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN));
+			osmo_hexdump(msgb_l2(msg), msgb_l2len(msg)));
 		/* the number of bytes received indicates that data to send */
 		handle_ts_raw_write(bfd, msgb_l2len(msg));
 		return e1inp_rx_ts(e1i_ts, msg, 0, 0);
@@ -539,9 +541,11 @@ static int handle_ts_hdlc_read(struct osmo_fd *bfd)
 
 	switch (hh->prim) {
 	case PH_DATA_IND:
-		msg->l2h = msg->data + MISDN_HEADER_LEN;
+		/* remove the Misdn Header */
+		msgb_pull(msg, MISDN_HEADER_LEN);
+		msg->l2h = msg->data;
 		LOGPITS(e1i_ts, DLMIB, LOGL_DEBUG, "HDLC CHAN RX: %s\n",
-			osmo_hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN));
+			osmo_hexdump(msgb_l2(msg), msgb_l2len(msg)));
 		return e1inp_rx_ts(e1i_ts, msg, 0, 0);
 	case PH_ACTIVATE_IND:
 		break;
