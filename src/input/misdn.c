@@ -822,6 +822,7 @@ static int _mi_e1_line_update(struct e1inp_line *line)
 	//LOGPIL(line, DLMI, LOGL_DEBUG, "%d device%s found\n", cnt, (cnt==1)?"":"s");
 	printf("%d device%s found\n", cnt, (cnt==1)?"":"s");
 #if 1
+	memset(&devinfo, 0, sizeof(devinfo));
 	devinfo.id = line->port_nr;
 	ret = ioctl(sk, IMGETDEVINFO, &devinfo);
 	if (ret < 0) {
