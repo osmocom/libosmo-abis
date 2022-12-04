@@ -392,26 +392,25 @@ static int handle_tsX_read(struct osmo_fd *bfd)
 }
 
 /* write to a raw channel TS */
-static int handle_ts_raw_write(struct osmo_fd *bfd, unsigned int len)
+static int handle_ts_raw_write(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
+	struct misdn_line *mline = line->driver_data;
 	unsigned int ts_nr = bfd->priv_nr;
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
 	struct msgb *msg;
 	struct mISDNhead *hh;
 	int ret;
 
+	osmo_fd_write_disable(bfd);
+
+	if (mline->unconfirmed_ts[ts_nr-1])
+		return 0;
+
 	/* get the next msg for this timeslot */
 	msg = e1inp_tx_ts(e1i_ts, NULL);
 	if (!msg)
 		return 0;
-
-	if (msg->len != len) {
-		/* This might lead to a transmit underrun, as we call tx
-		 * from the rx path, as there's no select/poll on dahdi
-		 * */
-		LOGPITS(e1i_ts, DLINP, LOGL_NOTICE, "unexpected msg->len = %u, expected %u\n", msg->len, len);
-	}
 
 	LOGPITS(e1i_ts, DLMIB, LOGL_DEBUG, "RAW CHAN TX: %s\n", osmo_hexdump(msg->data, msg->len));
 
@@ -421,8 +420,11 @@ static int handle_ts_raw_write(struct osmo_fd *bfd, unsigned int len)
 
 	ret = write(bfd->fd, msg->data, msg->len);
 	if (ret < msg->len)
-		LOGPITS(e1i_ts, DLINP, LOGL_DEBUG, "send returns %d instead of %d\n", ret, msg->len);
+		LOGPITS(e1i_ts, DLINP, LOGL_NOTICE, "send returns %d instead of %d\n", ret, msg->len);
+	else
+		mline->unconfirmed_ts[ts_nr-1] = 1;
 	msgb_free(msg);
+
 
 	return ret;
 }
@@ -430,6 +432,7 @@ static int handle_ts_raw_write(struct osmo_fd *bfd, unsigned int len)
 static int handle_ts_raw_read(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
+	struct misdn_line *mline = line->driver_data;
 	unsigned int ts_nr = bfd->priv_nr;
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
 	struct msgb *msg = msgb_alloc(TSX_ALLOC_SIZE, "mISDN TS RAW");
@@ -459,11 +462,12 @@ static int handle_ts_raw_read(struct osmo_fd *bfd)
 		msg->l2h = msgb_pull(msg, MISDN_HEADER_LEN);
 		LOGPITS(e1i_ts, DLMIB, LOGL_DEBUG, "RAW CHAN RX: %s\n",
 			osmo_hexdump(msgb_l2(msg), msgb_l2len(msg)));
-		/* the number of bytes received indicates that data to send */
-		handle_ts_raw_write(bfd, msgb_l2len(msg));
 		return e1inp_rx_ts(e1i_ts, msg, 0, 0);
 	case PH_ACTIVATE_IND:
+		break;
 	case PH_DATA_CNF:
+		mline->unconfirmed_ts[ts_nr-1] = 0;
+		osmo_fd_write_enable(bfd);
 		break;
 	default:
 		break;
@@ -588,9 +592,8 @@ static int misdn_fd_cb(struct osmo_fd *bfd, unsigned int what)
 	case E1INP_TS_TYPE_RAW:
 		if (what & OSMO_FD_READ)
 			rc = handle_ts_raw_read(bfd);
-		/* We never include the mISDN B-Channel FD into the
-		 * writeset, since it doesn't support poll() based
-		 * write flow control */
+		if (what & OSMO_FD_WRITE)
+			rc = handle_ts_raw_write(bfd);
 		break;
 	case E1INP_TS_TYPE_HDLC:
 		if (what & OSMO_FD_READ)
