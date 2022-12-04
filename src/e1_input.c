@@ -331,6 +331,36 @@ int abis_rsl_sendmsg(struct msgb *msg)
 	return abis_sendmsg(msg);
 }
 
+int e1inp_ts_send_raw(struct e1inp_ts *ts, struct msgb *msg)
+{
+	struct e1inp_driver *driver;
+
+	OSMO_ASSERT(ts->type == E1INP_TS_TYPE_RAW);
+
+	/* notify the driver we have something to write */
+	driver = ts->line->driver;
+	driver->want_write(ts);
+
+	msgb_enqueue(&ts->raw.tx_queue, msg);
+
+	return 0;
+}
+
+int e1inp_ts_send_hdlc(struct e1inp_ts *ts, struct msgb *msg)
+{
+	struct e1inp_driver *driver;
+
+	OSMO_ASSERT(ts->type == E1INP_TS_TYPE_HDLC);
+
+	/* notify the driver we have something to write */
+	driver = ts->line->driver;
+	driver->want_write(ts);
+
+	msgb_enqueue(&ts->hdlc.tx_queue, msg);
+
+	return 0;
+}
+
 /* Timeslot */
 int e1inp_ts_config_trau(struct e1inp_ts *ts, struct e1inp_line *line,
 			 int (*trau_rcv_cb)(struct subch_demux *dmx, int ch,

@@ -365,4 +365,7 @@ struct input_signal_data {
 int abis_sendmsg(struct msgb *msg);
 int abis_rsl_sendmsg(struct msgb *msg);
 
+int e1inp_ts_send_raw(struct e1inp_ts *ts, struct msgb *msg);
+int e1inp_ts_send_hdlc(struct e1inp_ts *ts, struct msgb *msg);
+
 #endif /* _E1_INPUT_H */
