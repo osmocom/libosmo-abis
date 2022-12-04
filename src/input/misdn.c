@@ -69,6 +69,7 @@
 /*! \brief driver-specific data for \ref e1inp_line::driver_data */
 struct misdn_line {
 	int use_userspace_lapd;
+	int unconfirmed_ts[NUM_E1_TS];
 	int dummy_dchannel;
 };
 
@@ -430,7 +431,7 @@ static int handle_ts_raw_read(struct osmo_fd *bfd)
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
-	struct msgb *msg = msgb_alloc(TSX_ALLOC_SIZE, "mISDN Tx RAW");
+	struct msgb *msg = msgb_alloc(TSX_ALLOC_SIZE, "mISDN TS RAW");
 	struct mISDNhead *hh;
 	int ret;
 
@@ -471,6 +472,92 @@ static int handle_ts_raw_read(struct osmo_fd *bfd)
 	return ret;
 }
 
+/* write to a hdlc channel TS */
+static int handle_ts_hdlc_write(struct osmo_fd *bfd)
+{
+	struct e1inp_line *line = bfd->data;
+	struct misdn_line *mline = line->driver_data;
+	unsigned int ts_nr = bfd->priv_nr;
+	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
+	struct msgb *msg;
+	struct mISDNhead *hh;
+	int ret;
+
+	osmo_fd_write_disable(bfd);
+
+	if (mline->unconfirmed_ts[ts_nr-1])
+		return 0;
+
+	/* get the next msg for this timeslot */
+	msg = e1inp_tx_ts(e1i_ts, NULL);
+	if (!msg)
+		return 0;
+
+	LOGPITS(e1i_ts, DLMIB, LOGL_DEBUG, "HDLC CHAN TX: %s\n", osmo_hexdump(msg->data, msg->len));
+
+	hh = (struct mISDNhead *) msgb_push(msg, sizeof(*hh));
+	hh->prim = PH_DATA_REQ;
+	hh->id = 0;
+
+	ret = write(bfd->fd, msg->data, msg->len);
+	if (ret < msg->len)
+		LOGPITS(e1i_ts, DLINP, LOGL_NOTICE, "send returns %d instead of %d\n", ret, msg->len);
+	else
+		mline->unconfirmed_ts[ts_nr-1] = 1;
+	msgb_free(msg);
+
+
+	return ret;
+}
+
+static int handle_ts_hdlc_read(struct osmo_fd *bfd)
+{
+	struct e1inp_line *line = bfd->data;
+	struct misdn_line *mline = line->driver_data;
+	unsigned int ts_nr = bfd->priv_nr;
+	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
+	struct msgb *msg = msgb_alloc(TSX_ALLOC_SIZE, "mISDN TS HDLC");
+	struct mISDNhead *hh;
+	int ret;
+
+	if (!msg)
+		return -ENOMEM;
+
+	hh = (struct mISDNhead *) msg->data;
+
+	ret = recv(bfd->fd, msg->data, TSX_ALLOC_SIZE, 0);
+	if (ret < 0) {
+		fprintf(stderr, "recvfrom error  %s\n", strerror(errno));
+		return ret;
+	}
+
+	msgb_put(msg, ret);
+
+	if (hh->prim != PH_CONTROL_IND)
+		LOGPITS(e1i_ts, DLMIB, LOGL_DEBUG, "<= HDLC CHAN len = %d, prim(0x%x) id(0x%x): %s\n",
+			ret, hh->prim, hh->id, get_value_string(prim_names, hh->prim));
+
+	switch (hh->prim) {
+	case PH_DATA_IND:
+		msg->l2h = msg->data + MISDN_HEADER_LEN;
+		LOGPITS(e1i_ts, DLMIB, LOGL_DEBUG, "HDLC CHAN RX: %s\n",
+			osmo_hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN));
+		return e1inp_rx_ts(e1i_ts, msg, 0, 0);
+	case PH_ACTIVATE_IND:
+		break;
+	case PH_DATA_CNF:
+		mline->unconfirmed_ts[ts_nr-1] = 0;
+		osmo_fd_write_enable(bfd);
+		break;
+	default:
+		break;
+	}
+	/* FIXME: why do we free signalling msgs in the caller, and trau not? */
+	msgb_free(msg);
+
+	return ret;
+}
+
 /* callback from select.c in case one of the fd's can be read/written */
 static int misdn_fd_cb(struct osmo_fd *bfd, unsigned int what)
 {
@@ -500,6 +587,12 @@ static int misdn_fd_cb(struct osmo_fd *bfd, unsigned int what)
 		/* We never include the mISDN B-Channel FD into the
 		 * writeset, since it doesn't support poll() based
 		 * write flow control */
+		break;
+	case E1INP_TS_TYPE_HDLC:
+		if (what & OSMO_FD_READ)
+			rc = handle_ts_hdlc_read(bfd);
+		if (what & OSMO_FD_WRITE)
+			rc = handle_ts_hdlc_write(bfd);
 		break;
 	default:
 		fprintf(stderr, "unknown E1 TS type %u\n", e1i_ts->type);
@@ -598,8 +691,9 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 			continue;
 			break;
 		case E1INP_TS_TYPE_HDLC:
+			/* TS 16 is the D-channel, so we use D-channel proto */
 			bfd->fd = socket(PF_ISDN, SOCK_DGRAM,
-				ISDN_P_B_HDLC);
+				(ts == 16) ? ISDN_P_NT_E1 : ISDN_P_B_HDLC);
 			bfd->when = OSMO_FD_READ;
 			break;
 		case E1INP_TS_TYPE_SIGN:
@@ -649,8 +743,10 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 			}
 			break;
 		case E1INP_TS_TYPE_HDLC:
+		case E1INP_TS_TYPE_RAW:
 		case E1INP_TS_TYPE_TRAU:
-			addr.channel = ts;
+			/* TS 16 is D-channel, so we use channel 0 */
+			addr.channel = (ts == 16) ? 0 : ts;
 			break;
 		default:
 			LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "unsupported E1 TS type: %u\n", e1i_ts->type);
@@ -677,7 +773,9 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 
 		/* FIXME: only activate B-Channels once we start to
 		 * use them to conserve CPU power */
-		if (e1i_ts->type == E1INP_TS_TYPE_TRAU)
+		if (e1i_ts->type == E1INP_TS_TYPE_HDLC
+		 || e1i_ts->type == E1INP_TS_TYPE_RAW
+		 || e1i_ts->type == E1INP_TS_TYPE_TRAU)
 			activate_bchan(line, ts, 1);
 
 		osmo_fd_setup(bfd, bfd->fd, bfd->when, misdn_fd_cb, line, ts);
