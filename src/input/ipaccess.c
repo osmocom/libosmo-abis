@@ -51,6 +51,7 @@
 #include <osmocom/core/backtrace.h>
 #include <osmocom/gsm/ipa.h>
 #include <osmocom/core/stats_tcp.h>
+#include <osmocom/core/fsm.h>
 
 /* global parameters of IPA input driver */
 struct ipa_pars g_e1inp_ipaccess_pars;
@@ -77,7 +78,7 @@ static inline void ipaccess_keepalive_fsm_cleanup(struct e1inp_ts *e1i_ts)
 
 	ka_fsm = e1i_ts->driver.ipaccess.ka_fsm;
 	if (ka_fsm) {
-		ipa_keepalive_fsm_stop(ka_fsm);
+		osmo_fsm_inst_term(ka_fsm, OSMO_FSM_TERM_REQUEST, NULL);
 		e1i_ts->driver.ipaccess.ka_fsm = NULL;
 	}
 }
@@ -863,9 +864,10 @@ static struct msgb *ipa_bts_id_ack(void)
 static void ipaccess_bts_updown_cb(struct ipa_client_conn *link, int up)
 {
 	struct e1inp_line *line = link->line;
+	struct e1inp_ts *e1i_ts = ipaccess_line_ts(link->ofd, line);
 
 	if (up) {
-		struct osmo_fsm_inst *ka_fsm = ipaccess_line_ts(link->ofd, line)->driver.ipaccess.ka_fsm;
+		struct osmo_fsm_inst *ka_fsm = e1i_ts->driver.ipaccess.ka_fsm;
 
 		update_fd_settings(line, link->ofd->fd);
 		if (ka_fsm && line->ipa_kap)
@@ -873,6 +875,7 @@ static void ipaccess_bts_updown_cb(struct ipa_client_conn *link, int up)
 		return;
 	}
 
+	ipaccess_keepalive_fsm_cleanup(e1i_ts);
 	if (line->ops->sign_link_down)
 		line->ops->sign_link_down(line);
 }
@@ -1090,7 +1093,7 @@ static int ipaccess_line_update(struct e1inp_line *line)
 	}
 	case E1INP_LINE_R_BTS: {
 		struct ipa_client_conn *link;
-		struct e1inp_ts *e1i_ts;
+		struct e1inp_ts *e1i_ts = e1inp_line_ipa_oml_ts(line);
 
 		LOGP(DLINP, LOGL_NOTICE, "enabling ipaccess BTS mode, "
 		     "OML connecting to %s:%u\n", line->ops->cfg.ipa.addr,
@@ -1099,6 +1102,7 @@ static int ipaccess_line_update(struct e1inp_line *line)
 		/* Drop previous line */
 		if (il->ipa_cli[0]) {
 			ipa_client_conn_close(il->ipa_cli[0]);
+			ipaccess_keepalive_fsm_cleanup(e1i_ts);
 			ipa_client_conn_destroy(il->ipa_cli[0]);
 			il->ipa_cli[0] = NULL;
 		}
@@ -1128,7 +1132,6 @@ static int ipaccess_line_update(struct e1inp_line *line)
 			return -EIO;
 		}
 
-		e1i_ts = e1inp_line_ipa_oml_ts(line);
 		ipaccess_bts_keepalive_fsm_alloc(e1i_ts, link, "oml_bts_to_bsc");
 		il->ipa_cli[0] = link;
 		ret = 0;
