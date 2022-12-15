@@ -249,6 +249,9 @@ int ipa_client_conn_open2(struct ipa_client_conn *link, unsigned int connect_tim
 {
 	int ret;
 
+	if (link->ofd->fd != -1)
+		return -EINVAL;
+
 	link->state = IPA_CLIENT_LINK_STATE_CONNECTING;
 	ret = osmo_sock_init2(AF_INET, SOCK_STREAM, IPPROTO_TCP,
 			     link->local_addr, link->local_port,
