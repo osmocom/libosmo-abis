@@ -12,6 +12,7 @@
 #include <arpa/inet.h>
 
 #include <osmocom/core/select.h>
+#include <osmocom/core/timer.h>
 #include <osmocom/gsm/tlv.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/logging.h>
@@ -37,6 +38,8 @@ void ipa_msg_push_header(struct msgb *msg, uint8_t proto)
 
 void ipa_client_conn_close(struct ipa_client_conn *link)
 {
+	osmo_timer_del(&link->timer);
+
 	/* be safe against multiple calls */
 	if (link->ofd->fd != -1) {
 		osmo_fd_unregister(link->ofd);
@@ -109,6 +112,13 @@ static int ipa_client_write_default_cb(struct ipa_client_conn *link)
 	return 0;
 }
 
+static void ipa_connect_failure(struct ipa_client_conn *link)
+{
+	ipa_client_conn_close(link);
+	if (link->updown_cb)
+		link->updown_cb(link, 0);
+}
+
 static int ipa_client_fd_cb(struct osmo_fd *ofd, unsigned int what)
 {
 	struct ipa_client_conn *link = ofd->data;
@@ -119,11 +129,14 @@ static int ipa_client_fd_cb(struct osmo_fd *ofd, unsigned int what)
 	case IPA_CLIENT_LINK_STATE_CONNECTING:
 		ret = getsockopt(ofd->fd, SOL_SOCKET, SO_ERROR, &error, &len);
 		if (ret >= 0 && error > 0) {
-			ipa_client_conn_close(link);
-			if (link->updown_cb)
-				link->updown_cb(link, 0);
+			ipa_connect_failure(link);
 			return 0;
 		}
+
+		/* Stop the timer when connection succeeds, on failure it's deleted in
+		   ipa_client_conn_close() called by ipa_connect_failure() above */
+		osmo_timer_del(&link->timer);
+
 		osmo_fd_write_disable(ofd);
 		LOGIPA(link, LOGL_NOTICE, "connection done\n");
 		link->state = IPA_CLIENT_LINK_STATE_CONNECTED;
@@ -143,7 +156,16 @@ static int ipa_client_fd_cb(struct osmo_fd *ofd, unsigned int what)
 	default:
 		break;
 	}
-        return 0;
+	return 0;
+}
+
+/* Treat the connect timeout exactly like a connect failure */
+static void ipa_connect_timeout_cb(void *data)
+{
+	struct ipa_client_conn *link = (struct ipa_client_conn *)data;
+
+	LOGIPA(link, LOGL_NOTICE, "Connect timeout reached\n");
+	ipa_connect_failure(link);
 }
 
 struct ipa_client_conn *
@@ -197,6 +219,8 @@ ipa_client_conn_create2(void *ctx, struct e1inp_ts *ts,
 	ipa_link->port = rem_port;
 	ipa_link->updown_cb = updown_cb;
 	ipa_link->read_cb = read_cb;
+	osmo_timer_setup(&ipa_link->timer, ipa_connect_timeout_cb, ipa_link);
+
 	/* default to generic write callback if not set. */
 	if (write_cb == NULL)
 		ipa_link->write_cb = ipa_client_write_default_cb;
@@ -218,6 +242,11 @@ void ipa_client_conn_destroy(struct ipa_client_conn *link)
 
 int ipa_client_conn_open(struct ipa_client_conn *link)
 {
+	return ipa_client_conn_open2(link, 30);
+}
+
+int ipa_client_conn_open2(struct ipa_client_conn *link, unsigned int connect_timeout)
+{
 	int ret;
 
 	link->state = IPA_CLIENT_LINK_STATE_CONNECTING;
@@ -235,6 +264,9 @@ int ipa_client_conn_open(struct ipa_client_conn *link)
 		link->ofd->fd = -1;
 		return -EIO;
 	}
+
+	if (connect_timeout > 0)
+		osmo_timer_schedule(&link->timer, connect_timeout, 0);
 
 	return 0;
 }

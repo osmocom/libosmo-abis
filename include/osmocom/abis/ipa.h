@@ -105,6 +105,7 @@ ipa_client_conn_create2(void *ctx, struct e1inp_ts *ts,
 void ipa_client_conn_destroy(struct ipa_client_conn *link);
 
 int ipa_client_conn_open(struct ipa_client_conn *link);
+int ipa_client_conn_open2(struct ipa_client_conn *link, unsigned int connect_timeout);
 void ipa_client_conn_close(struct ipa_client_conn *link);
 
 void ipa_client_conn_send(struct ipa_client_conn *link, struct msgb *msg);
