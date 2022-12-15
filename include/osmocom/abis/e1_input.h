@@ -227,6 +227,8 @@ struct e1inp_line {
 	/* file name and file descriptor of pcap for this line */
 	char *pcap_file;
 	int pcap_fd;
+
+	unsigned int connect_timeout;
 };
 #define e1inp_line_ipa_oml_ts(line) (&line->ts[0])
 #define e1inp_line_ipa_rsl_ts(line, trx_id) (((1 + (trx_id)) < NUM_E1_TS) ? (&line->ts[1 + (trx_id)]) : NULL)

@@ -1124,7 +1124,7 @@ static int ipaccess_line_update(struct e1inp_line *line)
 		}
 		link->dscp = g_e1inp_ipaccess_pars.oml.dscp;
 		link->priority = g_e1inp_ipaccess_pars.oml.priority;
-		if (ipa_client_conn_open(link) < 0) {
+		if (ipa_client_conn_open2(link, line->connect_timeout) < 0) {
 			LOGP(DLINP, LOGL_ERROR, "cannot open OML BTS link: %s\n",
 				strerror(errno));
 			ipa_client_conn_close(link);
@@ -1191,7 +1191,7 @@ int e1inp_ipa_bts_rsl_connect_n(struct e1inp_line *line,
 	}
 	rsl_link->dscp = g_e1inp_ipaccess_pars.rsl.dscp;
 	rsl_link->priority = g_e1inp_ipaccess_pars.rsl.priority;
-	if (ipa_client_conn_open(rsl_link) < 0) {
+	if (ipa_client_conn_open2(rsl_link, line->connect_timeout) < 0) {
 		LOGP(DLINP, LOGL_ERROR, "cannot open RSL BTS link: %s\n",
 			strerror(errno));
 		ipa_client_conn_close(rsl_link);

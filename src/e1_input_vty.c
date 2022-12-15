@@ -245,6 +245,26 @@ DEFUN_ATTR(cfg_e1line_name, cfg_e1_line_name_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN_ATTR(cfg_e1line_connect_timeout, cfg_e1_line_connect_timeout_cmd,
+	   "e1_line <0-255> connect-timeout <0-60>",
+	   E1_LINE_HELP "Set connect timeout\n" "Connect timeout in seconds (0 to disable)\n",
+	   CMD_ATTR_IMMEDIATE)
+{
+	struct e1inp_line *line;
+	int e1_nr = atoi(argv[0]);
+	unsigned int timeout = atoi(argv[1]);
+
+	line = e1inp_line_find(e1_nr);
+	if (!line) {
+		vty_out(vty, "%% Line %d doesn't exist%s", e1_nr, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	line->connect_timeout = timeout;
+
+	return CMD_SUCCESS;
+}
+
+
 DEFUN_ATTR(cfg_e1line_pcap, cfg_e1line_pcap_cmd,
 	   "e1_line <0-255> pcap .FILE",
 	   E1_LINE_HELP "Setup a pcap recording of E1 traffic for line\n"
@@ -376,6 +396,9 @@ static int e1inp_config_write(struct vty *vty)
 		if (line->name)
 			vty_out(vty, " e1_line %u name %s%s", line->num,
 				line->name, VTY_NEWLINE);
+		if (line->connect_timeout != 0)
+			vty_out(vty, " e1_line %u connect-timeout %u%s", line->num, line->connect_timeout,
+				VTY_NEWLINE);
 		if (!line->keepalive_num_probes)
 			vty_out(vty, " no e1_line %u keepalive%s", line->num,
 				VTY_NEWLINE);
@@ -563,6 +586,7 @@ int e1inp_vty_init(void)
 	install_lib_element(L_E1INP_NODE, &cfg_e1_line_port_cmd);
 	install_lib_element(L_E1INP_NODE, &cfg_e1_line_socket_cmd);
 	install_lib_element(L_E1INP_NODE, &cfg_e1_line_name_cmd);
+	install_lib_element(L_E1INP_NODE, &cfg_e1_line_connect_timeout_cmd);
 	install_lib_element(L_E1INP_NODE, &cfg_e1_line_keepalive_cmd);
 	install_lib_element(L_E1INP_NODE, &cfg_e1_line_keepalive_params_cmd);
 	install_lib_element(L_E1INP_NODE, &cfg_e1_line_no_keepalive_cmd);

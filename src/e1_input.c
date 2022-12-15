@@ -509,6 +509,7 @@ e1inp_line_create(uint8_t e1_nr, const char *driver_name)
 	line->keepalive_idle_timeout = E1INP_USE_DEFAULT;
 	line->keepalive_num_probes = E1INP_USE_DEFAULT;
 	line->keepalive_probe_interval = E1INP_USE_DEFAULT;
+	line->connect_timeout = 0;
 
 	line->rate_ctr = rate_ctr_group_alloc(line, &e1inp_ctr_g_d, line->num);
 	if (!line->rate_ctr) {
