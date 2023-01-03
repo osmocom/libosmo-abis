@@ -514,6 +514,7 @@ static int handle_ts_raw_write(struct osmo_fd *bfd)
 
 	LOGPITS(e1i_ts, DLMIB, LOGL_DEBUG, "RAW CHAN TX: %s\n", osmo_hexdump(msg->data, msg->len));
 
+	osmo_revbytebits_buf(msg->data, msg->len);
 	hh = (struct mISDNhead *) msgb_push(msg, sizeof(*hh));
 	hh->prim = PH_DATA_REQ;
 	hh->id = 0;
@@ -560,6 +561,7 @@ static int handle_ts_raw_read(struct osmo_fd *bfd)
 	case PH_DATA_IND:
 		/* remove the Misdn Header */
 		msg->l2h = msgb_pull(msg, MISDN_HEADER_LEN);
+		osmo_revbytebits_buf(msg->data, msg->len);
 		LOGPITS(e1i_ts, DLMIB, LOGL_DEBUG, "RAW CHAN RX: %s\n",
 			osmo_hexdump(msgb_l2(msg), msgb_l2len(msg)));
 		return e1inp_rx_ts(e1i_ts, msg, 0, 0);
