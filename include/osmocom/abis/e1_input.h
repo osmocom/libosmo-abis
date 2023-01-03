@@ -166,6 +166,17 @@ enum e1inp_line_role {
 	E1INP_LINE_R_MAX
 };
 
+/* Notes on setting/getting Sa bits (TABLE 5A and 5B of ITU-T G.704)
+ * The sa_bits byte contains the Sa bits in TS 0, if multi frame is used:
+ * bit 7 = Sa8, bit 6 = Sa7, bit 5 = Sa5, bit 4 = Sa4, bit 3 = Sa64, bit 2 = Sa63, bit 1 = Sa62, bit 0 = Sa61.
+ * The sa_bits byte contains the Sa bits in TS 0, if double frame is used:
+ * bit 7 = Sa8, bit 6 = Sa7, bit 5 = Sa5, bit 4 = Sa4, bit 0 = Sa6.
+ * The received Sa bits are reported whenever they change (and are stable for some frames, depending on the
+ * implementation).  Before any report, all Sa bits are assumed to be set to 1.
+ * Setting sa_bits byte will change the transmitted Sa bits on TS0.
+ * Before setting them, all Sa bits are transmitted as 1.
+ */
+
 struct e1inp_driver {
 	struct llist_head list;
 	const char *name;
@@ -244,6 +255,15 @@ enum e1inp_signal_input {
 	S_L_INP_LINE_INIT,
 	S_L_INP_LINE_ALARM,
 	S_L_INP_LINE_NOALARM,
+	S_L_INP_LINE_LOS,
+	S_L_INP_LINE_NOLOS,
+	S_L_INP_LINE_AIS,
+	S_L_INP_LINE_NOAIS,
+	S_L_INP_LINE_RAI,
+	S_L_INP_LINE_NORAI,
+	S_L_INP_LINE_SLIP_RX,
+	S_L_INP_LINE_SLIP_TX,
+	S_L_INP_LINE_SA_BITS,
 };
 
 extern const struct value_string e1inp_signal_names[];
@@ -360,6 +380,8 @@ struct input_signal_data {
 	uint8_t tei;
 	uint8_t sapi;
 	uint8_t ts_nr;
+	/* received Sa bits in TS0 (MSB to LSB): Sa8 Sa7 Sa5 Sa4 Sa64 Sa63 Sa62 Sa61/Sa6 */
+	uint8_t sa_bits;
 	struct gsm_bts_trx *trx;
 	struct e1inp_line *line;
 };
