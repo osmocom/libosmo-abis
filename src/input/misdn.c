@@ -301,6 +301,28 @@ static int ts_want_write(struct e1inp_ts *e1i_ts)
 	return 0;
 }
 
+static int set_sa_bits(struct e1inp_line *line, uint8_t sa_bits)
+{
+	struct e1inp_ts *e1i_ts = &line->ts[16-1];
+	struct osmo_fd *bfd = &e1i_ts->driver.misdn.fd;
+	uint8_t buffer[sizeof(struct mISDNhead) + sizeof(uint32_t)];
+	struct mISDNhead *hh = (struct mISDNhead *)buffer;
+	uint32_t *info = (uint32_t *)(buffer + sizeof(struct mISDNhead));
+	int ret;
+
+	LOGP(DLMI, LOGL_DEBUG, "MPH_INFORMATION_REQ: Sa4=%d, Sa5=%d, Sa6=%d, Sa7=%d, Sa8=%d\n",
+	     (sa_bits >> 4) & 1, (sa_bits >> 5) & 1, sa_bits & 1, (sa_bits >> 6) & 1, sa_bits >> 7);
+
+	hh->prim = MPH_INFORMATION_REQ;
+	hh->id = TEI_SAPI | (GROUP_TEI << 8); /* manager address */
+	*info = L1_SIGNAL_SA_BITS | sa_bits;
+
+	ret = write(bfd->fd, &buffer, sizeof(buffer));
+	if (ret < 0)
+		LOGP(DLINP, LOGL_ERROR, "MPH_INFORMATION_REQ returns %d\n", ret);
+	return ret;
+}
+
 static void timeout_ts1_write(void *data)
 {
 	struct e1inp_ts *e1i_ts = (struct e1inp_ts *)data;
@@ -723,6 +745,7 @@ static int mi_e1_line_update_lapd(struct e1inp_line *line);
 struct e1inp_driver misdn_driver = {
 	.name = "misdn",
 	.want_write = ts_want_write,
+	.set_sa_bits = set_sa_bits,
 	.default_delay = 50000,
 	.line_update = &mi_e1_line_update,
 };
