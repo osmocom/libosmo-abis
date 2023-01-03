@@ -63,6 +63,7 @@
 #include <osmocom/abis/e1_input.h>
 #include <osmocom/abis/lapd.h>
 #include <osmocom/core/talloc.h>
+#include <osmocom/core/signal.h>
 
 #define TS1_ALLOC_SIZE	300
 
@@ -71,6 +72,7 @@ struct misdn_line {
 	int use_userspace_lapd;
 	int unconfirmed_ts[NUM_E1_TS];
 	int dummy_dchannel;
+	int los, ais, rai;
 };
 
 const struct value_string prim_names[] = {
@@ -89,6 +91,75 @@ const struct value_string prim_names[] = {
 	{ MPH_DEACTIVATE_IND, "MPH_DEACTIVATE_IND" },
 	{ 0, NULL }
 };
+
+static int mph_information_ind(struct e1inp_line *line, uint32_t info)
+{
+	struct misdn_line *mline = line->driver_data;
+	struct input_signal_data isd;
+	unsigned int signal;
+	int was_alarm, is_alarm;
+
+	memset(&isd, 0, sizeof(isd));
+	isd.line = line;
+
+	was_alarm = mline->los || mline->ais || mline->rai;
+
+	if ((info & ~L1_SIGNAL_SA_MASK) == L1_SIGNAL_SA_BITS) {
+		isd.sa_bits = info & L1_SIGNAL_SA_MASK;
+		LOGP(DLMI, LOGL_DEBUG, "%s: Sa61/6=%d, Sa62=%d, Sa63=%d, Sa64=%d, Sa4=%d, Sa5=%d, Sa7=%d, Sa8=%d\n",
+		     get_value_string(e1inp_signal_names, S_L_INP_LINE_SA_BITS),
+		     isd.sa_bits & 1, (isd.sa_bits >> 1) & 1, (isd.sa_bits >> 2) & 1, (isd.sa_bits >> 3) & 1,
+		     (isd.sa_bits >> 4) & 1, (isd.sa_bits >> 5) & 1, (isd.sa_bits >> 6) & 1, isd.sa_bits >> 7);
+		osmo_signal_dispatch(SS_L_INPUT, S_L_INP_LINE_SA_BITS, &isd);
+		return 0;
+	}
+
+	switch (info) {
+	case L1_SIGNAL_LOS_OFF:
+		signal = S_L_INP_LINE_NOLOS;
+		mline->los = 0;
+		break;
+	case L1_SIGNAL_LOS_ON:
+		signal = S_L_INP_LINE_LOS;
+		mline->los = 1;
+		break;
+	case L1_SIGNAL_AIS_OFF:
+		signal = S_L_INP_LINE_NOAIS;
+		mline->ais = 0;
+		break;
+	case L1_SIGNAL_AIS_ON:
+		signal = S_L_INP_LINE_AIS;
+		mline->ais = 1;
+		break;
+	case L1_SIGNAL_RDI_OFF:
+		signal = S_L_INP_LINE_NORAI;
+		mline->rai = 0;
+		break;
+	case L1_SIGNAL_RDI_ON:
+		signal = S_L_INP_LINE_RAI;
+		mline->rai = 1;
+		break;
+	default:
+		LOGP(DLMI, LOGL_DEBUG, "Unknown MPH_INFORMATION_IND: 0x%04x\n", info);
+		return -EINVAL;
+	}
+
+	LOGP(DLMI, LOGL_DEBUG, "%s\n", get_value_string(e1inp_signal_names, signal));
+	osmo_signal_dispatch(SS_L_INPUT, signal, &isd);
+
+	is_alarm = mline->los || mline->ais || mline->rai;
+
+	if (!was_alarm && is_alarm) {
+		osmo_signal_dispatch(SS_L_INPUT, S_L_INP_LINE_ALARM, &isd);
+		LOGP(DLMI, LOGL_DEBUG, "%s\n", get_value_string(e1inp_signal_names, S_L_INP_LINE_ALARM));
+	}
+	if (was_alarm && !is_alarm) {
+		osmo_signal_dispatch(SS_L_INPUT, S_L_INP_LINE_NOALARM, &isd);
+		LOGP(DLMI, LOGL_DEBUG, "%s\n", get_value_string(e1inp_signal_names, S_L_INP_LINE_NOALARM));
+	}
+
+	return 0;
+}
 
 static int handle_ts1_read(struct osmo_fd *bfd)
 {
@@ -201,6 +272,13 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 		/* hand into the LAPD code */
 		LOGPITS(e1i_ts, DLMI, LOGL_DEBUG, "RX: %s\n", osmo_hexdump(msg->data, msg->len));
 		ret = e1inp_rx_ts_lapd(e1i_ts, msg);
+		break;
+	case MPH_INFORMATION_IND:
+		LOGPITS(e1i_ts, DLMI, LOGL_DEBUG, "MPH_INFORMATION_IND\n");
+		/* remove the Misdn Header */
+		msgb_pull(msg, MISDN_HEADER_LEN);
+		mph_information_ind(line, *((uint32_t *)msg->data));
+		msgb_free(msg);
 		break;
 	default:
 		msgb_free(msg);
@@ -556,6 +634,12 @@ static int handle_ts_hdlc_read(struct osmo_fd *bfd)
 	case PH_DATA_CNF:
 		mline->unconfirmed_ts[ts_nr-1] = 0;
 		osmo_fd_write_enable(bfd);
+		break;
+	case MPH_INFORMATION_IND:
+		LOGPITS(e1i_ts, DLMI, LOGL_DEBUG, "MPH_INFORMATION_IND\n");
+		/* remove the Misdn Header */
+		msgb_pull(msg, MISDN_HEADER_LEN);
+		mph_information_ind(line, *((uint32_t *)msg->data));
 		break;
 	default:
 		break;

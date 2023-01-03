@@ -193,6 +193,8 @@
 #define L1_SIGNAL_RDI_ON	0x0015
 #define L1_SIGNAL_SLIP_RX	0x0020
 #define L1_SIGNAL_SLIP_TX	0x0021
+#define L1_SIGNAL_SA_BITS	0x0100
+#define L1_SIGNAL_SA_MASK	0x00FF
 
 /*
  * protocol ids
