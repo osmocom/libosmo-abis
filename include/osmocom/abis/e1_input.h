@@ -187,6 +187,9 @@ struct e1inp_driver {
 	int default_delay;
 	int has_keepalive;
 	const char *bind_addr;
+
+	/* Set Sa bits to transmit in TS0 (MSB to LSB): Sa8 Sa7 Sa5 Sa4 Sa64 Sa63 Sa62 Sa61/Sa6 */
+	int (*set_sa_bits)(struct e1inp_line *line, uint8_t sa_bits);
 };
 
 struct e1inp_line_ops {
@@ -327,6 +330,12 @@ int e1inp_ts_config_hdlc(struct e1inp_ts *ts, struct e1inp_line *line,
 
 /* configure and initialize one timeslot dedicated to nothing */
 int e1inp_ts_config_none(struct e1inp_ts *ts, struct e1inp_line *line);
+
+/*
+ * configure Sa bits on TS0, if supported by driver (TABLE 5A and 5B of ITU-T G.704)
+ * sa_bits (MSB to LSB): Sa8 Sa7 Sa5 Sa4 Sa64 Sa63 Sa62 Sa61/Sa6
+ */
+int e1inp_ts_set_sa_bits(struct e1inp_line *line, uint8_t sa_bits);
 
 /* obtain a string identifier/name for the given timeslot */
 void e1inp_ts_name(char *out, size_t out_len, const struct e1inp_ts *ts);
