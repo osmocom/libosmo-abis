@@ -128,44 +128,47 @@ int osmo_pcap_lapd_open(char *filename, mode_t mode)
 int osmo_pcap_lapd_write(int fd, int direction, struct msgb *msg)
 {
 	struct timeval tv;
-	struct {
+	struct tmp_pkt {
 		struct pcap_rechdr pcap_rechdr;
 		struct pcap_lapdhdr header;
-		char buf[msg->len];
-	} __attribute__((packed)) s;
+		char buf[0];
+	} __attribute__((packed));
+	const unsigned int total_pkt_len = sizeof(struct tmp_pkt) + msg->len;
+
+	struct tmp_pkt *s = alloca(total_pkt_len);
 
 	/* PCAP file has not been opened, skip. */
 	if (fd < 0)
 		return 0;
 
-	memset(&s, 0, sizeof(s));
+	memset(s, 0, total_pkt_len);
 
-	s.pcap_rechdr.ts_sec	= 0;
-	s.pcap_rechdr.ts_usec	= 0;
-	s.pcap_rechdr.incl_len   = msg->len + sizeof(struct pcap_lapdhdr);
-	s.pcap_rechdr.orig_len   = msg->len + sizeof(struct pcap_lapdhdr);
+	s->pcap_rechdr.ts_sec	= 0;
+	s->pcap_rechdr.ts_usec	= 0;
+	s->pcap_rechdr.incl_len   = msg->len + sizeof(struct pcap_lapdhdr);
+	s->pcap_rechdr.orig_len   = msg->len + sizeof(struct pcap_lapdhdr);
 
 	if (direction == OSMO_LAPD_PCAP_OUTPUT)
-		s.header.pkttype		= htons(LINUX_SLL_OUTGOING);
+		s->header.pkttype		= htons(LINUX_SLL_OUTGOING);
 	else
-		s.header.pkttype		= htons(LINUX_SLL_HOST);
-	s.header.hatype		= 0;
-	s.header.halen		= 0;
-	s.header.addr[0]		= 0x01;	/* we are the network side */
-	s.header.protocol		= ntohs(48);
+		s->header.pkttype		= htons(LINUX_SLL_HOST);
+	s->header.hatype		= 0;
+	s->header.halen		= 0;
+	s->header.addr[0]		= 0x01;	/* we are the network side */
+	s->header.protocol		= ntohs(48);
 
 	gettimeofday(&tv, NULL);
-	s.pcap_rechdr.ts_sec = tv.tv_sec;
-	s.pcap_rechdr.ts_usec = tv.tv_usec;
+	s->pcap_rechdr.ts_sec = tv.tv_sec;
+	s->pcap_rechdr.ts_usec = tv.tv_usec;
 
-	memcpy(s.buf, msg->data, msg->len);
+	memcpy(s->buf, msg->data, msg->len);
 
-	if (write(fd, &s, sizeof(s)) != sizeof(s)) {
+	if (write(fd, s, total_pkt_len) != total_pkt_len) {
 		LOGP(DLLAPD, LOGL_ERROR, "cannot write packet to PCAP: %s\n",
 			strerror(errno));
 		return -1;
 	}
-	return sizeof(s);
+	return total_pkt_len;
 }
 
 int osmo_pcap_lapd_close(int fd)
