@@ -284,8 +284,9 @@ e1d_fd_cb(struct osmo_fd *bfd, unsigned int what)
 	case E1INP_TS_TYPE_TRAU:
 		if (what & OSMO_FD_READ)
 			ret = handle_ts_trau_read(bfd);
-		if (what & OSMO_FD_WRITE)
-			ret = handle_ts_trau_write(bfd);
+		/* handle_ts_trau_write() is called inside handle_ts_trau_read().
+		 * OSMO_FD_WRITE flag is not required here and will not be set.
+		 */
 		break;
 	case E1INP_TS_TYPE_RAW:
 		if (what & OSMO_FD_READ)
