@@ -194,8 +194,10 @@ static int handle_ts_raw_write(struct osmo_fd *bfd)
 
 	/* get the next msg for this timeslot */
 	msg = e1inp_tx_ts(e1i_ts, NULL);
-	if (!msg)
+	if (!msg) {
+		osmo_fd_write_disable(bfd);
 		return 0;
+	}
 
 	if (msg->len != D_BCHAN_TX_GRAN) {
 		/* This might lead to a transmit underrun, as we call tx
@@ -244,9 +246,6 @@ static int handle_ts_raw_read(struct osmo_fd *bfd)
 	msg->l2h = msg->data;
 	LOGPITS(e1i_ts, DLMIB, LOGL_DEBUG, "RAW CHAN RX: %s\n", msgb_hexdump_l2(msg));
 	ret = e1inp_rx_ts(e1i_ts, msg, 0, 0);
-	/* physical layer indicates that data has been sent,
-	 * we thus can send some more data */
-	ret = handle_ts_raw_write(bfd);
 
 	return ret;
 }
