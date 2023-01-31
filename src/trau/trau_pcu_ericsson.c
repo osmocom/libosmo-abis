@@ -270,7 +270,7 @@ static int put_trau_data(ubit_t *bits, size_t bits_len,
 	 * greater then the length of the bits */
 	if (bits_len > bits_map_len)
 		return -EINVAL;
-	if (bits_len - offs < 0)
+	if (bits_len <= offs)
 		return -EINVAL;
 
 	/* Advance to the position where the data is stored */
@@ -331,7 +331,7 @@ static int get_trau_data(ubit_t *bits_out, size_t bits_out_len,
 	/* (see above) */
 	if (bits_len > bits_map_len)
 		return -EINVAL;
-	if (bits_len - offs < 0)
+	if (bits_len <= offs)
 		return -EINVAL;
 
 	/* Advance to the position where the data is located */
