@@ -579,6 +579,7 @@ int enc_pcu_data_ind_16(ubit_t *trau_bits, struct er_pcu_data_ind *ind)
 	/* Set demodulation in uplink (E3-E4) */
 	switch (ind->ul_chan_mode) {
 	case ER_UL_CHMOD_NB_GMSK:
+	case ER_UL_CHMOD_NB_UNKN:
 		trau_bits[28] = 0;
 		trau_bits[29] = 0;
 		break;
