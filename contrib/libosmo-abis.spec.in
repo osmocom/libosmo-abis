@@ -27,10 +27,10 @@ BuildRequires:  automake >= 1.6
 BuildRequires:  libtool >= 2
 BuildRequires:  pkgconfig >= 0.20
 BuildRequires:  xz
-BuildRequires:  pkgconfig(libosmocore) >= 1.7.0
-BuildRequires:  pkgconfig(libosmogsm) >= 1.7.0
-BuildRequires:  pkgconfig(libosmovty) >= 1.7.0
-BuildRequires:  pkgconfig(libosmocodec) >= 1.7.0
+BuildRequires:  pkgconfig(libosmocore) >= 1.8.0
+BuildRequires:  pkgconfig(libosmogsm) >= 1.8.0
+BuildRequires:  pkgconfig(libosmovty) >= 1.8.0
+BuildRequires:  pkgconfig(libosmocodec) >= 1.8.0
 BuildRequires:  pkgconfig(ortp) >= 0.22.0
 BuildRequires:  pkgconfig(talloc)
 
@@ -59,8 +59,8 @@ Summary:        Development files for the Osmocom GSM A-bis library
 License:        AGPL-3.0-or-later
 Group:          Development/Libraries/C and C++
 Requires:       libosmoabis10 = %version
-Requires:       libosmocore-devel >= 1.7.0
-Requires:       libosmogsm-devel >= 1.7.0
+Requires:       libosmocore-devel >= 1.8.0
+Requires:       libosmogsm-devel >= 1.8.0
 
 %description -n libosmoabis-devel
 This library contains common/shared code regarding the GSM A-bis

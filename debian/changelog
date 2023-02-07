@@ -1,3 +1,56 @@
+libosmo-abis (1.4.0) unstable; urgency=medium
+
+  [ Pau Espin Pedrol ]
+  * configure.ac: Set libosmo-e1d dependency version
+  * cosmetic: Remove unneeded empty line
+  * ipa: Allow users closing lower layer tcp/ipa connections
+  * e1inp_line_ipa_rsl_ts(): Return null instead of reading out of bounds
+  * ipaccess_close(): No need to lookup already available struct e1i_ts
+  * ipaccess: Call line->ops->sign_link_down() only if set
+
+  [ Vadim Yanitskiy ]
+  * libosmo{abis,trau}: add -no-undefined to *_la_LDFLAGS
+
+  [ Jan Engelhardt ]
+  * pkgconf: require libosmocore
+
+  [ Harald Welte ]
+  * input/unixsocket: Remove write delay timer
+  * Support building with -Werror=strict-prototypes / -Werror=old-style-definition
+  * trau_sync: Add the V.110 sync pattern
+  * trau_sync: Fix typo tray_sync_pat_id -> trau_sync_pat_id
+
+  [ Oliver Smith ]
+  * e1_input: enable tcp keepalive by default
+  * ipaccess: require tcp keepalive related defines
+  * ipaccess: update_fd_settings: use LOGL_ERROR
+
+  [ Daniel Willmann ]
+  * ipaccess: Clean up keepalive FSM properly
+  * ipa: Add ipa_client_conn_open2 with connect timeout argument
+  * ipaccess: Add connect timeout in e1inp_line
+  * ipa: Guard against calling ipa_client_conn_open* multiple times
+
+  [ Philipp Maier ]
+  * trau_sync: add Ericsson RBS GPRS TRAU synchronization pattern (16kbps)
+  * trau_sync: support more than 40 bytes sync pattern.
+  * trau_sync: add Ericsson RBS GPRS TRAU synchronization pattern (64kbps)
+  * GPRS Trau frame encoder/decoder for Ericsson RBS
+  * trau_pcu_ericsson: fix broken length check
+  * trau_pcu_ericsson: also support ER_UL_CHMOD_NB_UNKN in 16k mode.
+
+  [ Eric ]
+  * lapd_pcap: fix illegal VLA within struct
+
+  [ Andreas Eversberg ]
+  * Fix support for HDLC/RAW type channels at mISDN.c
+  * Add missing functions to send HDLC/RAW data
+  * Remove mISDN header from received channel data
+  * Initialize devinfo at misdn.c
+  * Send raw data with mISDN as it arrives from application
+
+ -- Pau Espin Pedrol <pespin@sysmocom.de>  Tue, 07 Feb 2023 13:15:21 +0100
+
 libosmo-abis (1.3.0) unstable; urgency=medium
 
   [ Harald Welte ]
