@@ -148,12 +148,14 @@ struct e1inp_ts {
 	struct msgb *pending_msg;
 };
 
+#define E1_SUBSLOT_FULL 0xff
+
 struct gsm_e1_subslot {
 	/* Number of E1 link */
 	uint8_t e1_nr;
 	/* Number of E1 TS inside E1 link */
 	uint8_t e1_ts;
-	/* Sub-slot within the E1 TS, 0xff if full TS */
+	/* Sub-slot within the E1 TS, 0xff (E1_SUBSLOT_FULL) if full TS */
 	uint8_t e1_ts_ss;
 };
 
