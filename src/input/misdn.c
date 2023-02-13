@@ -183,13 +183,13 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 	ret = recvfrom(bfd->fd, msg->data, 300, 0,
 		       (struct sockaddr *) &l2addr, &alen);
 	if (ret < 0) {
-		fprintf(stderr, "recvfrom error  %s\n", strerror(errno));
+		LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "recvfrom error: %s\n", strerror(errno));
 		msgb_free(msg);
 		return ret;
 	}
 
 	if (alen != sizeof(l2addr)) {
-		fprintf(stderr, "%s error len\n", __func__);
+		LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "error len\n");
 		msgb_free(msg);
 		return -EINVAL;
 	}
@@ -379,7 +379,7 @@ static int handle_ts1_write(struct osmo_fd *bfd)
 		ret = sendto(bfd->fd, msg->data, msg->len, 0,
 			     (struct sockaddr *)&sa, sizeof(sa));
 		if (ret < 0)
-			fprintf(stderr, "%s sendto failed %d\n", __func__, ret);
+			LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "sendto error: %s\n", strerror(errno));
 
 		msgb_free(msg);
 	}
@@ -460,7 +460,7 @@ static int handle_tsX_read(struct osmo_fd *bfd)
 
 	ret = recv(bfd->fd, msg->data, TSX_ALLOC_SIZE, 0);
 	if (ret < 0) {
-		fprintf(stderr, "recvfrom error  %s\n", strerror(errno));
+		LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "recv error: %s\n", strerror(errno));
 		return ret;
 	}
 
@@ -547,7 +547,7 @@ static int handle_ts_raw_read(struct osmo_fd *bfd)
 
 	ret = recv(bfd->fd, msg->data, TSX_ALLOC_SIZE, 0);
 	if (ret < 0) {
-		fprintf(stderr, "recvfrom error  %s\n", strerror(errno));
+		LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "recv error: %s\n", strerror(errno));
 		return ret;
 	}
 
@@ -635,7 +635,7 @@ static int handle_ts_hdlc_read(struct osmo_fd *bfd)
 
 	ret = recv(bfd->fd, msg->data, TSX_ALLOC_SIZE, 0);
 	if (ret < 0) {
-		fprintf(stderr, "recvfrom error  %s\n", strerror(errno));
+		LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "recv error: %s\n", strerror(errno));
 		return ret;
 	}
 
@@ -710,7 +710,7 @@ static int misdn_fd_cb(struct osmo_fd *bfd, unsigned int what)
 			rc = handle_ts_hdlc_write(bfd);
 		break;
 	default:
-		fprintf(stderr, "unknown E1 TS type %u\n", e1i_ts->type);
+		LOGPITS(e1i_ts, DLMI, LOGL_DEBUG, "unknown E1 TS type %u\n", e1i_ts->type);
 		break;
 	}
 
@@ -725,7 +725,6 @@ static int activate_bchan(struct e1inp_line *line, int ts, int act)
 	struct e1inp_ts *e1i_ts = &line->ts[idx];
 	struct osmo_fd *bfd = &e1i_ts->driver.misdn.fd;
 
-	fprintf(stdout, "activate bchan\n");
 	if (act)
 		hh.prim = PH_ACTIVATE_REQ;
 	else
@@ -733,10 +732,8 @@ static int activate_bchan(struct e1inp_line *line, int ts, int act)
 
 	hh.id = MISDN_ID_ANY;
 	ret = sendto(bfd->fd, &hh, sizeof(hh), 0, NULL, 0);
-	if (ret < 0) {
-		fprintf(stdout, "could not send ACTIVATE_RQ %s\n",
-			strerror(errno));
-	}
+	if (ret < 0)
+		LOGPITS(e1i_ts, DLMI, LOGL_DEBUG, "could not send ACTIVATE_RQ %s\n", strerror(errno));
 
 	return ret;
 }
@@ -775,8 +772,7 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 			mline->dummy_dchannel = socket(PF_ISDN, SOCK_DGRAM,
 							ISDN_P_NT_E1);
 			if (mline->dummy_dchannel < 0) {
-				fprintf(stderr, "%s could not open socket %s\n",
-					__func__, strerror(errno));
+				LOGPIL(line, DLMI, LOGL_ERROR, "could not open socket %s\n", strerror(errno));
 				return mline->dummy_dchannel;
 			}
 			memset(&addr, 0, sizeof(addr));
@@ -788,8 +784,7 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 			ret = bind(mline->dummy_dchannel,
 				(struct sockaddr *) &addr, sizeof(addr));
 			if (ret < 0) {
-				fprintf(stderr, "could not bind l2 socket %s\n",
-					strerror(errno));
+				LOGPIL(line, DLMI, LOGL_ERROR, "could not bind l2 socket %s\n", strerror(errno));
 				return -EIO;
 			}
 		}
@@ -833,8 +828,7 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 		}
 
 		if (bfd->fd < 0) {
-			fprintf(stderr, "%s could not open socket %s\n",
-				__func__, strerror(errno));
+			LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "could not open socket: %s\n", strerror(errno));
 			return bfd->fd;
 		}
 
@@ -871,7 +865,7 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 
 		ret = bind(bfd->fd, (struct sockaddr *) &addr, sizeof(addr));
 		if (ret < 0) {
-			fprintf(stderr, "could not bind l2 socket %s\n",
+			LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "could not bind l2 socket %s\n",
 				strerror(errno));
 			return -EIO;
 		}
@@ -880,7 +874,8 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 			if (!mline->use_userspace_lapd) {
 				ret = ioctl(bfd->fd, IMCLEAR_L2, &release_l2);
 				if (ret < 0) {
-					fprintf(stderr, "could not send IOCTL IMCLEAN_L2 %s\n", strerror(errno));
+					LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "could not send IOCTL IMCLEAN_L2 %s\n",
+						strerror(errno));
 					return -EIO;
 				}
 			} else
@@ -898,8 +893,7 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 
 		ret = osmo_fd_register(bfd);
 		if (ret < 0) {
-			fprintf(stderr, "could not register FD: %s\n",
-				strerror(-ret));
+			LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "could not register FD: %s\n", strerror(ret));
 			return ret;
 		}
 	}
@@ -919,41 +913,38 @@ static int _mi_e1_line_update(struct e1inp_line *line)
 	/* open the ISDN card device */
 	sk = socket(PF_ISDN, SOCK_RAW, ISDN_P_BASE);
 	if (sk < 0) {
-		fprintf(stderr, "%s could not open socket %s\n",
-			__func__, strerror(errno));
+		LOGPIL(line, DLMI, LOGL_ERROR, "error, could not open socket: %s\n", strerror(errno));
 		return sk;
 	}
 
 	ret = ioctl(sk, IMGETCOUNT, &cnt);
 	if (ret) {
-		fprintf(stderr, "%s error getting interf count: %s\n",
-			__func__, strerror(errno));
+		LOGPIL(line, DLMI, LOGL_ERROR, "error getting interface count: %s\n", strerror(errno));
 		close(sk);
 		return -ENODEV;
 	}
-	//LOGPIL(line, DLMI, LOGL_DEBUG, "%d device%s found\n", cnt, (cnt==1)?"":"s");
-	printf("%d device%s found\n", cnt, (cnt==1)?"":"s");
+	LOGPIL(line, DLMI, LOGL_INFO, "%d device%s found\n", cnt, (cnt == 1) ? "" : "s");
 #if 1
 	memset(&devinfo, 0, sizeof(devinfo));
 	devinfo.id = line->port_nr;
 	ret = ioctl(sk, IMGETDEVINFO, &devinfo);
 	if (ret < 0) {
-		fprintf(stdout, "error getting info for device %d: %s\n",
-			line->port_nr, strerror(errno));
+		LOGPIL(line, DLMI, LOGL_ERROR, "error getting info for device %d: %s\n",
+		       line->port_nr, strerror(errno));
 		close(sk);
 		return -ENODEV;
 	}
-	fprintf(stdout, "        id:             %d\n", devinfo.id);
-	fprintf(stdout, "        Dprotocols:     %08x\n", devinfo.Dprotocols);
-	fprintf(stdout, "        Bprotocols:     %08x\n", devinfo.Bprotocols);
-	fprintf(stdout, "        protocol:       %d\n", devinfo.protocol);
-	fprintf(stdout, "        nrbchan:        %d\n", devinfo.nrbchan);
-	fprintf(stdout, "        name:           %s\n", devinfo.name);
+	LOGPIL(line, DLMI, LOGL_INFO, "        id:             %d\n", devinfo.id);
+	LOGPIL(line, DLMI, LOGL_INFO, "        Dprotocols:     %08x\n", devinfo.Dprotocols);
+	LOGPIL(line, DLMI, LOGL_INFO, "        Bprotocols:     %08x\n", devinfo.Bprotocols);
+	LOGPIL(line, DLMI, LOGL_INFO, "        protocol:       %d\n", devinfo.protocol);
+	LOGPIL(line, DLMI, LOGL_INFO, "        nrbchan:        %d\n", devinfo.nrbchan);
+	LOGPIL(line, DLMI, LOGL_INFO, "        name:           %s\n", devinfo.name);
 #endif
 	close(sk);
 
 	if (!(devinfo.Dprotocols & (1 << ISDN_P_NT_E1))) {
-		fprintf(stderr, "error: card is not of type E1 (NT-mode)\n");
+		LOGPIL(line, DLMI, LOGL_ERROR, "error, card is not of type E1 (NT-mode)\n");
 		return -EINVAL;
 	}
 
