@@ -24,3 +24,4 @@ osmo_trau_sync_alloc(void *ctx, const char *name, frame_out_cb_t frame_out_cb,
 
 void osmo_trau_sync_rx_ubits(struct osmo_fsm_inst *fi, const ubit_t *bits, size_t n_bits);
 void osmo_trau_sync_set_pat(struct osmo_fsm_inst *fi, enum osmo_trau_sync_pat_id pat_id);
+void osmo_trau_sync_set_secondary_pat(struct osmo_fsm_inst *fi, enum osmo_trau_sync_pat_id pat_id, size_t pat_index);

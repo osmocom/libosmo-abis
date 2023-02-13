@@ -32,6 +32,8 @@
 #define S(x)	(1 << (x))
 
 #define MAX_TRAU_BYTES	160
+#define MAX_TRAU_SYNC_PATTERN 8
+#define PRIMARY_PATTERN 0
 
 #define T_SYNC		1
 
@@ -286,16 +288,15 @@ struct trau_rx_sync_state {
 	ubit_t history[MAX_TRAU_BYTES*8+1]; /* +1 not required, but helps to expose bugs */
 	/*! index of next-to-be-written ubit in history */
 	unsigned int history_idx;
-	/*! the pattern we are trying to sync to */
-	const struct sync_pattern *pattern;
+	/*! the pattern(s) we are trying to sync to */
+	const struct sync_pattern *pattern[MAX_TRAU_SYNC_PATTERN];
 	/*! number of consecutive frames without sync */
 	unsigned int num_consecutive_errors;
 };
 
 /* correlate the history (up to the last received bit) against the pattern */
-static int correlate_history_against_pattern(struct trau_rx_sync_state *tss)
+static int correlate_history_against_pattern(struct trau_rx_sync_state *tss, const struct sync_pattern *pattern)
 {
-	const struct sync_pattern *pattern = tss->pattern;
 	int i, start, num_wrong = 0;
 
 	/* compute index of first bit in history array */
@@ -317,6 +318,33 @@ static int correlate_history_against_pattern(struct trau_rx_sync_state *tss)
 	return num_wrong;
 }
 
+/* correlate the history (up to the last received bit) against multiple patterns */
+static int correlate_history_against_patterns(struct trau_rx_sync_state *tss)
+{
+	size_t pat_index;
+	int num_wrong;
+	int num_wrong_best = MAX_TRAU_BYTES * 8;
+
+	for (pat_index = PRIMARY_PATTERN; pat_index < MAX_TRAU_SYNC_PATTERN; pat_index++) {
+		const struct sync_pattern *pattern;
+
+		pattern = tss->pattern[pat_index];
+		if (!pattern)
+			continue;
+		num_wrong = correlate_history_against_pattern(tss, pattern);
+
+		/* We cannot achieve a better result than 0 errors */
+		if (num_wrong == 0)
+			return 0;
+
+		/* Keep track on the best result */
+		if (num_wrong < num_wrong_best)
+			num_wrong_best = num_wrong;
+	}
+
+	return num_wrong_best;
+}
+
 /* add (append) one ubit to the history; wrap as needed */
 static void rx_history_add_bit(struct trau_rx_sync_state *tss, ubit_t bit)
 {
@@ -328,7 +356,7 @@ static void rx_history_add_bit(struct trau_rx_sync_state *tss, ubit_t bit)
 /* append bits to history. We assume that this does NOT wrap */
 static void rx_history_add_bits(struct trau_rx_sync_state *tss, const ubit_t *bits, size_t n_bits)
 {
-	unsigned int frame_bits_remaining = tss->pattern->byte_len*8 - tss->history_idx;
+	unsigned int frame_bits_remaining = tss->pattern[PRIMARY_PATTERN]->byte_len*8 - tss->history_idx;
 	OSMO_ASSERT(frame_bits_remaining >= n_bits);
 	memcpy(&tss->history[tss->history_idx], bits, n_bits);
 	tss->history_idx = tss->history_idx + n_bits;
@@ -339,7 +367,7 @@ static void rx_history_align(struct trau_rx_sync_state *tss)
 {
 	ubit_t tmp[sizeof(tss->history)];
 	size_t history_size = sizeof(tss->history);
-	size_t pattern_bits = tss->pattern->byte_len*8;
+	size_t pattern_bits = tss->pattern[PRIMARY_PATTERN]->byte_len*8;
 	size_t first_bit = (history_size + tss->history_idx - pattern_bits) % history_size;
 	int i;
 
@@ -388,7 +416,9 @@ static void trau_sync_wait_align(struct osmo_fsm_inst *fi, uint32_t event, void 
 			int rc;
 
 			rx_history_add_bit(tss, bit);
-			rc = correlate_history_against_pattern(tss);
+
+			/* Apply only the primary pattern while waiting for the alignment */
+			rc = correlate_history_against_pattern(tss, tss->pattern[PRIMARY_PATTERN]);
 			if (!rc) {
 				osmo_fsm_inst_state_chg(fi, FRAME_ALIGNED, 0, 0);
 				/* treat remainder of input bits in correct state */
@@ -407,7 +437,7 @@ static void trau_sync_aligned_onenter(struct osmo_fsm_inst *fi, uint32_t prev_st
 	struct trau_rx_sync_state *tss = (struct trau_rx_sync_state *) fi->priv;
 	/* dispatch aligned frame to user */
 	rx_history_align(tss);
-	tss->out_cb(tss->user_data, tss->history, tss->pattern->byte_len*8);
+	tss->out_cb(tss->user_data, tss->history, tss->pattern[PRIMARY_PATTERN]->byte_len*8);
 }
 
 static void trau_sync_aligned(struct osmo_fsm_inst *fi, uint32_t event, void *data)
@@ -420,7 +450,7 @@ static void trau_sync_aligned(struct osmo_fsm_inst *fi, uint32_t event, void *da
 	case TRAUSYNC_E_RX_BITS:
 		ubb = data;
 		while (ubb_length(ubb)) {
-			unsigned int frame_bits_remaining = tss->pattern->byte_len*8 - tss->history_idx;
+			unsigned int frame_bits_remaining = tss->pattern[PRIMARY_PATTERN]->byte_len*8 - tss->history_idx;
 			if (ubb_length(ubb) < frame_bits_remaining) {
 				/* frame not filled by this message; just add data */
 				rx_history_add_bits(tss, ubb_data(ubb), ubb_length(ubb));
@@ -430,8 +460,8 @@ static void trau_sync_aligned(struct osmo_fsm_inst *fi, uint32_t event, void *da
 				rx_history_add_bits(tss, ubb_data(ubb), frame_bits_remaining);
 				ubb_pull(ubb, frame_bits_remaining);
 
-				/* check if we still have frame sync */
-				rc = correlate_history_against_pattern(tss);
+				/* check if we still have frame sync using the primary and all secondary patterns */
+				rc = correlate_history_against_patterns(tss);
 				if (rc > 0) {
 					tss->num_consecutive_errors++;
 					if (tss->num_consecutive_errors >= 3) {
@@ -551,7 +581,7 @@ osmo_trau_sync_alloc(void *ctx, const char *name, frame_out_cb_t frame_out_cb,
 
 	tss->out_cb = frame_out_cb;
 	tss->user_data = user_data;
-	tss->pattern = &sync_patterns[pat_id];
+	tss->pattern[PRIMARY_PATTERN] = &sync_patterns[pat_id];
 
 	/* An unusued E1 timeslot normally would send an idle signal that
 	 * has all bits set to one. In order to prevent false-positive
@@ -566,7 +596,25 @@ void osmo_trau_sync_set_pat(struct osmo_fsm_inst *fi, enum osmo_trau_sync_pat_id
 {
 	struct trau_rx_sync_state *tss = fi->priv;
 
-	tss->pattern = &sync_patterns[pat_id];
+	/* Clear the pattern list to get rid of all secondary pattern settings */
+	memset(tss->pattern, 0, sizeof(tss->pattern));
+
+	/* Set the primary pattern and reset the FSM */
+	tss->pattern[PRIMARY_PATTERN] = &sync_patterns[pat_id];
+	osmo_fsm_inst_state_chg(fi, FRAME_ALIGNMENT_LOST, 0, 0);
+}
+
+void osmo_trau_sync_set_secondary_pat(struct osmo_fsm_inst *fi, enum osmo_trau_sync_pat_id pat_id, size_t pat_index)
+{
+	struct trau_rx_sync_state *tss = fi->priv;
+
+	OSMO_ASSERT(pat_index > PRIMARY_PATTERN);
+	OSMO_ASSERT(pat_index < ARRAY_SIZE(tss->pattern));
+
+	/* Make sure that only a pattern of the same size can be set as secondary pattern */
+	OSMO_ASSERT(tss->pattern[PRIMARY_PATTERN]->byte_len == sync_patterns[pat_id].byte_len);
+
+	tss->pattern[pat_index] = &sync_patterns[pat_id];
 	osmo_fsm_inst_state_chg(fi, FRAME_ALIGNMENT_LOST, 0, 0);
 }
 
