@@ -325,6 +325,9 @@ int e1inp_ts_config_hdlc(struct e1inp_ts *ts, struct e1inp_line *line,
 			 void (*hdlc_recv_cb)(struct e1inp_ts *ts,
 					      struct msgb *msg));
 
+/* configure and initialize one timeslot dedicated to nothing */
+int e1inp_ts_config_none(struct e1inp_ts *ts, struct e1inp_line *line);
+
 /* obtain a string identifier/name for the given timeslot */
 void e1inp_ts_name(char *out, size_t out_len, const struct e1inp_ts *ts);
 

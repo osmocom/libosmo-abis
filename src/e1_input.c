@@ -444,6 +444,17 @@ int e1inp_ts_config_hdlc(struct e1inp_ts *ts, struct e1inp_line *line,
 	return 0;
 }
 
+int e1inp_ts_config_none(struct e1inp_ts *ts, struct e1inp_line *line)
+{
+	if (ts->type == E1INP_TS_TYPE_NONE && ts->line && line)
+		return 0;
+
+	ts->type = E1INP_TS_TYPE_NONE;
+	ts->line = line;
+
+	return 0;
+}
+
 static int e1inp_line_use_cb(struct osmo_use_count_entry *use_count_entry, int32_t old_use_count,
 			     const char *file, int file_line)
 {
