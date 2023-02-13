@@ -71,6 +71,7 @@
 struct misdn_line {
 	int use_userspace_lapd;
 	int unconfirmed_ts[NUM_E1_TS];
+	enum e1inp_ts_type type_ts[NUM_E1_TS];
 	int dummy_dchannel;
 	int los, ais, rai;
 };
@@ -761,12 +762,18 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 	struct misdn_line *mline = line->driver_data;
 	int ts, ret;
 
-	mline->dummy_dchannel = -1;
-	if (mline->use_userspace_lapd) {
+	/* check if sign type is used */
+	for (ts = 1; ts < line->num_ts; ts++) {
+		unsigned int idx = ts - 1;
+		struct e1inp_ts *e1i_ts = &line->ts[idx];
+		if (e1i_ts->type == E1INP_TS_TYPE_SIGN)
+			break;
+	}
+	if (ts < line->num_ts && mline->use_userspace_lapd) {
 		/* Open dummy d-channel in order to use b-channels.
 		 * Also it is required to define the mode.
 		 */
-		if (mline->dummy_dchannel < 0) {
+		if (mline->dummy_dchannel <= 0) {
 			struct sockaddr_mISDN addr;
 
 			mline->dummy_dchannel = socket(PF_ISDN, SOCK_DGRAM,
@@ -788,50 +795,86 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 				return -EIO;
 			}
 		}
+	} else {
+		/* close dummy d-channel */
+		if (mline->dummy_dchannel > 0) {
+			close(mline->dummy_dchannel);
+			mline->dummy_dchannel = -1;
+		}
 	}
 
+	LOGPIL(line, DLINP, LOGL_NOTICE, "Line update %d %d %d\n", line->num, line->port_nr, line->num_ts);
+
 	/* TS0 is CRC4, don't need any fd for it */
-	for (ts = 1; ts < NUM_E1_TS; ts++) {
-		unsigned int idx = ts-1;
+	for (ts = 1; ts < line->num_ts; ts++) {
+		unsigned int idx = ts - 1;
 		struct e1inp_ts *e1i_ts = &line->ts[idx];
 		struct osmo_fd *bfd = &e1i_ts->driver.misdn.fd;
 		struct sockaddr_mISDN addr;
 
+		/* no change in type */
+		if (mline->type_ts[idx] == e1i_ts->type)
+			continue;
+
+		LOGPIL(line, DLINP, LOGL_INFO, "Time slot %d changes from type %s to type %s\n", ts,
+		       e1inp_tstype_name(mline->type_ts[idx]), e1inp_tstype_name(e1i_ts->type));
+
+		/* unregister FD if it was already registered */
+		if (bfd->list.next && bfd->list.next != LLIST_POISON1)
+			osmo_fd_unregister(bfd);
+
+		/* close/release LAPD instance, if any */
+		if (e1i_ts->lapd) {
+			lapd_instance_free(e1i_ts->lapd);
+			e1i_ts->lapd = NULL;
+		}
+
+		/* close old file descriptor */
+		if (bfd->fd) {
+			close(bfd->fd);
+			bfd->fd = 0;
+		}
+
+		/* clear 'unconfirmed' state */
+		mline->unconfirmed_ts[idx] = 0;
+
+		/* set new type */
+		mline->type_ts[idx] = e1i_ts->type;
+
 		switch (e1i_ts->type) {
 		case E1INP_TS_TYPE_NONE:
+			/* keep closed */
 			continue;
-			break;
 		case E1INP_TS_TYPE_HDLC:
+			/* open hdlc socket */
 			/* TS 16 is the D-channel, so we use D-channel proto */
 			bfd->fd = socket(PF_ISDN, SOCK_DGRAM,
 				(ts == 16) ? ISDN_P_NT_E1 : ISDN_P_B_HDLC);
-			bfd->when = OSMO_FD_READ;
 			break;
 		case E1INP_TS_TYPE_SIGN:
+			/* open and allocate user space lapd, if required */
 			if (mline->use_userspace_lapd)
 				bfd->fd = socket(PF_ISDN, SOCK_DGRAM,
 					ISDN_P_B_HDLC);
 			else
 				bfd->fd = socket(PF_ISDN, SOCK_DGRAM,
 					ISDN_P_LAPD_NT);
-			bfd->when = OSMO_FD_READ;
 			break;
 		case E1INP_TS_TYPE_TRAU:
 		case E1INP_TS_TYPE_I460:
 		case E1INP_TS_TYPE_RAW:
+			/* open raw socket */
 			bfd->fd = socket(PF_ISDN, SOCK_DGRAM, ISDN_P_B_RAW);
-			/* We never include the mISDN B-Channel FD into the
-	 		* writeset, since it doesn't support poll() based
-	 		* write flow control */		
-			bfd->when = OSMO_FD_READ;
 			break;
 		}
 
+		/* failed to open? */
 		if (bfd->fd < 0) {
 			LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "could not open socket: %s\n", strerror(errno));
 			return bfd->fd;
 		}
 
+		/* configure mISDN socket, also add user space lapd, if enabled */
 		memset(&addr, 0, sizeof(addr));
 		addr.family = AF_ISDN;
 		addr.dev = line->port_nr;
@@ -863,6 +906,7 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 			break;
 		}
 
+		/* bind mISDN socket */
 		ret = bind(bfd->fd, (struct sockaddr *) &addr, sizeof(addr));
 		if (ret < 0) {
 			LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "could not bind l2 socket %s\n",
@@ -870,6 +914,7 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 			return -EIO;
 		}
 
+		/* release L2 in case of kernel space lapd, activate b-channel in other cases */
 		if (e1i_ts->type == E1INP_TS_TYPE_SIGN) {
 			if (!mline->use_userspace_lapd) {
 				ret = ioctl(bfd->fd, IMCLEAR_L2, &release_l2);
@@ -880,17 +925,11 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 				}
 			} else
 				activate_bchan(line, ts, 1);
-		}
-
-		/* FIXME: only activate B-Channels once we start to
-		 * use them to conserve CPU power */
-		if (e1i_ts->type == E1INP_TS_TYPE_HDLC
-		 || e1i_ts->type == E1INP_TS_TYPE_RAW
-		 || e1i_ts->type == E1INP_TS_TYPE_TRAU)
+		} else
 			activate_bchan(line, ts, 1);
 
-		osmo_fd_setup(bfd, bfd->fd, bfd->when, misdn_fd_cb, line, ts);
-
+		/* register file descriptor with read set enabled */
+		osmo_fd_setup(bfd, bfd->fd, OSMO_FD_READ, misdn_fd_cb, line, ts);
 		ret = osmo_fd_register(bfd);
 		if (ret < 0) {
 			LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "could not register FD: %s\n", strerror(ret));
