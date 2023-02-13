@@ -1708,13 +1708,13 @@ static int dec_ccu_data_ind_64(struct er_ccu_data_ind *ind, const ubit_t *trau_b
 		osmo_ubit2pbit_ext((pbit_t *) &ind->data, 0, trau_bits, 134, 40, 1);
 		cps = cps_from_mcs_block(ind->data, ind->cs_hdr, true);
 		if (cps < 0) {
-			LOGP(DLINP, LOGL_NOTICE,
+			LOGP(DLINP, LOGL_DEBUG,
 			     "CCU-DATA-IND-64: unable to read CPS from data block, bad data block received?\n");
 			break;
 		}
 		mcs = mcs_from_cps((uint8_t) cps, ind->cs_hdr);
 		if (mcs < 0) {
-			LOGP(DLINP, LOGL_NOTICE,
+			LOGP(DLINP, LOGL_DEBUG,
 			     "CCU-DATA-IND-64: unable to determine coding scheme (MCS) from CPS, bad data block received?\n");
 			break;
 		}
