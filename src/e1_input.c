@@ -361,6 +361,56 @@ int e1inp_ts_send_hdlc(struct e1inp_ts *ts, struct msgb *msg)
 	return 0;
 }
 
+/* Depending on its typ a timeslot may hold resources which must be cleaned up
+ * or reset before the type of the timeslot type may be changed. */
+static int cleanup_e1inp_ts(struct e1inp_ts *e1i_ts)
+{
+	int rc;
+
+	switch (e1i_ts->type) {
+	case E1INP_TS_TYPE_SIGN:
+		/* The caller is responsible for removing all signalling links
+		 * first. */
+		if (!llist_empty(&e1i_ts->sign.sign_links)) {
+			LOGPITS(e1i_ts, DLMI, LOGL_ERROR,
+				"timeslot still holds active signalling links -- cannot modify timeslot!\n");
+			return -EINVAL;
+		}
+		return 0;
+	case E1INP_TS_TYPE_TRAU:
+		/* Call the initialization functions once more. This will
+		 * deactivate all subchannels so that the related callbacks
+		 * are no longer called */
+		subchan_mux_init(&e1i_ts->trau.mux);
+		subch_demux_init(&e1i_ts->trau.demux);
+		return 0;
+	case E1INP_TS_TYPE_RAW:
+		msgb_queue_free(&e1i_ts->raw.tx_queue);
+		return 0;
+	case E1INP_TS_TYPE_HDLC:
+		msgb_queue_free(&e1i_ts->hdlc.tx_queue);
+		return 0;
+	case E1INP_TS_TYPE_I460:
+		/* The caller is responsible for removing all I.460 subchannels
+		 * first. */
+		rc = osmo_i460_subchan_count(&e1i_ts->i460.i460_ts);
+		if (rc != 0) {
+			LOGPITS(e1i_ts, DLMI, LOGL_ERROR,
+				"timeslot still holds active I.460 subchannels -- cannot modify timeslot!\n");
+			return -EINVAL;
+		}
+		return 0;
+	case E1INP_TS_TYPE_NONE:
+		return 0;
+	default:
+		LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "unsupported E1 TS type %u\n",
+			e1i_ts->type);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 /* Timeslot */
 int e1inp_ts_config_trau(struct e1inp_ts *ts, struct e1inp_line *line,
 			 int (*trau_rcv_cb)(struct subch_demux *dmx, int ch,
@@ -368,6 +418,8 @@ int e1inp_ts_config_trau(struct e1inp_ts *ts, struct e1inp_line *line,
 {
 	if (ts->type == E1INP_TS_TYPE_TRAU && ts->line && line)
 		return 0;
+
+	cleanup_e1inp_ts(ts);
 
 	ts->type = E1INP_TS_TYPE_TRAU;
 	ts->line = line;
@@ -383,6 +435,8 @@ int e1inp_ts_config_i460(struct e1inp_ts *ts, struct e1inp_line *line)
 {
 	if (ts->type == E1INP_TS_TYPE_I460 && ts->line && line)
 		return 0;
+
+	cleanup_e1inp_ts(ts);
 
 	ts->type = E1INP_TS_TYPE_I460;
 	ts->line = line;
@@ -403,6 +457,8 @@ int e1inp_ts_config_sign(struct e1inp_ts *ts, struct e1inp_line *line)
 	if (ts->type == E1INP_TS_TYPE_SIGN && ts->line && line)
 		return 0;
 
+	cleanup_e1inp_ts(ts);
+
 	ts->type = E1INP_TS_TYPE_SIGN;
 	ts->line = line;
 
@@ -421,6 +477,8 @@ int e1inp_ts_config_raw(struct e1inp_ts *ts, struct e1inp_line *line,
 	if (ts->type == E1INP_TS_TYPE_RAW && ts->line && line)
 		return 0;
 
+	cleanup_e1inp_ts(ts);
+
 	ts->type = E1INP_TS_TYPE_RAW;
 	ts->line = line;
 	ts->raw.recv_cb = raw_recv_cb;
@@ -436,6 +494,8 @@ int e1inp_ts_config_hdlc(struct e1inp_ts *ts, struct e1inp_line *line,
 	if (ts->type == E1INP_TS_TYPE_HDLC && ts->line && line)
 		return 0;
 
+	cleanup_e1inp_ts(ts);
+
 	ts->type = E1INP_TS_TYPE_HDLC;
 	ts->line = line;
 	ts->hdlc.recv_cb = hdlc_recv_cb;
@@ -448,6 +508,8 @@ int e1inp_ts_config_none(struct e1inp_ts *ts, struct e1inp_line *line)
 {
 	if (ts->type == E1INP_TS_TYPE_NONE && ts->line && line)
 		return 0;
+
+	cleanup_e1inp_ts(ts);
 
 	ts->type = E1INP_TS_TYPE_NONE;
 	ts->line = line;
