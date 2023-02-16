@@ -15,11 +15,11 @@ struct _RtpSession;
 
 /*! \brief standard payload type for GSM Full Rate (FR) */
 #define RTP_PT_GSM_FULL 3
-/*! \brief Osmocom pseudo-static paylaod type for Half Rate (HR) */
+/*! \brief Osmocom pseudo-static payload type for Half Rate (HR) */
 #define RTP_PT_GSM_HALF 96
-/*! \brief Osmocom pseudo-static paylaod type for Enhanced Full Rate (EFR) */
+/*! \brief Osmocom pseudo-static payload type for Enhanced Full Rate (EFR) */
 #define RTP_PT_GSM_EFR 97
-/*! \brief Osmocom pseudo-static paylaod type for Adaptive Multi Rate (AMR) */
+/*! \brief Osmocom pseudo-static payload type for Adaptive Multi Rate (AMR) */
 #define RTP_PT_AMR 98
 
 #define GSM_VOICE_SAMPLE_RATE_HZ 8000
