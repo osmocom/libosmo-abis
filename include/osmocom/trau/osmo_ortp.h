@@ -21,6 +21,8 @@ struct _RtpSession;
 #define RTP_PT_GSM_EFR 97
 /*! \brief Osmocom pseudo-static payload type for Adaptive Multi Rate (AMR) */
 #define RTP_PT_AMR 98
+/*! \brief standard payload type for CSData (3GPP TS 48.103 table 5.4.2.2.1) */
+#define RTP_PT_CSDATA 120
 
 #define GSM_VOICE_SAMPLE_RATE_HZ 8000
 #define GSM_VOICE_SAMPLES_PER_MS (GSM_VOICE_SAMPLE_RATE_HZ / 1000)
