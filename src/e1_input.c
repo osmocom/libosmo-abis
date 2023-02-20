@@ -126,7 +126,7 @@ struct lapd_header {
 	uint8_t tei : 7;
 	uint8_t control_foo; /* fake UM's ... */
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t sapi:6, cr:1, ea1:1;
 	uint8_t tei:7, ea2:1;
 	uint8_t control_foo;
