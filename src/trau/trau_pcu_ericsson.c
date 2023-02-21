@@ -1671,6 +1671,8 @@ static int dec_ccu_data_ind_64(struct er_ccu_data_ind *ind, const ubit_t *trau_b
 			if (trau_bits[98] == 0)
 				ind->u.egprs.data_good[1] = true;
 		} else {
+			ind->u.egprs.hdr_good = false;
+
 			/* A bad RLC/MAC header always means that the the data blocks
 			 * cannot be valid. */
 			ind->u.egprs.data_good[0] = false;
