@@ -2521,23 +2521,23 @@
  ccu_data_ind.tav=00
  ccu_data_ind.dbe=0
  ccu_data_ind.cs_hdr=1
- ccu_data_ind.gprs.rx_lev=0
- ccu_data_ind.gprs.est_acc_del_dev=3
- ccu_data_ind.u.gprs.block_qual=7
- ccu_data_ind.u.gprs.parity_ok=0
+ ccu_data_ind.gprs.rx_lev=63
+ ccu_data_ind.gprs.est_acc_del_dev=0
+ ccu_data_ind.u.gprs.block_qual=0
+ ccu_data_ind.u.gprs.parity_ok=1
  ccu_data_ind.u.data_len=23
- ccu_data_ind.data=dd9517653ed6b1367eb0e69e3b9df90356d9c6781c02e6
+ ccu_data_ind.data=40074275717b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b
 
 ==> er_gprs_trau_frame_decode_64k_FT_DATA_test (CS2)
- ccu_data_ind.tav=01
+ ccu_data_ind.tav=02
  ccu_data_ind.dbe=0
  ccu_data_ind.cs_hdr=2
- ccu_data_ind.gprs.rx_lev=0
+ ccu_data_ind.gprs.rx_lev=63
  ccu_data_ind.gprs.est_acc_del_dev=0
- ccu_data_ind.u.gprs.block_qual=5
- ccu_data_ind.u.gprs.parity_ok=0
+ ccu_data_ind.u.gprs.block_qual=0
+ ccu_data_ind.u.gprs.parity_ok=1
  ccu_data_ind.u.data_len=34
- ccu_data_ind.data=f3de176a2008cd15a8cb074cb692a1122461e3c470f8bff8e5a6638bcb2bb903653f
+ ccu_data_ind.data=00010449d09d5c5e676f6f676c6503636f6d0000010001881c802b2b2b2b2b2b2b00
 
 ==> er_gprs_trau_frame_decode_64k_FT_DATA_test (AB)
  ccu_data_ind.tav=01
