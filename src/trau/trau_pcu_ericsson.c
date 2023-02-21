@@ -1871,7 +1871,7 @@ static int dec_ccu_data_ind_64_mcs9(struct er_ccu_data_ind *ind, const ubit_t *t
 		ind->est_acc_del_dev = -2;
 		break;
 	default:
-		LOGP(DLINP, LOGL_ERROR, "CCU-DATA-IND-64: invalid estimated access delay (E11-E13)\n");
+		LOGP(DLINP, LOGL_ERROR, "CCU-DATA-IND-64: invalid estimated access delay (E8-E10)\n");
 		return -EINVAL;
 	}
 
