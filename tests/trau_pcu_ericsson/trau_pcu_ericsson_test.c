@@ -1249,6 +1249,750 @@ void er_gprs_trau_frame_decode_64k_FT_DATA_test(void)
 		 * the TRAU frame. */
 	};
 
+	/* TRAU frame with valid MCS1 block and correct CRC */
+	const ubit_t bits_mcs1[] = {
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		1, 0, 1, 0, 1, 1, 0, 0,
+		0, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 0, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		0, 0, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 0, 0,
+		1, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 1, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 1, 1,
+		0, 0, 1, 0, 0, 1, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 1, 0, 0, 0, 1,
+		0, 0, 0, 0, 0, 0, 1, 0,
+		1, 1, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 1,
+		1, 0, 0, 0, 0, 0, 1, 0,
+		1, 1, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 1,
+		0, 1, 1, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		1, 0, 1, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 1,
+		0, 1, 1, 0, 0, 0, 1, 1,
+		1, 0, 1, 0, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		/* [...] shortened since decode won't access filler bits after
+		 * the TRAU frame. */
+	};
+
+	/* TRAU frame with valid MCS2 block */
+	const ubit_t bits_mcs2[] = {
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		1, 0, 1, 0, 1, 1, 0, 0,
+		0, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 0, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		0, 0, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 0, 0,
+		1, 0, 1, 0, 0, 0, 0, 0,
+		0, 0, 0, 1, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 1, 0, 1,
+		0, 0, 1, 0, 0, 1, 0, 1,
+		1, 1, 0, 1, 1, 0, 1, 1,
+		0, 1, 0, 0, 0, 1, 0, 0,
+		0, 0, 0, 0, 0, 1, 1, 0,
+		0, 0, 1, 0, 1, 0, 1, 0,
+		0, 0, 0, 0, 0, 0, 0, 1,
+		0, 0, 1, 0, 0, 0, 0, 0,
+		0, 0, 1, 0, 0, 0, 0, 0,
+		0, 0, 1, 0, 0, 0, 0, 0,
+		0, 0, 1, 0, 0, 0, 0, 0,
+		0, 0, 1, 0, 0, 0, 0, 0,
+		1, 0, 0, 0, 1, 1, 0, 0,
+		1, 1, 0, 0, 1, 0, 1, 0,
+		0, 0, 0, 0, 0, 0, 0, 1,
+		0, 1, 0, 1, 1, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 1, 1, 0, 0, 1,
+		1, 1, 1, 0, 1, 1, 1, 0,
+		1, 1, 0, 1, 1, 0, 1, 1,
+		1, 0, 0, 1, 1, 1, 1, 0,
+		1, 1, 1, 1, 0, 0, 1, 1,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 1,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		/* [...] shortened since decode won't access filler bits after
+		 * the TRAU frame. */
+	};
+
+	/* TRAU frame with valid MCS3 block */
+	const ubit_t bits_mcs3[] = {
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		1, 0, 1, 0, 1, 1, 0, 0,
+		0, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 0, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		0, 0, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 0, 0,
+		0, 1, 1, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 1, 0,
+		0, 0, 1, 0, 0, 1, 0, 1,
+		1, 0, 0, 0, 0, 0, 0, 1,
+		0, 0, 0, 0, 0, 1, 1, 1,
+		0, 0, 1, 0, 0, 0, 1, 1,
+		0, 1, 0, 0, 1, 1, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 1, 0, 1, 0, 0, 0, 1,
+		0, 1, 0, 0, 0, 1, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 1,
+		1, 1, 1, 1, 1, 0, 0, 0,
+		0, 0, 0, 1, 1, 1, 0, 1,
+		0, 1, 0, 1, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 1, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 1, 0, 1,
+		0, 0, 0, 1, 0, 0, 0, 1,
+		0, 0, 1, 1, 1, 1, 1, 0,
+		1, 1, 1, 1, 0, 1, 1, 0,
+		0, 0, 0, 0, 0, 1, 1, 0,
+		0, 0, 1, 0, 1, 0, 1, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		1, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 1, 0, 0, 0, 0, 0,
+		0, 0, 1, 0, 0, 0, 0, 0,
+		0, 0, 1, 0, 0, 0, 0, 0,
+		0, 0, 1, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 1, 1, 1, 1,
+		0, 1, 1, 1, 1, 1, 1, 0,
+		0, 0, 0, 0, 0, 0, 0, 1,
+		0, 1, 0, 1, 1, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 1,
+		1, 0, 1, 0, 1, 0, 0, 1,
+		0, 1, 0, 0, 0, 1, 0, 1,
+		0, 0, 1, 0, 1, 1, 0, 1,
+		0, 0, 1, 1, 0, 1, 0, 0,
+		1, 0, 0, 0, 0, 1, 0, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		/* [...] shortened since decode won't access filler bits after
+		 * the TRAU frame. */
+	};
+
+	/* TRAU frame with valid MCS4 block */
+	const ubit_t bits_mcs4[] = {
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		1, 0, 1, 0, 1, 1, 0, 0,
+		0, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 0, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		0, 0, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 1, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 1, 0, 0,
+		0, 0, 1, 0, 0, 0, 0, 0,
+		0, 0, 0, 1, 1, 0, 0, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 0, 0, 1, 0, 0, 0,
+		1, 0, 1, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 1,
+		0, 0, 0, 1, 1, 0, 0, 1,
+		1, 0, 0, 0, 0, 0, 0, 1,
+		0, 1, 0, 0, 1, 1, 1, 0,
+		0, 0, 0, 0, 1, 1, 1, 0,
+		0, 1, 0, 1, 1, 0, 0, 0,
+		1, 0, 0, 1, 1, 0, 0, 0,
+		1, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 1, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 1, 1, 0, 1, 0, 0,
+		0, 1, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 1, 1, 1, 0,
+		0, 0, 0, 0, 1, 1, 0, 0,
+		0, 0, 0, 0, 0, 1, 1, 0,
+		0, 0, 0, 0, 0, 1, 0, 1,
+		0, 1, 1, 1, 0, 1, 0, 1,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 1,
+		0, 0, 1, 1, 1, 1, 0, 0,
+		0, 0, 1, 0, 1, 0, 1, 0,
+		0, 0, 1, 1, 1, 1, 1, 1,
+		1, 0, 1, 0, 1, 0, 0, 1,
+		1, 0, 1, 0, 1, 0, 0, 1,
+		1, 0, 1, 0, 1, 0, 0, 1,
+		1, 0, 1, 0, 1, 0, 0, 1,
+		1, 0, 1, 0, 1, 0, 0, 1,
+		1, 0, 1, 0, 1, 0, 0, 1,
+		1, 0, 1, 0, 1, 0, 0, 1,
+		1, 0, 1, 0, 1, 0, 0, 1,
+		1, 0, 1, 0, 1, 0, 0, 1,
+		1, 0, 1, 0, 1, 0, 0, 1,
+		1, 0, 1, 0, 1, 0, 0, 1,
+		1, 0, 1, 0, 1, 0, 0, 1,
+		1, 0, 1, 0, 1, 0, 0, 1,
+		1, 0, 1, 0, 1, 0, 0, 1,
+		1, 0, 1, 0, 1, 0, 0, 1,
+		1, 0, 1, 0, 1, 0, 0, 1,
+		1, 0, 1, 0, 1, 0, 0, 1,
+		1, 0, 1, 0, 1, 0, 0, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		/* [...] shortened since decode won't access filler bits after
+		 * the TRAU frame. */
+	};
+
+	/* TRAU frame with valid MCS5 block */
+	const ubit_t bits_mcs5[] = {
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		1, 0, 1, 0, 1, 1, 0, 0,
+		0, 1, 1, 1, 0, 1, 1, 1,
+		1, 1, 1, 1, 1, 0, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		0, 0, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 0, 1, 1, 1, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 1, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 1, 0, 1, 1,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 1,
+		1, 0, 0, 0, 0, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 0, 1,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 1, 1, 1,
+		0, 0, 0, 1, 1, 0, 0, 1,
+		1, 1, 0, 1, 1, 1, 0, 1,
+		0, 0, 0, 1, 1, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		/* [...] shortened since decode won't access filler bits after
+		 * the TRAU frame. */
+	};
+
+	/* TRAU frame with valid MCS6 block */
+	const ubit_t bits_mcs6[] = {
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		1, 0, 1, 0, 1, 1, 0, 0,
+		0, 1, 1, 1, 0, 1, 1, 1,
+		1, 1, 1, 1, 1, 0, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		0, 0, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 0, 1, 1, 1, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 1, 0, 0, 1,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 1,
+		1, 1, 1, 1, 0, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 1, 1, 1, 0, 0,
+		1, 0, 1, 0, 0, 0, 0, 0,
+		1, 0, 0, 0, 0, 0, 0, 0,
+		1, 0, 0, 0, 0, 1, 1, 0,
+		0, 1, 1, 1, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 1, 0, 0,
+		0, 1, 1, 1, 1, 0, 0, 0,
+		0, 1, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 1, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 1, 0, 1,
+		1, 1, 0, 0, 0, 1, 1, 0,
+		1, 1, 0, 0, 0, 1, 1, 0,
+		0, 1, 0, 1, 0, 1, 1, 0,
+		0, 0, 0, 1, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 1,
+		0, 1, 1, 0, 0, 1, 0, 1,
+		0, 1, 0, 0, 0, 0, 1, 1,
+		1, 1, 0, 0, 1, 1, 0, 0,
+		1, 1, 1, 1, 1, 1, 0, 0,
+		1, 0, 0, 0, 1, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 1, 1, 1, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 1, 0, 1,
+		1, 0, 0, 0, 1, 1, 0, 0,
+		1, 1, 0, 1, 1, 0, 1, 1,
+		0, 0, 0, 1, 1, 1, 1, 0,
+		0, 1, 1, 0, 0, 0, 1, 0,
+		0, 1, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 1, 1, 1, 1, 0, 0,
+		0, 0, 0, 0, 0, 1, 0, 0,
+		1, 1, 0, 0, 0, 1, 1, 0,
+		0, 1, 1, 0, 1, 0, 0, 1,
+		1, 0, 1, 0, 0, 0, 1, 1,
+		0, 0, 1, 1, 0, 0, 0, 1,
+		0, 0, 1, 0, 0, 1, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 1, 1, 0, 1, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 1, 0, 0, 1, 1, 1,
+		0, 1, 0, 0, 0, 1, 0, 1,
+		0, 0, 0, 0, 0, 1, 1, 1,
+		0, 0, 1, 0, 0, 0, 1, 0,
+		1, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 1, 0, 0,
+		0, 1, 1, 0, 0, 1, 1, 0,
+		0, 0, 0, 0, 0, 1, 0, 1,
+		0, 0, 1, 1, 1, 0, 0, 0,
+		0, 0, 1, 1, 1, 0, 0, 1,
+		0, 1, 1, 0, 0, 0, 1, 0,
+		0, 1, 1, 0, 0, 0, 1, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 1, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 1, 0, 1,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 1,
+		0, 1, 0, 0, 1, 1, 0, 0,
+		0, 1, 1, 1, 0, 0, 0, 0,
+		0, 0, 0, 1, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		/* [...] shortened since decode won't access filler bits after
+		 * the TRAU frame. */
+	};
+
+	/* TRAU frame with valid MCS7 block */
+	const ubit_t bits_mcs7[] = {
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		1, 0, 1, 0, 1, 1, 0, 0,
+		0, 1, 1, 0, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 0, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		0, 0, 0, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 1, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		1, 1, 1, 1, 0, 0, 0, 0,
+		0, 0, 0, 0, 1, 0, 1, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 1, 1, 1, 0,
+		1, 0, 0, 1, 0, 0, 0, 0,
+		0, 1, 0, 0, 0, 0, 0, 0,
+		0, 1, 0, 0, 0, 0, 1, 1,
+		0, 0, 1, 1, 1, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 1, 0,
+		0, 0, 1, 1, 1, 1, 0, 0,
+		0, 0, 1, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 1, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 1, 0,
+		1, 1, 1, 0, 0, 0, 1, 1,
+		0, 1, 1, 0, 0, 0, 1, 1,
+		0, 0, 1, 0, 1, 0, 1, 1,
+		0, 0, 0, 0, 1, 0, 1, 1,
+		0, 1, 0, 1, 0, 0, 1, 1,
+		1, 0, 1, 1, 0, 0, 1, 0,
+		1, 0, 1, 0, 0, 0, 0, 1,
+		1, 1, 1, 0, 0, 1, 1, 0,
+		0, 1, 1, 1, 1, 1, 1, 0,
+		0, 1, 0, 0, 0, 1, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 1, 1, 1, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 1, 0,
+		1, 1, 0, 0, 0, 1, 1, 0,
+		0, 1, 1, 0, 1, 1, 0, 1,
+		1, 0, 0, 0, 1, 1, 1, 1,
+		0, 0, 1, 1, 0, 0, 0, 1,
+		0, 0, 1, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 1, 1, 1, 1, 0,
+		0, 0, 0, 0, 0, 0, 1, 0,
+		0, 1, 1, 0, 0, 0, 1, 1,
+		0, 0, 1, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 0, 0, 1,
+		1, 0, 0, 1, 1, 0, 0, 0,
+		1, 0, 0, 1, 0, 0, 1, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 1, 1, 0, 1,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 1, 0, 0, 1, 1,
+		1, 0, 1, 0, 0, 0, 1, 0,
+		1, 0, 0, 0, 0, 0, 1, 1,
+		1, 0, 0, 1, 0, 0, 0, 1,
+		0, 1, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 1, 0,
+		0, 0, 1, 1, 0, 0, 1, 1,
+		0, 0, 0, 0, 0, 0, 1, 0,
+		1, 0, 0, 1, 1, 1, 0, 0,
+		0, 0, 0, 1, 1, 1, 0, 0,
+		1, 0, 1, 1, 0, 0, 0, 1,
+		0, 0, 1, 1, 0, 0, 0, 1,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 1, 1, 0, 0, 0, 0,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		1, 0, 1, 1, 1, 0, 1, 0,
+		1, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 1, 0, 0, 1, 0, 1,
+		0, 0, 0, 1, 0, 0, 0, 0,
+		1, 0, 0, 1, 1, 1, 1, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 0, 0,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		/* [...] shortened since decode won't access filler bits after
+		 * the TRAU frame. */
+	};
+
+	/* TRAU frame with valid MCS8 block */
+	const ubit_t bits_mcs8[] = {
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		1, 0, 1, 0, 1, 1, 0, 0,
+		0, 1, 1, 0, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 0, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		0, 0, 0, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 0, 0,
+		1, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 1, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 1, 1,
+		1, 1, 0, 1, 0, 0, 0, 0,
+		0, 0, 0, 0, 1, 0, 1, 1,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 1, 1, 1, 0,
+		1, 1, 0, 0, 0, 0, 1, 0,
+		1, 0, 0, 1, 1, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 1, 1,
+		0, 0, 0, 0, 0, 0, 1, 0,
+		1, 0, 0, 0, 1, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 1, 1,
+		1, 1, 1, 1, 0, 0, 0, 0,
+		0, 0, 1, 1, 1, 0, 1, 0,
+		1, 0, 0, 1, 0, 1, 0, 0,
+		0, 0, 0, 0, 1, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 1, 0, 1, 0,
+		0, 0, 1, 0, 0, 0, 1, 0,
+		0, 1, 1, 1, 1, 1, 0, 1,
+		0, 1, 0, 0, 1, 0, 0, 0,
+		0, 0, 0, 0, 1, 1, 0, 0,
+		0, 1, 0, 1, 0, 1, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 1,
+		1, 0, 0, 0, 0, 0, 0, 0,
+		0, 1, 0, 0, 0, 0, 0, 0,
+		0, 1, 0, 0, 0, 0, 0, 0,
+		0, 1, 0, 0, 0, 0, 0, 0,
+		0, 1, 0, 0, 0, 0, 0, 1,
+		1, 1, 1, 1, 0, 0, 1, 0,
+		0, 1, 0, 0, 0, 1, 0, 0,
+		0, 0, 0, 0, 0, 0, 1, 0,
+		1, 0, 1, 1, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 1, 1,
+		0, 1, 0, 1, 0, 0, 0, 0,
+		1, 0, 1, 1, 0, 0, 0, 1,
+		0, 1, 0, 0, 0, 0, 1, 1,
+		1, 0, 0, 1, 1, 1, 1, 1,
+		0, 0, 0, 0, 1, 1, 1, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 1, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 1,
+		1, 0, 0, 0, 0, 0, 1, 0,
+		1, 1, 0, 1, 1, 0, 0, 0,
+		1, 0, 1, 1, 1, 0, 1, 0,
+		0, 0, 0, 1, 1, 0, 0, 0,
+		1, 1, 0, 1, 1, 0, 1, 1,
+		0, 1, 0, 1, 1, 0, 0, 0,
+		1, 0, 1, 1, 0, 0, 0, 1,
+		1, 0, 0, 0, 0, 0, 1, 1,
+		1, 0, 0, 1, 1, 0, 1, 1,
+		1, 1, 0, 1, 1, 0, 1, 1,
+		1, 1, 0, 1, 1, 0, 1, 1,
+		1, 0, 0, 1, 1, 0, 0, 0,
+		1, 1, 0, 1, 1, 0, 1, 0,
+		1, 0, 0, 1, 1, 0, 1, 1,
+		0, 0, 0, 0, 0, 0, 1, 1,
+		0, 0, 0, 1, 1, 0, 1, 1,
+		1, 1, 0, 1, 1, 0, 1, 0,
+		1, 1, 0, 1, 1, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 1, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		1, 1, 0, 1, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		1, 0, 0, 0, 0, 0, 0, 0,
+		0, 1, 1, 0, 0, 1, 0, 1,
+		1, 0, 0, 1, 1, 0, 1, 0,
+		0, 1, 1, 0, 0, 1, 1, 0,
+		1, 1, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 1, 1,
+		1, 0, 0, 0, 1, 0, 0, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 1, 0, 0, 0, 0, 0,
+		1, 0, 1, 0, 0, 0, 1, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		1, 0, 1, 1, 1, 1, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 1, 0, 1, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		1, 1, 1, 1, 1, 1, 1, 1,
+		1, 0, 0, 0, 1, 0, 0, 0,
+		0, 1, 0, 1, 0, 1, 1, 1,
+		1, 0, 1, 1, 1, 0, 1, 1,
+		0, 0, 0, 0, 0, 0, 1, 1,
+		0, 0, 0, 1, 0, 1, 0, 1,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 1, 1, 0, 0, 0, 0, 0,
+		0, 0, 0, 1, 0, 0, 0, 0,
+		0, 0, 0, 1, 0, 0, 0, 0,
+		0, 0, 0, 1, 0, 0, 0, 0,
+		0, 0, 0, 1, 0, 0, 0, 0,
+		0, 1, 1, 0, 0, 0, 0, 1,
+		0, 1, 1, 0, 1, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		1, 0, 1, 0, 1, 1, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		1, 0, 0, 1, 0, 1, 0, 0,
+		1, 1, 0, 1, 0, 1, 1, 1,
+		1, 1, 0, 0, 1, 0, 0, 1,
+		0, 1, 1, 1, 1, 0, 0, 0,
+		1, 1, 1, 0, 0, 0, 0, 0,
+		1, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		1, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 1, 0, 0, 0, 0, 0,
+		1, 1, 0, 0, 1, 1, 1, 0,
+		1, 0, 1, 0, 1, 1, 1, 0,
+		0, 0, 0, 0, 1, 1, 1, 0,
+		0, 0, 1, 1, 0, 1, 1, 0,
+		0, 1, 1, 0, 0, 0, 0, 0,
+		1, 1, 1, 0, 0, 1, 1, 0,
+		1, 1, 1, 1, 0, 1, 1, 0,
+		1, 1, 1, 1, 0, 1, 1, 0,
+		1, 1, 1, 0, 0, 1, 1, 0,
+		0, 0, 1, 1, 0, 1, 1, 0,
+		1, 0, 1, 0, 0, 1, 1, 0,
+		1, 1, 0, 0, 0, 0, 0, 0,
+		1, 1, 0, 0, 0, 1, 1, 0,
+		1, 1, 1, 1, 0, 1, 1, 0,
+		1, 1, 1, 1, 1, 1, 1, 1,
+	};
+
 	/* TRAU frame with AB data (noise). */
 	const ubit_t bits_ab[] = {
 		0, 0, 0, 0, 0, 0, 0, 0,
@@ -1333,6 +2077,142 @@ void er_gprs_trau_frame_decode_64k_FT_DATA_test(void)
 	printf(" ccu_data_ind.gprs.est_acc_del_dev=%d\n", frame.u.ccu_data_ind.est_acc_del_dev);
 	printf(" ccu_data_ind.u.gprs.block_qual=%u\n", frame.u.ccu_data_ind.u.gprs.block_qual);
 	printf(" ccu_data_ind.u.gprs.parity_ok=%u\n", frame.u.ccu_data_ind.u.gprs.parity_ok);
+	printf(" ccu_data_ind.u.data_len=%u\n", frame.u.ccu_data_ind.data_len);
+	printf(" ccu_data_ind.data=%s\n", osmo_hexdump_nospc(frame.u.ccu_data_ind.data, frame.u.ccu_data_ind.data_len));
+
+	printf("\n==> %s (MCS1)\n", __func__);
+	rc = er_gprs_trau_frame_decode_64k(&frame, bits_mcs1);
+	OSMO_ASSERT(rc == 0);
+	OSMO_ASSERT(frame.type == ER_GPRS_TRAU_FT_DATA);
+	printf(" ccu_data_ind.tav=%02x\n", frame.u.ccu_data_ind.tav);
+	printf(" ccu_data_ind.dbe=%u\n", frame.u.ccu_data_ind.dbe);
+	printf(" ccu_data_ind.cs_hdr=%u\n", frame.u.ccu_data_ind.cs_hdr);
+	printf(" ccu_data_ind.gprs.rx_lev=%u\n", frame.u.ccu_data_ind.rx_lev);
+	printf(" ccu_data_ind.gprs.est_acc_del_dev=%d\n", frame.u.ccu_data_ind.est_acc_del_dev);
+	printf(" ccu_data_ind.u.egprs.mean_bep=%u\n", frame.u.ccu_data_ind.u.egprs.mean_bep);
+	printf(" ccu_data_ind.u.egprs.cv_bep=%u\n", frame.u.ccu_data_ind.u.egprs.cv_bep);
+	printf(" ccu_data_ind.u.egprs.hdr_good=%u\n", frame.u.ccu_data_ind.u.egprs.hdr_good);
+	printf(" ccu_data_ind.u.egprs.data_good[0]=%u\n", frame.u.ccu_data_ind.u.egprs.data_good[0]);
+	printf(" ccu_data_ind.u.egprs.data_good[1]=%u\n", frame.u.ccu_data_ind.u.egprs.data_good[1]);
+	printf(" ccu_data_ind.u.data_len=%u\n", frame.u.ccu_data_ind.data_len);
+	printf(" ccu_data_ind.data=%s\n", osmo_hexdump_nospc(frame.u.ccu_data_ind.data, frame.u.ccu_data_ind.data_len));
+
+	printf("\n==> %s (MCS2)\n", __func__);
+	rc = er_gprs_trau_frame_decode_64k(&frame, bits_mcs2);
+	OSMO_ASSERT(rc == 0);
+	OSMO_ASSERT(frame.type == ER_GPRS_TRAU_FT_DATA);
+	printf(" ccu_data_ind.tav=%02x\n", frame.u.ccu_data_ind.tav);
+	printf(" ccu_data_ind.dbe=%u\n", frame.u.ccu_data_ind.dbe);
+	printf(" ccu_data_ind.cs_hdr=%u\n", frame.u.ccu_data_ind.cs_hdr);
+	printf(" ccu_data_ind.gprs.rx_lev=%u\n", frame.u.ccu_data_ind.rx_lev);
+	printf(" ccu_data_ind.gprs.est_acc_del_dev=%d\n", frame.u.ccu_data_ind.est_acc_del_dev);
+	printf(" ccu_data_ind.u.egprs.mean_bep=%u\n", frame.u.ccu_data_ind.u.egprs.mean_bep);
+	printf(" ccu_data_ind.u.egprs.cv_bep=%u\n", frame.u.ccu_data_ind.u.egprs.cv_bep);
+	printf(" ccu_data_ind.u.egprs.hdr_good=%u\n", frame.u.ccu_data_ind.u.egprs.hdr_good);
+	printf(" ccu_data_ind.u.egprs.data_good[0]=%u\n", frame.u.ccu_data_ind.u.egprs.data_good[0]);
+	printf(" ccu_data_ind.u.egprs.data_good[1]=%u\n", frame.u.ccu_data_ind.u.egprs.data_good[1]);
+	printf(" ccu_data_ind.u.data_len=%u\n", frame.u.ccu_data_ind.data_len);
+	printf(" ccu_data_ind.data=%s\n", osmo_hexdump_nospc(frame.u.ccu_data_ind.data, frame.u.ccu_data_ind.data_len));
+
+	printf("\n==> %s (MCS3)\n", __func__);
+	rc = er_gprs_trau_frame_decode_64k(&frame, bits_mcs3);
+	OSMO_ASSERT(rc == 0);
+	OSMO_ASSERT(frame.type == ER_GPRS_TRAU_FT_DATA);
+	printf(" ccu_data_ind.tav=%02x\n", frame.u.ccu_data_ind.tav);
+	printf(" ccu_data_ind.dbe=%u\n", frame.u.ccu_data_ind.dbe);
+	printf(" ccu_data_ind.cs_hdr=%u\n", frame.u.ccu_data_ind.cs_hdr);
+	printf(" ccu_data_ind.gprs.rx_lev=%u\n", frame.u.ccu_data_ind.rx_lev);
+	printf(" ccu_data_ind.gprs.est_acc_del_dev=%d\n", frame.u.ccu_data_ind.est_acc_del_dev);
+	printf(" ccu_data_ind.u.egprs.mean_bep=%u\n", frame.u.ccu_data_ind.u.egprs.mean_bep);
+	printf(" ccu_data_ind.u.egprs.cv_bep=%u\n", frame.u.ccu_data_ind.u.egprs.cv_bep);
+	printf(" ccu_data_ind.u.egprs.hdr_good=%u\n", frame.u.ccu_data_ind.u.egprs.hdr_good);
+	printf(" ccu_data_ind.u.egprs.data_good[0]=%u\n", frame.u.ccu_data_ind.u.egprs.data_good[0]);
+	printf(" ccu_data_ind.u.egprs.data_good[1]=%u\n", frame.u.ccu_data_ind.u.egprs.data_good[1]);
+	printf(" ccu_data_ind.u.data_len=%u\n", frame.u.ccu_data_ind.data_len);
+	printf(" ccu_data_ind.data=%s\n", osmo_hexdump_nospc(frame.u.ccu_data_ind.data, frame.u.ccu_data_ind.data_len));
+
+	printf("\n==> %s (MCS4)\n", __func__);
+	rc = er_gprs_trau_frame_decode_64k(&frame, bits_mcs4);
+	OSMO_ASSERT(rc == 0);
+	OSMO_ASSERT(frame.type == ER_GPRS_TRAU_FT_DATA);
+	printf(" ccu_data_ind.tav=%02x\n", frame.u.ccu_data_ind.tav);
+	printf(" ccu_data_ind.dbe=%u\n", frame.u.ccu_data_ind.dbe);
+	printf(" ccu_data_ind.cs_hdr=%u\n", frame.u.ccu_data_ind.cs_hdr);
+	printf(" ccu_data_ind.gprs.rx_lev=%u\n", frame.u.ccu_data_ind.rx_lev);
+	printf(" ccu_data_ind.gprs.est_acc_del_dev=%d\n", frame.u.ccu_data_ind.est_acc_del_dev);
+	printf(" ccu_data_ind.u.egprs.mean_bep=%u\n", frame.u.ccu_data_ind.u.egprs.mean_bep);
+	printf(" ccu_data_ind.u.egprs.cv_bep=%u\n", frame.u.ccu_data_ind.u.egprs.cv_bep);
+	printf(" ccu_data_ind.u.egprs.hdr_good=%u\n", frame.u.ccu_data_ind.u.egprs.hdr_good);
+	printf(" ccu_data_ind.u.egprs.data_good[0]=%u\n", frame.u.ccu_data_ind.u.egprs.data_good[0]);
+	printf(" ccu_data_ind.u.egprs.data_good[1]=%u\n", frame.u.ccu_data_ind.u.egprs.data_good[1]);
+	printf(" ccu_data_ind.u.data_len=%u\n", frame.u.ccu_data_ind.data_len);
+	printf(" ccu_data_ind.data=%s\n", osmo_hexdump_nospc(frame.u.ccu_data_ind.data, frame.u.ccu_data_ind.data_len));
+
+	printf("\n==> %s (MCS5)\n", __func__);
+	rc = er_gprs_trau_frame_decode_64k(&frame, bits_mcs5);
+	OSMO_ASSERT(rc == 0);
+	OSMO_ASSERT(frame.type == ER_GPRS_TRAU_FT_DATA);
+	printf(" ccu_data_ind.tav=%02x\n", frame.u.ccu_data_ind.tav);
+	printf(" ccu_data_ind.dbe=%u\n", frame.u.ccu_data_ind.dbe);
+	printf(" ccu_data_ind.cs_hdr=%u\n", frame.u.ccu_data_ind.cs_hdr);
+	printf(" ccu_data_ind.gprs.rx_lev=%u\n", frame.u.ccu_data_ind.rx_lev);
+	printf(" ccu_data_ind.gprs.est_acc_del_dev=%d\n", frame.u.ccu_data_ind.est_acc_del_dev);
+	printf(" ccu_data_ind.u.egprs.mean_bep=%u\n", frame.u.ccu_data_ind.u.egprs.mean_bep);
+	printf(" ccu_data_ind.u.egprs.cv_bep=%u\n", frame.u.ccu_data_ind.u.egprs.cv_bep);
+	printf(" ccu_data_ind.u.egprs.hdr_good=%u\n", frame.u.ccu_data_ind.u.egprs.hdr_good);
+	printf(" ccu_data_ind.u.egprs.data_good[0]=%u\n", frame.u.ccu_data_ind.u.egprs.data_good[0]);
+	printf(" ccu_data_ind.u.egprs.data_good[1]=%u\n", frame.u.ccu_data_ind.u.egprs.data_good[1]);
+	printf(" ccu_data_ind.u.data_len=%u\n", frame.u.ccu_data_ind.data_len);
+	printf(" ccu_data_ind.data=%s\n", osmo_hexdump_nospc(frame.u.ccu_data_ind.data, frame.u.ccu_data_ind.data_len));
+
+	printf("\n==> %s (MCS6)\n", __func__);
+	rc = er_gprs_trau_frame_decode_64k(&frame, bits_mcs6);
+	OSMO_ASSERT(rc == 0);
+	OSMO_ASSERT(frame.type == ER_GPRS_TRAU_FT_DATA);
+	printf(" ccu_data_ind.tav=%02x\n", frame.u.ccu_data_ind.tav);
+	printf(" ccu_data_ind.dbe=%u\n", frame.u.ccu_data_ind.dbe);
+	printf(" ccu_data_ind.cs_hdr=%u\n", frame.u.ccu_data_ind.cs_hdr);
+	printf(" ccu_data_ind.gprs.rx_lev=%u\n", frame.u.ccu_data_ind.rx_lev);
+	printf(" ccu_data_ind.gprs.est_acc_del_dev=%d\n", frame.u.ccu_data_ind.est_acc_del_dev);
+	printf(" ccu_data_ind.u.egprs.mean_bep=%u\n", frame.u.ccu_data_ind.u.egprs.mean_bep);
+	printf(" ccu_data_ind.u.egprs.cv_bep=%u\n", frame.u.ccu_data_ind.u.egprs.cv_bep);
+	printf(" ccu_data_ind.u.egprs.hdr_good=%u\n", frame.u.ccu_data_ind.u.egprs.hdr_good);
+	printf(" ccu_data_ind.u.egprs.data_good[0]=%u\n", frame.u.ccu_data_ind.u.egprs.data_good[0]);
+	printf(" ccu_data_ind.u.egprs.data_good[1]=%u\n", frame.u.ccu_data_ind.u.egprs.data_good[1]);
+	printf(" ccu_data_ind.u.data_len=%u\n", frame.u.ccu_data_ind.data_len);
+	printf(" ccu_data_ind.data=%s\n", osmo_hexdump_nospc(frame.u.ccu_data_ind.data, frame.u.ccu_data_ind.data_len));
+
+	printf("\n==> %s (MCS7)\n", __func__);
+	rc = er_gprs_trau_frame_decode_64k(&frame, bits_mcs7);
+	OSMO_ASSERT(rc == 0);
+	OSMO_ASSERT(frame.type == ER_GPRS_TRAU_FT_DATA);
+	printf(" ccu_data_ind.tav=%02x\n", frame.u.ccu_data_ind.tav);
+	printf(" ccu_data_ind.dbe=%u\n", frame.u.ccu_data_ind.dbe);
+	printf(" ccu_data_ind.cs_hdr=%u\n", frame.u.ccu_data_ind.cs_hdr);
+	printf(" ccu_data_ind.gprs.rx_lev=%u\n", frame.u.ccu_data_ind.rx_lev);
+	printf(" ccu_data_ind.gprs.est_acc_del_dev=%d\n", frame.u.ccu_data_ind.est_acc_del_dev);
+	printf(" ccu_data_ind.u.egprs.mean_bep=%u\n", frame.u.ccu_data_ind.u.egprs.mean_bep);
+	printf(" ccu_data_ind.u.egprs.cv_bep=%u\n", frame.u.ccu_data_ind.u.egprs.cv_bep);
+	printf(" ccu_data_ind.u.egprs.hdr_good=%u\n", frame.u.ccu_data_ind.u.egprs.hdr_good);
+	printf(" ccu_data_ind.u.egprs.data_good[0]=%u\n", frame.u.ccu_data_ind.u.egprs.data_good[0]);
+	printf(" ccu_data_ind.u.egprs.data_good[1]=%u\n", frame.u.ccu_data_ind.u.egprs.data_good[1]);
+	printf(" ccu_data_ind.u.data_len=%u\n", frame.u.ccu_data_ind.data_len);
+	printf(" ccu_data_ind.data=%s\n", osmo_hexdump_nospc(frame.u.ccu_data_ind.data, frame.u.ccu_data_ind.data_len));
+
+	printf("\n==> %s (MCS8)\n", __func__);
+	rc = er_gprs_trau_frame_decode_64k(&frame, bits_mcs8);
+	OSMO_ASSERT(rc == 0);
+	OSMO_ASSERT(frame.type == ER_GPRS_TRAU_FT_DATA);
+	printf(" ccu_data_ind.tav=%02x\n", frame.u.ccu_data_ind.tav);
+	printf(" ccu_data_ind.dbe=%u\n", frame.u.ccu_data_ind.dbe);
+	printf(" ccu_data_ind.cs_hdr=%u\n", frame.u.ccu_data_ind.cs_hdr);
+	printf(" ccu_data_ind.gprs.rx_lev=%u\n", frame.u.ccu_data_ind.rx_lev);
+	printf(" ccu_data_ind.gprs.est_acc_del_dev=%d\n", frame.u.ccu_data_ind.est_acc_del_dev);
+	printf(" ccu_data_ind.u.egprs.mean_bep=%u\n", frame.u.ccu_data_ind.u.egprs.mean_bep);
+	printf(" ccu_data_ind.u.egprs.cv_bep=%u\n", frame.u.ccu_data_ind.u.egprs.cv_bep);
+	printf(" ccu_data_ind.u.egprs.hdr_good=%u\n", frame.u.ccu_data_ind.u.egprs.hdr_good);
+	printf(" ccu_data_ind.u.egprs.data_good[0]=%u\n", frame.u.ccu_data_ind.u.egprs.data_good[0]);
+	printf(" ccu_data_ind.u.egprs.data_good[1]=%u\n", frame.u.ccu_data_ind.u.egprs.data_good[1]);
 	printf(" ccu_data_ind.u.data_len=%u\n", frame.u.ccu_data_ind.data_len);
 	printf(" ccu_data_ind.data=%s\n", osmo_hexdump_nospc(frame.u.ccu_data_ind.data, frame.u.ccu_data_ind.data_len));
 

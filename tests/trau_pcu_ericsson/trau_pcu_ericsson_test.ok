@@ -2539,6 +2539,118 @@
  ccu_data_ind.u.data_len=34
  ccu_data_ind.data=00010449d09d5c5e676f6f676c6503636f6d0000010001881c802b2b2b2b2b2b2b00
 
+==> er_gprs_trau_frame_decode_64k_FT_DATA_test (MCS1)
+ ccu_data_ind.tav=00
+ ccu_data_ind.dbe=0
+ ccu_data_ind.cs_hdr=7
+ ccu_data_ind.gprs.rx_lev=63
+ ccu_data_ind.gprs.est_acc_del_dev=0
+ ccu_data_ind.u.egprs.mean_bep=7
+ ccu_data_ind.u.egprs.cv_bep=0
+ ccu_data_ind.u.egprs.hdr_good=1
+ ccu_data_ind.u.egprs.data_good[0]=1
+ ccu_data_ind.u.egprs.data_good[1]=0
+ ccu_data_ind.u.data_len=27
+ ccu_data_ind.data=041000930020020d00000000060d00000000001a000014001ad701
+
+==> er_gprs_trau_frame_decode_64k_FT_DATA_test (MCS2)
+ ccu_data_ind.tav=00
+ ccu_data_ind.dbe=0
+ ccu_data_ind.cs_hdr=7
+ ccu_data_ind.gprs.rx_lev=63
+ ccu_data_ind.gprs.est_acc_del_dev=0
+ ccu_data_ind.u.egprs.mean_bep=7
+ ccu_data_ind.u.egprs.cv_bep=0
+ ccu_data_ind.u.egprs.hdr_good=1
+ ccu_data_ind.u.egprs.data_good[0]=1
+ ccu_data_ind.u.egprs.data_good[1]=0
+ ccu_data_ind.u.data_len=33
+ ccu_data_ind.data=142080926e8b8051011210101010c44c016a0060de6de73d030000020000000000
+
+==> er_gprs_trau_frame_decode_64k_FT_DATA_test (MCS3)
+ ccu_data_ind.tav=00
+ ccu_data_ind.dbe=0
+ ccu_data_ind.cs_hdr=7
+ ccu_data_ind.gprs.rx_lev=63
+ ccu_data_ind.gprs.est_acc_del_dev=0
+ ccu_data_ind.u.egprs.mean_bep=7
+ ccu_data_ind.u.egprs.cv_bep=0
+ ccu_data_ind.u.egprs.hdr_good=1
+ ccu_data_ind.u.egprs.data_good[0]=1
+ ccu_data_ind.u.egprs.data_good[1]=0
+ ccu_data_ind.u.data_len=42
+ ccu_data_ind.data=18000091068213cb0000288a00007ee02a80008022f2bd8151010410101010c0fb016a00568ad2b28400
+
+==> er_gprs_trau_frame_decode_64k_FT_DATA_test (MCS4)
+ ccu_data_ind.tav=00
+ ccu_data_ind.dbe=0
+ ccu_data_ind.cs_hdr=7
+ ccu_data_ind.gprs.rx_lev=63
+ ccu_data_ind.gprs.est_acc_del_dev=0
+ ccu_data_ind.u.egprs.mean_bep=7
+ ccu_data_ind.u.egprs.cv_bep=0
+ ccu_data_ind.u.egprs.hdr_good=1
+ ccu_data_ind.u.egprs.data_good[0]=1
+ ccu_data_ind.u.egprs.data_good[1]=0
+ ccu_data_ind.u.data_len=49
+ ccu_data_ind.data=0008801060fe4f14006206cac16964044000b008c0c18081ba0200f250f157565656565656565656565656565656565600
+
+==> er_gprs_trau_frame_decode_64k_FT_DATA_test (MCS5)
+ ccu_data_ind.tav=00
+ ccu_data_ind.dbe=0
+ ccu_data_ind.cs_hdr=6
+ ccu_data_ind.gprs.rx_lev=63
+ ccu_data_ind.gprs.est_acc_del_dev=0
+ ccu_data_ind.u.egprs.mean_bep=7
+ ccu_data_ind.u.egprs.cv_bep=0
+ ccu_data_ind.u.egprs.hdr_good=1
+ ccu_data_ind.u.egprs.data_good[0]=1
+ ccu_data_ind.u.egprs.data_good[1]=0
+ ccu_data_ind.u.data_len=61
+ ccu_data_ind.data=000840030086ffae008063eee2959595959595959595959595959595959595959595959595959595959595959595959595959595959595959595959515
+
+==> er_gprs_trau_frame_decode_64k_FT_DATA_test (MCS6)
+ ccu_data_ind.tav=00
+ ccu_data_ind.dbe=0
+ ccu_data_ind.cs_hdr=6
+ ccu_data_ind.gprs.rx_lev=63
+ ccu_data_ind.gprs.est_acc_del_dev=0
+ ccu_data_ind.u.egprs.mean_bep=7
+ ccu_data_ind.u.egprs.cv_bep=0
+ ccu_data_ind.u.egprs.hdr_good=1
+ ccu_data_ind.u.egprs.data_good[0]=1
+ ccu_data_ind.u.egprs.data_good[1]=0
+ ccu_data_ind.u.data_len=79
+ ccu_data_ind.data=0000400200beff00e0140484398078088000808e8da9a1959b0acffc44003880c66ce3190900f0808c59163392006001908b82130580988172701a19011080ae0000ca38a095959595959595959515
+
+==> er_gprs_trau_frame_decode_64k_FT_DATA_test (MCS7)
+ ccu_data_ind.tav=00
+ ccu_data_ind.dbe=0
+ ccu_data_ind.cs_hdr=5
+ ccu_data_ind.gprs.rx_lev=63
+ ccu_data_ind.gprs.est_acc_del_dev=0
+ ccu_data_ind.u.egprs.mean_bep=7
+ ccu_data_ind.u.egprs.cv_bep=0
+ ccu_data_ind.u.egprs.hdr_good=1
+ ccu_data_ind.u.egprs.data_good[0]=1
+ ccu_data_ind.u.egprs.data_good[1]=1
+ ccu_data_ind.u.data_len=119
+ ccu_data_ind.data=000040003c4001c02508087300f1100001001d1b53432b37159ef9890070008dd9c6331200e00119b32c662401c002201705270a003103e5e0343202000030fc7705009022e4adacacacacacacacacacacacacacacacacacacacacacacacacacacacacacacacacacacacacacacacacacacacacacacac00
+
+==> er_gprs_trau_frame_decode_64k_FT_DATA_test (MCS8)
+ ccu_data_ind.tav=00
+ ccu_data_ind.dbe=0
+ ccu_data_ind.cs_hdr=5
+ ccu_data_ind.gprs.rx_lev=63
+ ccu_data_ind.gprs.est_acc_del_dev=0
+ ccu_data_ind.u.egprs.mean_bep=7
+ ccu_data_ind.u.egprs.cv_bep=0
+ ccu_data_ind.u.egprs.hdr_good=1
+ ccu_data_ind.u.egprs.data_good[0]=1
+ ccu_data_ind.u.egprs.data_good[1]=1
+ ccu_data_ind.u.data_len=143
+ ccu_data_ind.data=040040002f4003c00d650000034500003f70a540004011f94ac0a80006080808083e890035002b340ae7c301000001000000000000066d74616c6b3406676f6f676c6503636f6d0000012c00049866990d004794010010140100f400500000fc47a87703a3021820202020185a00d400a4ac4f7a1c0400000400000000000010ccd5c1b1199cbdbd9db1950d8cbd01
+
 ==> er_gprs_trau_frame_decode_64k_FT_DATA_test (AB)
  ccu_data_ind.tav=01
  ccu_data_ind.dbe=0
