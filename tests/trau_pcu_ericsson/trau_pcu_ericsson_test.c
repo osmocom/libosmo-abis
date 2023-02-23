@@ -1190,7 +1190,7 @@ void er_gprs_trau_frame_decode_64k_FT_DATA_test(void)
 		 * the TRAU frame. */
 	};
 
-	/* TRAU frame with valid CS2 block and correct CRC */
+	/* TRAU frame with valid CS2 block */
 	const ubit_t bits_cs2[] = {
 		0, 0, 0, 0, 0, 0, 0, 0,
 		0, 0, 0, 0, 0, 0, 0, 0,
