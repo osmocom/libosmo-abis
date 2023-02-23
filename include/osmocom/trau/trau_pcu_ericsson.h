@@ -277,4 +277,27 @@ int er_gprs_trau_frame_decode_64k(struct er_gprs_trau_frame *fr, const ubit_t *b
  * value back. The timing adjustment is performed immediately within the same frame by appending or removing bits
  * at the end. This delays or advances the timing of the subsequent frame.
  *
- * The procedure is very similar to the one described in: GSM 08.60, section 4.6.1.2 */
+ * The procedure is very similar to the one described in: GSM 08.60, section 4.6.1.2
+ *
+ *
+ * Usable coding schemes in uplink
+ * ===============================
+ * To understand which coding schemes are usable one must understand that the first CCU implementation for Ericsson
+ * RBS only supported CS1 and CS2 on 16K I.460 subslots. CS1 and CS2 were not supported due to the bandwidth limitation
+ * of the 16k subslots. In order to support higher bandwidth, in particular EDGE, a new CCU implementation was
+ * introduced. This newer implementation uses full 64K E1 timeslots and has full EDGE support MCS1-MCS9.
+ *
+ * Interestingly though, the newer CCU implementation seems to lack support for CS3-CS4. At least it was not possible
+ * To receive any CS3 or CS4 blocks from the CCU, while CS1 and CS2 work fine. In case the PCU is instructed to use
+ * CS3 or CS4 in downlink nothing is received. Since the CCU also demodulates noise and even sends the demodulation
+ * results back to the PCU there should have been at least some invalid CS3 and CS4 blocks in the demodulation results
+ * from time to time but also here no CS3 or CS4 blocks were observed. This leads to the vague assumption that the GPRS
+ * part of the CCU presumably never got updated and only EDGE support was added.
+ *
+ * It was also discovered that CS1 and CS2 only appear when the CCU is instructed to receive GMSK only
+ * (ER_UL_CHMOD_NB_GMSK). When the CCU is instructed to receive GMSK and PSK (ER_UL_CHMOD_NB_UNKN) CS2 does not appear.
+ * EGPRS related blocks (CS_OR_HDR_HDR1-3) appear in both situations. Since CS1 also plays a role in EGPRS it might be
+ * that the CCU is filtering non EDGE related blocks when ER_UL_CHMOD_NB_UNKN is used.
+ *
+ * The observations above were made with an RRUS 02 B3
+ */
