@@ -45,7 +45,7 @@ int main(void)
 	vty_init(&vty_info);
 	ipa_proxy_vty_init();
 
-	telnet_init(tall_test, NULL, IPA_PROXY_TEST_TELNET_PORT);
+	telnet_init_default(tall_test, NULL, IPA_PROXY_TEST_TELNET_PORT);
 
 	LOGP(DIPA_PROXY_TEST, LOGL_NOTICE, "entering main loop\n");
 
