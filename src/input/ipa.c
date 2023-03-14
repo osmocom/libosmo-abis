@@ -561,10 +561,10 @@ void ipa_server_conn_destroy(struct ipa_server_conn *conn)
 	 * calls again into this destructor */
 	if (conn->ofd.fd == -1)
 		return;
+	osmo_fd_unregister(&conn->ofd);
 	close(conn->ofd.fd);
 	conn->ofd.fd = -1;
 	msgb_free(conn->pending_msg);
-	osmo_fd_unregister(&conn->ofd);
 	if (conn->closed_cb)
 		conn->closed_cb(conn);
 	talloc_free(conn);
