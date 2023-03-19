@@ -274,6 +274,19 @@ static struct sync_pattern sync_patterns[] = {
 		},
 		.byte_len = 160,
 	},
+	[OSMO_TRAU_SYNCP_FA] = {
+		/* See Section 5.2.2.1 of 3GPP TS 43.045 */
+		.name = "FA",
+		.byte_pattern = {
+			0x3E, 0x37, 0x50, 0x96,
+			0xC1, 0xC8, 0xAF, 0x69,
+		},
+		.byte_mask = {
+			0xff, 0xff, 0xff, 0xff,
+			0xff, 0xff, 0xff, 0xff,
+		},
+		.byte_len = 8,
+	},
 };
 
 static void expand_sync_pattern(struct sync_pattern *pat)

@@ -15,6 +15,7 @@ enum osmo_trau_sync_pat_id {
 	OSMO_TRAU_SYNCP_16_ER_CCU,
 	OSMO_TRAU_SYNCP_64_ER_CCU,
 	OSMO_TRAU_SYNCP_64_ER_CCU_MCS9,
+	OSMO_TRAU_SYNCP_FA,		/* TS 43.045 FA (Fax Adaptation) sync frame */
 };
 
 typedef void (*frame_out_cb_t)(void *user_data, const ubit_t *bits, unsigned int num_bits);
