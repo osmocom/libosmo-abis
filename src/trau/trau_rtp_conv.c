@@ -269,8 +269,6 @@ static int rtp2trau_fr(struct osmo_trau_frame *tf, const uint8_t *data, size_t d
 
 	/* FR Data Bits according to TS 48.060 Section 5.5.1.1.2 */
 
-	/* FIXME: Generate SID frames? */
-
 	/* set c-bits and t-bits */
 	if (tf->dir == OSMO_TRAU_DIR_UL) {
 		/* C1 .. C5: FR UL */
@@ -302,14 +300,19 @@ static int rtp2trau_fr(struct osmo_trau_frame *tf, const uint8_t *data, size_t d
 			tf->c_bits[11] = 1;	/* C12: BFI */
 		else
 			tf->c_bits[11] = 0;	/* C12: BFI */
+		/* FIXME: set C13 & C14 per GSM 06.31 section 6.1.1 */
 		tf->c_bits[12] = 0; /* C13: SID=0 */
 		tf->c_bits[13] = 0; /* C14: SID=0 */
 		tf->c_bits[14] = 0; /* C15: TAF (SACCH or not) */
 		tf->c_bits[15] = 1; /* C16: spare */
 		tf->c_bits[16] = 0; /* C17: DTXd not applied */
 	} else {
-		memset(&tf->c_bits[11], 1, 10); /* C12 .. C15: spare */
-		tf->c_bits[15] = 1; /* C16: SP=1 */
+		memset(&tf->c_bits[11], 1, 4);	/* C12 .. C15: spare */
+		if (data_len && osmo_fr_check_sid(data, data_len))
+			tf->c_bits[15] = 0;	/* C16: SP=0 */
+		else
+			tf->c_bits[15] = 1;	/* C16: SP=1 */
+		tf->c_bits[16] = 1; /* C17: spare */
 	}
 	memset(&tf->c_bits[17], 1, 4); /* C18 .. C21: spare */
 	memset(&tf->t_bits[0], 1, 4);
@@ -462,7 +465,7 @@ static int rtp2trau_efr(struct osmo_trau_frame *tf, const uint8_t *data, size_t 
 			tf->c_bits[11] = 1; /* C12: BFI=1 */
 		else
 			tf->c_bits[11] = 0; /* C12: BFI=1 */
-		/* FIXME: Generate SID frames? */
+		/* FIXME: set C13 & C14 per GSM 06.81 section 6.1.1 */
 		tf->c_bits[12] = 0; /* C13: SID=0 */
 		tf->c_bits[13] = 0; /* C14: SID=0 */
 		tf->c_bits[14] = 0; /* C15: TAF (SACCH) */
@@ -471,7 +474,10 @@ static int rtp2trau_efr(struct osmo_trau_frame *tf, const uint8_t *data, size_t 
 	} else {
 		tf->c_bits[11] = 1; /* C12: UFE (good uplink) */
 		memset(&tf->c_bits[12], 1, 3);	/* C13 .. C15: spare */
-		tf->c_bits[15] = 1; /* C16: SP=1 */
+		if (data_len && osmo_efr_check_sid(data, data_len))
+			tf->c_bits[15] = 0;	/* C16: SP=0 */
+		else
+			tf->c_bits[15] = 1;	/* C16: SP=1 */
 		tf->c_bits[16] = 1; /* C17: spare */
 	}
 	memset(&tf->c_bits[17], 1, 4);	/* C18 .. C21: spare */
