@@ -273,19 +273,28 @@ static int rtp2trau_fr(struct osmo_trau_frame *tf, const uint8_t *data, size_t d
 
 	/* set c-bits and t-bits */
 	if (tf->dir == OSMO_TRAU_DIR_UL) {
-		/* C1 .. C5 */
+		/* C1 .. C5: FR UL */
 		tf->c_bits[0] = 0;
 		tf->c_bits[1] = 0;
 		tf->c_bits[2] = 0;
 		tf->c_bits[3] = 1;
 		tf->c_bits[4] = 0;
-	} else {
-		/* C1 .. C5 */
-		tf->c_bits[0] = 1;
-		tf->c_bits[1] = 1;
-		tf->c_bits[2] = 1;
-		tf->c_bits[3] = 0;
-		tf->c_bits[4] = 0;
+	} else {			/* DL */
+		if (data_len == 0) {
+			/* C1 .. C5: idle speech */
+			tf->c_bits[0] = 0;
+			tf->c_bits[1] = 1;
+			tf->c_bits[2] = 1;
+			tf->c_bits[3] = 1;
+			tf->c_bits[4] = 0;
+		} else {
+			/* C1 .. C5: FR DL */
+			tf->c_bits[0] = 1;
+			tf->c_bits[1] = 1;
+			tf->c_bits[2] = 1;
+			tf->c_bits[3] = 0;
+			tf->c_bits[4] = 0;
+		}
 	}
 	memset(&tf->c_bits[5], 0, 6);	/* C6 .. C11: Time Alignment */
 	if (tf->dir == OSMO_TRAU_DIR_UL) {
@@ -302,11 +311,14 @@ static int rtp2trau_fr(struct osmo_trau_frame *tf, const uint8_t *data, size_t d
 		memset(&tf->c_bits[11], 1, 10); /* C12 .. C15: spare */
 		tf->c_bits[15] = 1; /* C16: SP=1 */
 	}
-	memset(&tf->c_bits[17], 1, 4); /* C18 .. C12: spare */
+	memset(&tf->c_bits[17], 1, 4); /* C18 .. C21: spare */
 	memset(&tf->t_bits[0], 1, 4);
 
-	if (!data_len)
+	if (!data_len) {
+		/* idle speech frame if DL, BFI speech frame if UL */
+		memset(&tf->d_bits[0], 1, 260);
 		return 0;
+	}
 
 	/* reassemble d-bits */
 	i = 0; /* counts bits */
@@ -428,11 +440,21 @@ static int rtp2trau_efr(struct osmo_trau_frame *tf, const uint8_t *data, size_t 
 	/* FR Data Bits according to TS 48.060 Section 5.5.1.1.2 */
 
 	/* set c-bits and t-bits */
-	tf->c_bits[0] = 1;
-	tf->c_bits[1] = 1;
-	tf->c_bits[2] = 0;
-	tf->c_bits[3] = 1;
-	tf->c_bits[4] = 0;
+	if (data_len == 0 && tf->dir == OSMO_TRAU_DIR_DL) {
+		/* C1 .. C5: idle speech */
+		tf->c_bits[0] = 0;
+		tf->c_bits[1] = 1;
+		tf->c_bits[2] = 1;
+		tf->c_bits[3] = 1;
+		tf->c_bits[4] = 0;
+	} else {
+		/* C1 .. C5: EFR */
+		tf->c_bits[0] = 1;
+		tf->c_bits[1] = 1;
+		tf->c_bits[2] = 0;
+		tf->c_bits[3] = 1;
+		tf->c_bits[4] = 0;
+	}
 
 	memset(&tf->c_bits[5], 0, 6); /* C6 .. C11: Time Alignment */
 	if (tf->dir == OSMO_TRAU_DIR_UL) {
@@ -455,8 +477,11 @@ static int rtp2trau_efr(struct osmo_trau_frame *tf, const uint8_t *data, size_t 
 	memset(&tf->c_bits[17], 1, 4);	/* C18 .. C21: spare */
 	memset(&tf->t_bits[0], 1, 4);
 
-	if (data_len == 0)
+	if (data_len == 0) {
+		/* idle speech frame if DL, BFI speech frame if UL */
+		memset(&tf->d_bits[0], 1, 260);
 		return 0;
+	}
 
 	/* reassemble d-bits */
 	tf->d_bits[0] = 1;
