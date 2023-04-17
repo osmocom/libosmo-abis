@@ -257,6 +257,7 @@ bad_frame:
 static int rtp2trau_fr(struct osmo_trau_frame *tf, const uint8_t *data, size_t data_len)
 {
 	int i, j, k, l, o;
+	enum osmo_gsm631_sid_class sidc;
 
 	/* data_len == 0 for BFI frame */
 	if (data_len < GSM_FR_BYTES && data_len != 0)
@@ -296,13 +297,17 @@ static int rtp2trau_fr(struct osmo_trau_frame *tf, const uint8_t *data, size_t d
 	}
 	memset(&tf->c_bits[5], 0, 6);	/* C6 .. C11: Time Alignment */
 	if (tf->dir == OSMO_TRAU_DIR_UL) {
-		if (data_len == 0)
+		if (data_len == 0) {
 			tf->c_bits[11] = 1;	/* C12: BFI */
-		else
+			tf->c_bits[12] = 0;	/* C13: SID=0 */
+			tf->c_bits[13] = 0;	/* C14: SID=0 */
+		} else {
 			tf->c_bits[11] = 0;	/* C12: BFI */
-		/* FIXME: set C13 & C14 per GSM 06.31 section 6.1.1 */
-		tf->c_bits[12] = 0; /* C13: SID=0 */
-		tf->c_bits[13] = 0; /* C14: SID=0 */
+			/* SID classification per GSM 06.31 section 6.1.1 */
+			sidc = osmo_fr_sid_classify(data);
+			tf->c_bits[12] = (sidc >> 1) & 1; /* C13: msb */
+			tf->c_bits[13] = (sidc >> 0) & 1; /* C14: lsb */
+		}
 		tf->c_bits[14] = 0; /* C15: TAF (SACCH or not) */
 		tf->c_bits[15] = 1; /* C16: spare */
 		tf->c_bits[16] = 0; /* C17: DTXd not applied */
@@ -430,6 +435,7 @@ static int rtp2trau_efr(struct osmo_trau_frame *tf, const uint8_t *data, size_t 
 {
 	int i, j;
 	ubit_t check_bits[26];
+	enum osmo_gsm631_sid_class sidc;
 
 	/* data_len == 0 for BFI frame */
 	if (data_len < GSM_EFR_BYTES && data_len != 0)
@@ -461,13 +467,17 @@ static int rtp2trau_efr(struct osmo_trau_frame *tf, const uint8_t *data, size_t 
 
 	memset(&tf->c_bits[5], 0, 6); /* C6 .. C11: Time Alignment */
 	if (tf->dir == OSMO_TRAU_DIR_UL) {
-		if (data_len == 0)
-			tf->c_bits[11] = 1; /* C12: BFI=1 */
-		else
-			tf->c_bits[11] = 0; /* C12: BFI=1 */
-		/* FIXME: set C13 & C14 per GSM 06.81 section 6.1.1 */
-		tf->c_bits[12] = 0; /* C13: SID=0 */
-		tf->c_bits[13] = 0; /* C14: SID=0 */
+		if (data_len == 0) {
+			tf->c_bits[11] = 1;	/* C12: BFI */
+			tf->c_bits[12] = 0;	/* C13: SID=0 */
+			tf->c_bits[13] = 0;	/* C14: SID=0 */
+		} else {
+			tf->c_bits[11] = 0;	/* C12: BFI */
+			/* SID classification per GSM 06.81 section 6.1.1 */
+			sidc = osmo_efr_sid_classify(data);
+			tf->c_bits[12] = (sidc >> 1) & 1; /* C13: msb */
+			tf->c_bits[13] = (sidc >> 0) & 1; /* C14: lsb */
+		}
 		tf->c_bits[14] = 0; /* C15: TAF (SACCH) */
 		tf->c_bits[15] = 1; /* C16: spare */
 		tf->c_bits[16] = 0; /* C17: DTXd applied */
