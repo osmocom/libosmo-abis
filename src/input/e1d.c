@@ -64,16 +64,13 @@ handle_ts_sign_read(struct osmo_fd *bfd)
 		return -ENOMEM;
 
 	ret = read(bfd->fd, msg->data, TS_SIGN_ALLOC_SIZE - 16);
-	if (ret < 0) {
-		LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "%s read failed %d (%s)\n", __func__, ret, strerror(errno));
+	if (ret < 1) {
+		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "%s read error: %d %s\n", __func__, ret,
+			ret < 0 ? strerror(errno) : "bytes read");
 		return ret;
 	}
 
 	msgb_put(msg, ret);
-	if (ret <= 1) {
-		LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "%s read failed %d (%s)\n", __func__, ret, strerror(errno));
-		return ret;
-	}
 
         return e1inp_rx_ts_lapd(e1i_ts, msg);
 }
