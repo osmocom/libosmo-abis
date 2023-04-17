@@ -51,8 +51,7 @@ extern struct e1inp_driver e1d_driver;
 static int e1d_want_write(struct e1inp_ts *e1i_ts);
 
 
-static int
-handle_ts_sign_read(struct osmo_fd *bfd)
+static int handle_ts_sign_read(struct osmo_fd *bfd)
 {
         struct e1inp_line *line = bfd->data;
         unsigned int ts_nr = bfd->priv_nr;
@@ -75,8 +74,7 @@ handle_ts_sign_read(struct osmo_fd *bfd)
         return e1inp_rx_ts_lapd(e1i_ts, msg);
 }
 
-static void
-timeout_ts_sign_write(void *data)
+static void timeout_ts_sign_write(void *data)
 {
 	struct e1inp_ts *e1i_ts = (struct e1inp_ts *)data;
 
@@ -84,8 +82,7 @@ timeout_ts_sign_write(void *data)
 	e1d_want_write(e1i_ts);
 }
 
-static int
-handle_ts_sign_write(struct osmo_fd *bfd)
+static int handle_ts_sign_write(struct osmo_fd *bfd)
 {
         struct e1inp_line *line = bfd->data;
         unsigned int ts_nr = bfd->priv_nr;
@@ -115,8 +112,7 @@ handle_ts_sign_write(struct osmo_fd *bfd)
 
 #define D_TSX_ALLOC_SIZE (D_BCHAN_TX_GRAN)
 
-static int
-handle_ts_trau_write(struct osmo_fd *bfd)
+static int handle_ts_trau_write(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
@@ -147,8 +143,7 @@ handle_ts_trau_write(struct osmo_fd *bfd)
 }
 
 
-static int
-handle_ts_trau_read(struct osmo_fd *bfd)
+static int handle_ts_trau_read(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
@@ -305,8 +300,7 @@ static int handle_ts_hdlc_read(struct osmo_fd *bfd)
 	return ret;
 }
 
-static void
-e1d_write_msg(struct msgb *msg, void *cbdata)
+static void e1d_write_msg(struct msgb *msg, void *cbdata)
 {
 	struct osmo_fd *bfd = cbdata;
 	struct e1inp_line *line = bfd->data;
@@ -320,8 +314,7 @@ e1d_write_msg(struct msgb *msg, void *cbdata)
 		LOGPITS(e1i_ts, DLMI, LOGL_NOTICE, "%s write failed %d\n", __func__, ret);
 }
 
-static int
-e1d_fd_cb(struct osmo_fd *bfd, unsigned int what)
+static int e1d_fd_cb(struct osmo_fd *bfd, unsigned int what)
 {
         struct e1inp_line *line = bfd->data;
         unsigned int ts_nr = bfd->priv_nr;
@@ -364,8 +357,7 @@ e1d_fd_cb(struct osmo_fd *bfd, unsigned int what)
 }
 
 
-static int
-e1d_want_write(struct e1inp_ts *e1i_ts)
+static int e1d_want_write(struct e1inp_ts *e1i_ts)
 {
         /* We never include the DAHDI B-Channel FD into the writeset */
 	if (e1i_ts->type == E1INP_TS_TYPE_TRAU ||
@@ -379,8 +371,7 @@ e1d_want_write(struct e1inp_ts *e1i_ts)
 	return 0;
 }
 
-static int
-e1d_line_update(struct e1inp_line *line)
+static int e1d_line_update(struct e1inp_line *line)
 {
 	int ts;
 	int ret;
@@ -532,8 +523,7 @@ struct e1inp_driver e1d_driver = {
 	.line_update = e1d_line_update,
 };
 
-int
-e1inp_e1d_init(void)
+int e1inp_e1d_init(void)
 {
 	/* register the driver with the core */
 	return e1inp_driver_register(&e1d_driver);
