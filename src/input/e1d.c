@@ -291,7 +291,7 @@ static int handle_ts_hdlc_read(struct osmo_fd *bfd)
 
 	ret = read(bfd->fd, msg->data, TSX_ALLOC_SIZE);
 	if (ret < 0) {
-		LOGPITS(e1i_ts, DLINP, LOGL_NOTICE, "read error %d %s\n", ret, strerror(errno));
+		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "%s read error: %d %s\n", __func__, ret, strerror(errno));
 		msgb_free(msg);
 		return ret;
 	}
