@@ -164,7 +164,8 @@ handle_ts_trau_read(struct osmo_fd *bfd)
 
 	ret = read(bfd->fd, msg->data, D_TSX_ALLOC_SIZE);
 	if (ret < 0 || ret != D_TSX_ALLOC_SIZE) {
-		LOGPITS(e1i_ts, DLINP, LOGL_DEBUG, "read error  %d %s\n", ret, strerror(errno));
+		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "%s read error: %d %s\n", __func__, ret,
+			ret < 0 ? strerror(errno) : "bytes read");
 		return ret;
 	}
 
@@ -233,7 +234,8 @@ static int handle_ts_raw_read(struct osmo_fd *bfd)
 
 	ret = read(bfd->fd, msg->data, D_TSX_ALLOC_SIZE);
 	if (ret < 0 || ret != D_TSX_ALLOC_SIZE) {
-		LOGPITS(e1i_ts, DLINP, LOGL_DEBUG, "read error  %d %s\n", ret, strerror(errno));
+		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "%s read error: %d %s\n", __func__, ret,
+			ret < 0 ? strerror(errno) : "bytes read");
 		msgb_free(msg);
 		return ret;
 	}
