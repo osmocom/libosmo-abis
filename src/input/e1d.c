@@ -40,7 +40,7 @@
 #include <osmocom/e1d/proto_clnt.h>
 
 
-#define TS_SIGN_ALLOC_SIZE  300
+#define TS_SIGN_ALLOC_SIZE 300
 
 struct osmo_e1dp_client *g_e1d;
 
