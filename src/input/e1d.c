@@ -509,6 +509,8 @@ static int e1d_line_update(struct e1inp_line *line)
 		if (ret < 0) {
 			LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "could not register FD: %s\n", strerror(ret));
 			talloc_free(ts_info);
+			close(bfd->fd);
+			bfd->fd = -1;
 			return ret;
 		}
 	}
