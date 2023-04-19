@@ -29,6 +29,7 @@
 
 #include <osmocom/core/bits.h>
 #include <osmocom/core/logging.h>
+#include <osmocom/core/fsm.h>
 
 #include <osmocom/vty/vty.h>
 
@@ -41,15 +42,192 @@
 
 
 #define TS_SIGN_ALLOC_SIZE 300
+#define S(x) (1 << (x))
+
 
 struct osmo_e1dp_client *g_e1d;
+struct osmo_fsm_inst *g_e1d_fsm_inst = NULL;
 
 static int invertbits = 1;
 
 /* pre-declaration */
 extern struct e1inp_driver e1d_driver;
 static int e1d_want_write(struct e1inp_ts *e1i_ts);
+static int e1d_fd_cb(struct osmo_fd *bfd, unsigned int what);
+static int e1d_line_update(struct e1inp_line *line);
 
+/* flag array to remember which lines are handled by osmo-e1d */
+bool lines[256];
+
+enum fsm_e1d_client_states {
+	ST_DISCONNECTED,
+	ST_CONNECTED,
+};
+
+enum fsm_e1d_client_evt {
+	EV_CONN_LOST,
+	EV_CONNECT,
+};
+
+static const struct value_string fsm_e1d_client_evt_names[] = {
+	OSMO_VALUE_STRING(EV_CONN_LOST),
+	OSMO_VALUE_STRING(EV_CONNECT),
+	{ 0, NULL }
+};
+
+static int fsm_e1_client_timer_cb(struct osmo_fsm_inst *fi)
+{
+	osmo_fsm_inst_dispatch(g_e1d_fsm_inst, EV_CONNECT, NULL);
+	return 0;
+}
+
+static void fsm_e1d_client_disconnected_cb(struct osmo_fsm_inst *fi, uint32_t event, void *data)
+{
+	switch (event) {
+	case EV_CONNECT:
+		if (!g_e1d) {
+			g_e1d = osmo_e1dp_client_create(NULL, "/tmp/osmo-e1d.ctl");
+			if (!g_e1d) {
+				LOGPFSML(fi, LOGL_ERROR, "Unable to (re)connect to osmo-e1d daemon, retrying...\n");
+				osmo_fsm_inst_state_chg(g_e1d_fsm_inst, ST_DISCONNECTED, 1, 0);
+				return;
+			}
+		}
+
+		LOGPFSML(fi, LOGL_NOTICE, "Successfully (re)connected to osmo-e1d daemon!\n");
+		osmo_fsm_inst_state_chg(g_e1d_fsm_inst, ST_CONNECTED, 0, 0);
+		break;
+	default:
+		OSMO_ASSERT(false);
+		break;
+	}
+}
+
+static void terminate_line(struct e1inp_line *line)
+{
+	int ts;
+
+	/* There should be technically no way to get a non e1d line into our private memory */
+	OSMO_ASSERT(line->driver == &e1d_driver);
+
+	for (ts = 1; ts < line->num_ts; ts++) {
+		unsigned int idx = ts - 1;
+		struct e1inp_ts *e1i_ts = &line->ts[idx];
+		struct osmo_fd *bfd = &e1i_ts->driver.e1d.fd;
+
+		/* Only affect file descriptors that are currently in use (do not reset file descriptor value since we
+		 * will use this value to detect if the file descriptor was in use when the connection broke.) */
+		if (bfd->fd >= 0) {
+			LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Terminating osmo-e1d connection to timeslot: %d\n", ts);
+			osmo_fd_unregister(bfd);
+			close(bfd->fd);
+			bfd->fd = -1;
+		}
+	}
+}
+
+static void fsm_e1d_client_connected_onenter_cb(struct osmo_fsm_inst *fi, uint32_t prev_state)
+{
+	unsigned int i;
+	struct e1inp_line *line;
+	int ret;
+
+	/* Run a line update to re-establish lost connections */
+	for (i = 0; i < ARRAY_SIZE(lines); i++) {
+		if (!lines[i])
+			continue;
+
+		line = e1inp_line_find(i);
+		if (!line) {
+			/* Apparantly we lost a line - this should not happen */
+			lines[i] = false;
+			continue;
+		}
+
+		ret = e1d_line_update(line);
+		if (ret < 0)
+			LOGPFSML(fi, LOGL_ERROR, "Line update failed after (re)connecting to osmo-e1d daemon!\n");
+	}
+}
+
+static void fsm_e1d_client_connected_cb(struct osmo_fsm_inst *fi, uint32_t event, void *data)
+{
+	unsigned int i;
+	struct e1inp_line *line;
+
+	switch (event) {
+	case EV_CONN_LOST:
+		LOGPFSML(fi, LOGL_ERROR, "Lost connection to osmo-e1d daemon!\n");
+
+		/* Destroy e1d clinet */
+		if (g_e1d) {
+			osmo_e1dp_client_destroy(g_e1d);
+			g_e1d = NULL;
+		}
+
+		/* Terminate all lines at once */
+		for (i = 0; i < ARRAY_SIZE(lines); i++) {
+			if (!lines[i])
+				continue;
+			line = e1inp_line_find(i);
+			if (!line) {
+				/* Apparantly we lost a line - this should not happen */
+				lines[i] = false;
+				continue;
+			}
+			terminate_line(line);
+		}
+
+		osmo_fsm_inst_state_chg(fi, ST_DISCONNECTED, 1, 0);
+		break;
+	default:
+		OSMO_ASSERT(false);
+		break;
+	}
+}
+
+static bool e1d_connected(void)
+{
+	if (g_e1d_fsm_inst && g_e1d_fsm_inst->state == ST_CONNECTED)
+		return true;
+
+	LOGPFSML(g_e1d_fsm_inst, LOGL_ERROR, "No connection to osmo-e1d daemon!\n");
+	return false;
+}
+
+static struct osmo_fsm_state fsm_e1d_client_states[] = {
+
+	/* Initial CRCX state. This state is immediately entered and executed
+	 * when the FSM is started. The rationale is that we first have to
+	 * create a connectin before we can execute other operations on that
+	 * connection. */
+	[ST_DISCONNECTED] = {
+			     .in_event_mask = S(EV_CONNECT),
+			     .out_state_mask = S(ST_CONNECTED) | S(ST_DISCONNECTED),
+			     .name = OSMO_STRINGIFY(ST_DISCONNECTED),
+			     .action = fsm_e1d_client_disconnected_cb,
+			      },
+
+	/* Wait for the response to a CRCX operation, check and process the
+	 * results, change to ST_READY afterwards. */
+	[ST_CONNECTED] = {
+			  .in_event_mask = S(EV_CONN_LOST),
+			  .out_state_mask = S(ST_DISCONNECTED),
+			  .name = OSMO_STRINGIFY(ST_CONNECTED),
+			  .action = fsm_e1d_client_connected_cb,
+			  .onenter = fsm_e1d_client_connected_onenter_cb,
+			   },
+
+};
+
+static struct osmo_fsm fsm_e1d_client = {
+	.name = "e1d_client",
+	.states = fsm_e1d_client_states,
+	.num_states = ARRAY_SIZE(fsm_e1d_client_states),
+	.log_subsys = DLINP,
+	.event_names = fsm_e1d_client_evt_names,
+	.timer_cb = fsm_e1_client_timer_cb,
+};
 
 static int handle_ts_sign_read(struct osmo_fd *bfd)
 {
@@ -66,6 +244,7 @@ static int handle_ts_sign_read(struct osmo_fd *bfd)
 	if (ret < 1) {
 		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "%s read error: %d %s\n", __func__, ret,
 			ret < 0 ? strerror(errno) : "bytes read");
+		osmo_fsm_inst_dispatch(g_e1d_fsm_inst, EV_CONN_LOST, line);
 		return ret;
 	}
 
@@ -135,9 +314,12 @@ static int handle_ts_trau_write(struct osmo_fd *bfd)
 		osmo_revbytebits_buf(tx_buf, ret);
 
 	ret = write(bfd->fd, tx_buf, ret);
-	if (ret < D_BCHAN_TX_GRAN)
+	if (ret < D_BCHAN_TX_GRAN) {
 		LOGPITS(e1i_ts, DLINP, LOGL_DEBUG, "send returns %d instead of %d\n",
 			ret, D_BCHAN_TX_GRAN);
+		if (ret <= 0)
+			osmo_fsm_inst_dispatch(g_e1d_fsm_inst, EV_CONN_LOST, line);
+	}
 
 	return ret;
 }
@@ -156,8 +338,17 @@ static int handle_ts_trau_read(struct osmo_fd *bfd)
 
 	ret = read(bfd->fd, msg->data, D_TSX_ALLOC_SIZE);
 	if (ret < 0 || ret != D_TSX_ALLOC_SIZE) {
+		/* FIXME: The socket that we read from is of type SOCK_STREAM. This means that we might read less then
+		 * D_TSX_ALLOC_SIZE even though the connection is still fine. Since data is continuously written (in
+		 * chunks of D_TSX_ALLOC_SIZE) on the other side we should not get partial reads too often but it is
+		 * still possible and when it happens, a reconnect cycle will be triggered. To fix this we should add a
+		 * buffering mechainsm that buffers the incomplete read instead of dropping the connection. (changing
+		 * the socket type to SOCK_SEQPACKET would be an alternative, but it would break backward compatibility
+		 * of the interface.) */
 		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "%s read error: %d %s\n", __func__, ret,
 			ret < 0 ? strerror(errno) : "bytes read");
+		if (ret <= 0)
+			osmo_fsm_inst_dispatch(g_e1d_fsm_inst, EV_CONN_LOST, line);
 		return ret;
 	}
 
@@ -206,8 +397,17 @@ static int handle_ts_raw_write(struct osmo_fd *bfd)
 		osmo_revbytebits_buf(msg->data, msg->len);
 
 	ret = write(bfd->fd, msg->data, msg->len);
-	if (ret < msg->len)
+	if (ret < msg->len) {
+		/* FIXME: The socket that we write to is of type SOCK_STREAM. This means that it may happen that the
+		 * syscall is not able to write the full data chunk at once. This is a rare event, but when it happens,
+		 * a reconnect cycle is triggered, even though the connection is still fine. To fix this, we should
+		 * buffer the remainder of the data to write it in the next cycle instead of dropping the connection.
+		 * (changing the socket type to SOCK_SEQPACKET would be an alternative, but it would break backward
+		 * compatibility of the interface.) */
 		LOGPITS(e1i_ts, DLINP, LOGL_DEBUG, "send returns %d instead of %d\n", ret, msg->len);
+		if (ret <= 0)
+			osmo_fsm_inst_dispatch(g_e1d_fsm_inst, EV_CONN_LOST, line);
+	}
 	msgb_free(msg);
 
 	return ret;
@@ -229,6 +429,8 @@ static int handle_ts_raw_read(struct osmo_fd *bfd)
 		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "%s read error: %d %s\n", __func__, ret,
 			ret < 0 ? strerror(errno) : "bytes read");
 		msgb_free(msg);
+		if (ret <= 0)
+			osmo_fsm_inst_dispatch(g_e1d_fsm_inst, EV_CONN_LOST, line);
 		return ret;
 	}
 
@@ -263,8 +465,10 @@ static int handle_ts_hdlc_write(struct osmo_fd *bfd)
 	LOGPITS(e1i_ts, DLMIB, LOGL_DEBUG, "HDLC CHAN TX: %s\n", osmo_hexdump(msg->data, msg->len));
 
 	ret = write(bfd->fd, msg->data, msg->len);
-	if (ret < msg->len)
+	if (ret < msg->len) {
 		LOGPITS(e1i_ts, DLINP, LOGL_NOTICE, "send returns %d instead of %d\n", ret, msg->len);
+		osmo_fsm_inst_dispatch(g_e1d_fsm_inst, EV_CONN_LOST, line);
+	}
 	msgb_free(msg);
 
 	return ret;
@@ -285,9 +489,10 @@ static int handle_ts_hdlc_read(struct osmo_fd *bfd)
 		return -ENOMEM;
 
 	ret = read(bfd->fd, msg->data, TSX_ALLOC_SIZE);
-	if (ret < 0) {
+	if (ret <= 0) {
 		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "%s read error: %d %s\n", __func__, ret, strerror(errno));
 		msgb_free(msg);
+		osmo_fsm_inst_dispatch(g_e1d_fsm_inst, EV_CONN_LOST, line);
 		return ret;
 	}
 
@@ -308,10 +513,17 @@ static void e1d_write_msg(struct msgb *msg, void *cbdata)
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
 	int ret;
 
+	if (!e1d_connected()) {
+		msgb_free(msg);
+		return;
+	}
+
 	ret = write(bfd->fd, msg->data, msg->len);
 	msgb_free(msg);
-	if (ret < 0)
+	if (ret < 0) {
 		LOGPITS(e1i_ts, DLMI, LOGL_NOTICE, "%s write failed %d\n", __func__, ret);
+		osmo_fsm_inst_dispatch(g_e1d_fsm_inst, EV_CONN_LOST, line);
+	}
 }
 
 static int e1d_fd_cb(struct osmo_fd *bfd, unsigned int what)
@@ -321,6 +533,9 @@ static int e1d_fd_cb(struct osmo_fd *bfd, unsigned int what)
         unsigned int idx = ts_nr-1;
         struct e1inp_ts *e1i_ts = &line->ts[idx];
 	int ret = 0;
+
+	if (!e1d_connected())
+		return -EIO;
 
 	switch (e1i_ts->type) {
 	case E1INP_TS_TYPE_SIGN:
@@ -359,6 +574,9 @@ static int e1d_fd_cb(struct osmo_fd *bfd, unsigned int what)
 
 static int e1d_want_write(struct e1inp_ts *e1i_ts)
 {
+	if (!e1d_connected())
+		return -EIO;
+
         /* We never include the DAHDI B-Channel FD into the writeset */
 	if (e1i_ts->type == E1INP_TS_TYPE_TRAU ||
 	    e1i_ts->type == E1INP_TS_TYPE_I460) {
@@ -386,22 +604,33 @@ static int e1d_line_update(struct e1inp_line *line)
 	if (line->driver != &e1d_driver)
 		return -EINVAL;
 
-	if (!g_e1d) {
-		/* Connect to daemon */
-		g_e1d = osmo_e1dp_client_create(NULL, "/tmp/osmo-e1d.ctl");
-		if (!g_e1d) {
-			LOGPIL(line, DLINP, LOGL_ERROR, "Unable to connect to osmo-e1d daemon\n");
-			return -EPIPE;
-		}
+	/* Memorize that osmo-e1d is responsible for this line */
+	lines[line->num] = true;
+
+	/* Spawn FSM to handle connection towards osmo-e1d */
+	if (!g_e1d_fsm_inst) {
+		g_e1d_fsm_inst = osmo_fsm_inst_alloc(&fsm_e1d_client, NULL, NULL, LOGL_DEBUG, "fsm_e1d_client");
+		osmo_fsm_inst_dispatch(g_e1d_fsm_inst, EV_CONNECT, NULL);
+		OSMO_ASSERT(g_e1d_fsm_inst);
 	}
 
-	LOGPIL(line, DLINP, LOGL_NOTICE, "Line update %d %d=E1D(%d:%d) %d\n", line->num, line->port_nr,
+	/* In case no connection to osmo-e1d is available, we may postpone the line update until the connection is
+	 * available (again) */
+	if (!e1d_connected()) {
+		LOGPIL(line, DLINP, LOGL_NOTICE, "No connection to osmo-e1d daemon, postponing Line update: %d %d=E1D(%d:%d) %d\n", line->num, line->port_nr,
+		       e1d_intf, e1d_line, line->num_ts);
+		return 0;
+	}
+	LOGPIL(line, DLINP, LOGL_NOTICE, "Line update: %d %d=E1D(%d:%d) %d\n", line->num, line->port_nr,
 		e1d_intf, e1d_line, line->num_ts);
 
 	ret = osmo_e1dp_client_ts_query(g_e1d, &ts_info, &num_ts_info, e1d_intf, e1d_line, E1DP_INVALID);
 	if (ret < 0) {
-		LOGPIL(line, DLINP, LOGL_ERROR, "Cannot query E1D for timeslot information: %d\n", ret);
-		return -EIO;
+		LOGPIL(line, DLINP, LOGL_ERROR, "Cannot query E1D for timeslot information: %d, postpoining line update\n", ret);
+		osmo_fsm_inst_dispatch(g_e1d_fsm_inst, EV_CONN_LOST, NULL);
+		/* Since we have mechanisms in place that allow us to postpone the line update until the connection
+		 * to osmo-e1d is up again, we may pretend that the line update went ok. */
+		return 0;
 	}
 
 	for (ts=1; ts<line->num_ts; ts++)
@@ -444,6 +673,7 @@ static int e1d_line_update(struct e1inp_line *line)
 			if (bfd->fd < 0) {
 				LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Could not open timeslot %d\n", ts);
 				talloc_free(ts_info);
+				osmo_fsm_inst_dispatch(g_e1d_fsm_inst, EV_CONN_LOST, NULL);
 				return -EIO;
 			}
 			bfd->when = OSMO_FD_READ;
@@ -474,6 +704,7 @@ static int e1d_line_update(struct e1inp_line *line)
 			if (bfd->fd < 0) {
 				LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Could not open timeslot %d\n", ts);
 				talloc_free(ts_info);
+				osmo_fsm_inst_dispatch(g_e1d_fsm_inst, EV_CONN_LOST, NULL);
 				return -EIO;
 			}
 			bfd->when = OSMO_FD_READ;
@@ -498,6 +729,7 @@ static int e1d_line_update(struct e1inp_line *line)
 			if (bfd->fd < 0) {
 				LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Could not open timeslot %d\n", ts);
 				talloc_free(ts_info);
+				osmo_fsm_inst_dispatch(g_e1d_fsm_inst, EV_CONN_LOST, NULL);
 				return -EIO;
 			}
 			bfd->when = OSMO_FD_READ;
@@ -543,6 +775,9 @@ struct e1inp_driver e1d_driver = {
 
 int e1inp_e1d_init(void)
 {
+	OSMO_ASSERT(osmo_fsm_register(&fsm_e1d_client) == 0);
+	memset(lines, 0, sizeof(lines));
+
 	/* register the driver with the core */
 	return e1inp_driver_register(&e1d_driver);
 }
