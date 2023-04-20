@@ -429,13 +429,13 @@ static int e1d_line_update(struct e1inp_line *line)
 			}
 			if (bfd->fd) {
 				close(bfd->fd);
-				bfd->fd = 0;
+				bfd->fd = -1;
 			}
                         continue;
 		case E1INP_TS_TYPE_SIGN:
 			if (bfd->fd > 0 && ts_info[ts].cfg.mode != E1DP_TSMODE_HDLCFCS) {
 				close(bfd->fd);
-				bfd->fd = 0;
+				bfd->fd = -1;
 			}
 			if (bfd->fd <= 0) {
 				bfd->fd = osmo_e1dp_client_ts_open(g_e1d, e1d_intf, e1d_line, ts,
@@ -465,7 +465,7 @@ static int e1d_line_update(struct e1inp_line *line)
 			/* close, if old timeslot mode doesn't match new config */
 			if (bfd->fd > 0 && ts_info[ts].cfg.mode != E1DP_TSMODE_HDLCFCS) {
 				close(bfd->fd);
-				bfd->fd = 0;
+				bfd->fd = -1;
 			}
 			if (bfd->fd <= 0) {
 				bfd->fd = osmo_e1dp_client_ts_open(g_e1d, e1d_intf, e1d_line, ts,
@@ -489,7 +489,7 @@ static int e1d_line_update(struct e1inp_line *line)
 			/* close, if old timeslot mode doesn't match new config */
 			if (bfd->fd > 0 && ts_info[ts].cfg.mode != E1DP_TSMODE_RAW) {
 				close(bfd->fd);
-				bfd->fd = 0;
+				bfd->fd = -1;
 			}
 			if (bfd->fd <= 0) {
 				bfd->fd = osmo_e1dp_client_ts_open(g_e1d, e1d_intf, e1d_line, ts,
