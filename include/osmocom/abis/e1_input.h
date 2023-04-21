@@ -190,6 +190,9 @@ struct e1inp_driver {
 
 	/* Set Sa bits to transmit in TS0 (MSB to LSB): Sa8 Sa7 Sa5 Sa4 Sa64 Sa63 Sa62 Sa61/Sa6 */
 	int (*set_sa_bits)(struct e1inp_line *line, uint8_t sa_bits);
+
+	/* Optional callback to perform driver specific initialization when the line is created. */
+	int (*line_create)(struct e1inp_line *line);
 };
 
 struct e1inp_line_ops {

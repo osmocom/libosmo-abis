@@ -639,8 +639,16 @@ e1inp_line_create(uint8_t e1_nr, const char *driver_name)
 
 	line->use_count.talloc_object = line;
 	line->use_count.use_cb = e1inp_line_use_cb;
-	e1inp_line_get2(line, "ctor");
 
+	if (driver->line_create) {
+		if (driver->line_create(line) < 0) {
+			LOGPIL(line, DLINP, LOGL_ERROR, "Cannot initialize line driver\n");
+			talloc_free(line);
+			return NULL;
+		}
+	}
+
+	e1inp_line_get2(line, "ctor");
 	llist_add_tail(&line->list, &e1inp_line_list);
 
 	return line;

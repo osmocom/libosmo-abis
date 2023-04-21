@@ -9,3 +9,4 @@
 #library	what		description / commit summary line
 libosmo-abis	struct e1inp_driver Field added at the end (ABI break)
 libosmocodec	>1.8.0		osmo_{fr,efr}_sid_classify() new functions
+libosmo-abis	struct e1inp_driver Field added (line_create callback) at the end (ABI break)
