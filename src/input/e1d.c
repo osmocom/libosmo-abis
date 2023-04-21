@@ -519,10 +519,26 @@ static int e1d_line_update(struct e1inp_line *line)
 	return 0;
 }
 
+static int e1d_line_create(struct e1inp_line *line)
+{
+	int ts;
+
+	for (ts = 1; ts < line->num_ts; ts++) {
+		unsigned int idx = ts - 1;
+		struct e1inp_ts *e1i_ts = &line->ts[idx];
+		struct osmo_fd *bfd = &e1i_ts->driver.e1d.fd;
+
+		bfd->fd = -1;
+	}
+
+	return 0;
+}
+
 struct e1inp_driver e1d_driver = {
 	.name        = "e1d",
 	.want_write  = e1d_want_write,
 	.line_update = e1d_line_update,
+	.line_create = e1d_line_create,
 };
 
 int e1inp_e1d_init(void)
