@@ -1067,9 +1067,7 @@ static int enc_pcu_sync_ind_64(ubit_t *trau_bits, struct er_pcu_sync_ind *ind)
 		trau_bits[73] = 0;
 	trau_bits[74] = calc_parity(trau_bits + 65, 8);
 
-	/* Set unused D-Bits to 1 */
-	memset(trau_bits + 76, 1, 1280 - 76 - 16);
-
+	/* unused D-bits are initialized in er_gprs_trau_frame_encode */
 	/* D-Bits */
 	rc = put_trau_uint32(trau_bits, 1280, T_bits_64, sizeof(T_bits_64), ind->pseq, 170, 22);
 	if (rc < 0)
