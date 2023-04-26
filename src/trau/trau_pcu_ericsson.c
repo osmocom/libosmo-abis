@@ -500,8 +500,8 @@ static int enc_pcu_sync_ind_16(ubit_t *trau_bits, struct er_pcu_sync_ind *ind)
 	/* C-Bits */
 	osmo_pbit2ubit_ext(trau_bits, 17, &c_1_5, 0, 5, 1);
 	osmo_pbit2ubit_ext(trau_bits, 22, (pbit_t *) &ind->tav, 0, 2, 1);
-	if (ind->ul_frame_err == false)
-		trau_bits[24] = 1;
+	if (ind->ul_frame_err)
+		trau_bits[24] = 0;
 	trau_bits[25] = calc_parity(trau_bits + 17, 8);
 
 	/* D-Bits */
@@ -555,8 +555,8 @@ int enc_pcu_data_ind_16(ubit_t *trau_bits, struct er_pcu_data_ind *ind)
 	/* C-Bits */
 	osmo_pbit2ubit_ext(trau_bits, 17, &c_1_5, 0, 5, 1);
 	osmo_pbit2ubit_ext(trau_bits, 22, (pbit_t *) &ind->tav, 0, 2, 1);
-	if (ind->ul_frame_err == false)
-		trau_bits[24] = 1;
+	if (ind->ul_frame_err)
+		trau_bits[24] = 0;
 	trau_bits[25] = calc_parity(trau_bits + 17, 8);
 
 	/* Set coding scheme (E1-E2) */
@@ -1063,8 +1063,8 @@ static int enc_pcu_sync_ind_64(ubit_t *trau_bits, struct er_pcu_sync_ind *ind)
 	/* C-Bits */
 	osmo_pbit2ubit_ext(trau_bits, 65, &c_1_5, 0, 5, 1);
 	osmo_pbit2ubit_ext(trau_bits, 70, (pbit_t *) &ind->tav, 0, 2, 1);
-	if (ind->ul_frame_err == false)
-		trau_bits[73] = 1;
+	if (ind->ul_frame_err)
+		trau_bits[73] = 0;
 	trau_bits[74] = calc_parity(trau_bits + 65, 8);
 
 	/* Set unused D-Bits to 1 */
@@ -1135,8 +1135,8 @@ int enc_pcu_data_ind_64(ubit_t *trau_bits, struct er_pcu_data_ind *ind, uint8_t 
 	/* C-Bits */
 	osmo_pbit2ubit_ext(trau_bits, 65, &c_1_5, 0, 5, 1);
 	osmo_pbit2ubit_ext(trau_bits, 70, (pbit_t *) &ind->tav, 0, 2, 1);
-	if (ind->ul_frame_err == false)
-		trau_bits[73] = 1;
+	if (ind->ul_frame_err)
+		trau_bits[73] = 0;
 	trau_bits[74] = calc_parity(trau_bits + 65, 8);
 
 	/* Set coding scheme (E1-E3) */
@@ -1321,8 +1321,8 @@ int enc_pcu_data_ind_64_mcs9(ubit_t *trau_bits, struct er_pcu_data_ind *ind)
 	/* C-Bits */
 	osmo_pbit2ubit_ext(trau_bits, 65, &c_1_5, 0, 5, 1);
 	osmo_pbit2ubit_ext(trau_bits, 70, (pbit_t *) &ind->tav, 0, 2, 1);
-	if (ind->ul_frame_err == false)
-		trau_bits[73] = 1;
+	if (ind->ul_frame_err)
+		trau_bits[73] = 0;
 	trau_bits[74] = calc_parity(trau_bits + 65, 8);
 
 	/* Set demodulation in uplink (E1-E3) */
