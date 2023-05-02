@@ -410,8 +410,8 @@ static int e1d_line_update(struct e1inp_line *line)
 		struct e1inp_ts *e1i_ts = &line->ts[idx];
 		struct osmo_fd *bfd = &e1i_ts->driver.e1d.fd;
 
-		/* unregister FD if it was already registered */
-		if (bfd->list.next && bfd->list.next != LLIST_POISON1)
+		/* unregister FD if it was already registered/in use */
+		if (osmo_fd_is_registered(bfd))
 			osmo_fd_unregister(bfd);
 
 		if (e1i_ts->type != E1INP_TS_TYPE_NONE && ts >= num_ts_info) {
