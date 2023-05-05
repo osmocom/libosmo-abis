@@ -1206,6 +1206,7 @@ int e1inp_ipa_bts_rsl_connect_n(struct e1inp_line *line,
 /* Close the underlying IPA TCP socket of an RSL link */
 int e1inp_ipa_bts_rsl_close_n(struct e1inp_line *line, uint8_t trx_nr)
 {
+	struct ipa_client_conn *conn;
 	struct ipaccess_line *il;
 
 	if (E1INP_SIGN_RSL+trx_nr-1 >= NUM_E1_TS) {
@@ -1218,9 +1219,10 @@ int e1inp_ipa_bts_rsl_close_n(struct e1inp_line *line, uint8_t trx_nr)
 	if (!il)
 		return 0; /* Nothing to do, no lines created */
 
-	if (il->ipa_cli[1 + trx_nr]) {
-		ipa_client_conn_close(il->ipa_cli[1 + trx_nr]);
-		ipa_client_conn_destroy(il->ipa_cli[1 + trx_nr]);
+	conn = il->ipa_cli[1 + trx_nr];
+	if (conn != NULL) {
+		ipa_client_conn_close(conn);
+		ipa_client_conn_destroy(conn);
 		il->ipa_cli[1 + trx_nr] = NULL;
 	}
 	return 0;
