@@ -192,7 +192,7 @@ static void ipaccess_bts_keepalive_fsm_alloc(struct e1inp_ts *e1i_ts, struct ipa
 	struct e1inp_line *line = e1i_ts->line;
 	struct osmo_fsm_inst *ka_fsm;
 
-	ipaccess_keepalive_fsm_cleanup(e1i_ts);
+	OSMO_ASSERT(e1i_ts->driver.ipaccess.ka_fsm == NULL);
 	if (!line->ipa_kap)
 		return;
 
@@ -1208,6 +1208,7 @@ int e1inp_ipa_bts_rsl_close_n(struct e1inp_line *line, uint8_t trx_nr)
 {
 	struct ipa_client_conn *conn;
 	struct ipaccess_line *il;
+	struct e1inp_ts *e1i_ts;
 
 	if (E1INP_SIGN_RSL+trx_nr-1 >= NUM_E1_TS) {
 		LOGP(DLINP, LOGL_ERROR,
@@ -1218,6 +1219,9 @@ int e1inp_ipa_bts_rsl_close_n(struct e1inp_line *line, uint8_t trx_nr)
 	il = line->driver_data;
 	if (!il)
 		return 0; /* Nothing to do, no lines created */
+
+	e1i_ts = e1inp_line_ipa_rsl_ts(line, trx_nr);
+	ipaccess_keepalive_fsm_cleanup(e1i_ts);
 
 	conn = il->ipa_cli[1 + trx_nr];
 	if (conn != NULL) {
