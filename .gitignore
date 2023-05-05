@@ -40,6 +40,8 @@ tests/testsuite.log
 tests/subchan_demux/.dirstamp
 tests/subchan_demux/subchan_demux_test
 tests/ipa_recv/ipa_recv_test
+tests/trau_pcu_ericsson/trau_pcu_ericsson_test
+tests/trau_sync/trau_sync_test
 
 
 
