@@ -181,11 +181,12 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 		LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "%s read failed %d (%s)\n", __func__, ret, strerror(errno));
 		return ret;
 	}
-	msgb_put(msg, ret - 2);
 	if (ret <= 3) {
 		LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "%s read failed %d (%s)\n", __func__, ret, strerror(errno));
 		return ret;
 	}
+	msgb_put(msg, ret - 2);
+	msg->l2h = msg->data;
 
 	return e1inp_rx_ts_lapd(e1i_ts, msg);
 }
@@ -317,11 +318,12 @@ static int handle_hdlc_read(struct osmo_fd *bfd)
 		LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "%s read failed %d (%s)\n", __func__, ret, strerror(errno));
 		return ret;
 	}
-	msgb_put(msg, ret - 2);
 	if (ret <= 3) {
 		LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "%s read failed %d (%s)\n", __func__, ret, strerror(errno));
 		return ret;
 	}
+	msgb_put(msg, ret - 2);
+	msg->l2h = msg->data;
 
 	return e1inp_rx_ts(e1i_ts, msg, 0, 0);
 }
