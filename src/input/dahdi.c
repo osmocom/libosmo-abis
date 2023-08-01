@@ -277,8 +277,10 @@ static void handle_hdlc_write(struct osmo_fd *bfd)
 
 	/* get the next msg for this timeslot */
 	msg = e1inp_tx_ts(e1i_ts, NULL);
-	if (!msg)
+	if (!msg) {
+		osmo_fd_write_disable(bfd);
 		return;
+	}
 
 	if (msgb_tailroom(msg) >= 2) {
 		/* two bytes of space for the FCS added by DAHDI in the kernel */
@@ -402,8 +404,10 @@ static int handle_ts_raw_write(struct osmo_fd *bfd)
 
 	/* get the next msg for this timeslot */
 	msg = e1inp_tx_ts(e1i_ts, NULL);
-	if (!msg)
+	if (!msg) {
+		osmo_fd_write_disable(bfd);
 		return 0;
+	}
 
 	if (msg->len != D_BCHAN_TX_GRAN) {
 		/* This might lead to a transmit underrun, as we call tx
