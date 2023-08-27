@@ -39,6 +39,7 @@
 
 #include "config.h"
 
+static PayloadType *payload_type_clearmode;
 static PayloadType *payload_type_efr;
 static PayloadType *payload_type_hr;
 static RtpProfile *osmo_pt_profile;
@@ -266,6 +267,16 @@ static void create_payload_types(void)
 {
 	PayloadType *pt;
 
+	/* CLEARMODE as per RFC 4040 (chapter 3) */
+	pt = payload_type_new();
+	pt->type = PAYLOAD_OTHER;
+	pt->clock_rate = 8000;
+	pt->bits_per_sample = 8;
+	pt->mime_type = "CLEARMODE";
+	pt->normal_bitrate = 64000;
+	pt->channels = 1;
+	payload_type_clearmode = pt;
+
 	/* EFR */
 	pt = payload_type_new();
 	pt->type = PAYLOAD_AUDIO_PACKETIZED;
@@ -290,6 +301,7 @@ static void create_payload_types(void)
 	/* add the GSM specific payload types. They are all dynamically
 	 * assigned, but in the Osmocom GSM system we have allocated
 	 * them as follows: */
+	rtp_profile_set_payload(osmo_pt_profile, RTP_PT_CSDATA, payload_type_clearmode);
 	rtp_profile_set_payload(osmo_pt_profile, RTP_PT_GSM_EFR, payload_type_efr);
 	rtp_profile_set_payload(osmo_pt_profile, RTP_PT_GSM_HALF, payload_type_hr);
 	rtp_profile_set_payload(osmo_pt_profile, RTP_PT_AMR, &payload_type_amr);
