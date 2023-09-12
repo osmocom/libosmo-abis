@@ -1,3 +1,77 @@
+libosmo-abis (1.5.0) unstable; urgency=medium
+
+  [ Philipp Maier ]
+  * e1_input: add define constant for full subslot (whole E1 timeslot)
+  * trau_sync: allow multiple secondary sync patterns
+  * trau_sync: add synchronization pattern for Ericsson RBS MCS9
+  * trau_pcu_ericsson: change loglevel for CPS decoding
+  * e1_input: add timeslot type NONE
+  * e1_input: cleanup TS resources when timeslot type is changed
+  * trau_pcu_ericsson_test: replace 64K CS1/CS2 testvectors
+  * trau_pcu_ericsson: cosmetic: set hdr_good flag explictly to false
+  * trau_pcu_ericsson: fix log line
+  * trau_pcu_ericsson_test: fix comment, CS2 blocks are not CRC protected
+  * trau_pcu_ericsson: add testvectors for MCS1-MCS8
+  * trau_pcu_ericsson: add comment about uplink blocks
+  * e1d: fix log output
+  * e1d: clean up error logging in handle_ts_sign_read
+  * e1d: maintain error log consistency in handle_ts_hdlc_read
+  * e1d: fix sourcecode formatting
+  * e1d: cosmetic: remove double whitespace
+  * e1d: close fd when osmo_fd_setup fails
+  * trau_pcu_ericsson: set uplink frame error bit correctly
+  * e1d: do not set fd number to 0 after close
+  * e1_input: add new driver callback function: line_create
+  * e1d: initialize file descriptor numbers to -1 on startup
+  * e1d: fix logic to detect if a timeslot is in use
+  * e1d: get rid of strange file descriptor registered check
+  * trau_pcu_ericsson: do not set unused D bits to 1
+  * e1d: reconnect to osmo-e1d after connection loss
+
+  [ Andreas Eversberg ]
+  * Add more L1 signals to common part
+  * Add function to set Sa bits to common part
+  * Add L1 signals to misdn driver
+  * Add setting of Sa bits to misdn driver
+  * Use correct bit order of RAW channels at misdn driver
+  * misdn driver: replace printf and fprintf by logging functions
+  * Rework mi_e1_line_update() and some of its sub routines
+  * Send raw data with e1d as it arrives from application
+  * e1d: Remove useless call of handle_ts_trau_write()
+  * e1d: Add support for HDLC type channels
+  * dahdi: Disable OSMO_FD_WRITE if HDLC/RAW write queue is empty
+  * dahdi: Add missing msg->l2h
+  * dahdi: Add msgb_free() to prevent memeory leaks
+
+  [ Oliver Smith ]
+  * Cosmetic: osmo_ortp.h: fix typos
+  * osmo_ortp.h: add RTP_PT_CSDATA
+  * Run struct_endianness.py
+  * debian: set compat level to 10
+
+  [ arehbein ]
+  * Transition to use of 'telnet_init_default'
+
+  [ Pau Espin Pedrol ]
+  * ipa: Call osmo_fd_unregister() before closing and changing bfd->fd
+
+  [ Mychaela N. Falconia ]
+  * osmo_rtp2trau() for FR & EFR: correctly handle the no-data case
+  * osmo_rtp2trau() for FR & EFR: set SP=0 in DL if the frame is a SID
+  * osmo_rtp2trau() for FR & EFR UL: set C13 & C14 correctly
+
+  [ Vadim Yanitskiy ]
+  * .gitignore: add new trau_{pcu_ericsson,sync} tests
+  * cosmetic: struct e1inp_ts: fix coding style
+  * cosmetic: e1inp_ipa_bts_rsl_close_n(): cache ipa_client_conn
+  * fix use-after-free in ipaccess_bts_keepalive_fsm_alloc()
+  * osmo_ortp: register a PayloadType for RTP_PT_CSDATA
+
+  [ Harald Welte ]
+  * trau_sync: Add sync pattern for FA protocol of 3GPP TS 43.045
+
+ -- Pau Espin Pedrol <pespin@sysmocom.de>  Tue, 12 Sep 2023 13:39:04 +0200
+
 libosmo-abis (1.4.0) unstable; urgency=medium
 
   [ Pau Espin Pedrol ]
