@@ -594,18 +594,21 @@ int dahdi_set_bufinfo(int fd, int as_sigchan)
 	return 0;
 }
 
-static int dahdi_open_slot(int dahdi_chan_nr)
+static int dahdi_open_slot(const struct e1inp_ts *e1i_ts, int dahdi_chan_nr)
 {
 	int rc, fd;
+	char name[32];
 #ifndef DAHDI_SPECIFY
 	char openstr[128];
 	snprintf(openstr, sizeof(openstr), "/dev/dahdi/%d", dev_nr);
 #else
 	const char *openstr = "/dev/dahdi/channel";
 #endif
+	e1inp_ts_name(name, sizeof(name), e1i_ts);
+
 	rc = open(openstr, O_RDWR | O_NONBLOCK);
 	if (rc < 0) {
-		LOGP(DLINP, LOGL_ERROR, "DAHDI: could not open %s %s\n", openstr, strerror(errno));
+		LOGP(DLINP, LOGL_ERROR, "%s: DAHDI: could not open %s %s\n", name, openstr, strerror(errno));
 		return -EIO;
 	}
 	fd = rc;
@@ -613,11 +616,12 @@ static int dahdi_open_slot(int dahdi_chan_nr)
 	rc = ioctl(fd, DAHDI_SPECIFY, &dahdi_chan_nr);
 	if (rc < 0) {
 		close(fd);
-		LOGP(DLINP, LOGL_ERROR, "DAHDI: could not DAHDI_SPECIFY %d: %s\n",
+		LOGP(DLINP, LOGL_ERROR, "%s: DAHDI: could not DAHDI_SPECIFY %d: %s\n", name,
 		     dahdi_chan_nr, strerror(errno));
 		return -EIO;
 	}
 #endif
+	LOGP(DLINP, LOGL_DEBUG, "%s: DAHDI: opened dahdi_chan_nr=%d\n", name, dahdi_chan_nr);
 	return fd;
 }
 
@@ -668,7 +672,7 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 			break;
 		case E1INP_TS_TYPE_SIGN:
 			if (!bfd->fd)
-				bfd->fd = dahdi_open_slot(dev_nr);
+				bfd->fd = dahdi_open_slot(e1i_ts, dev_nr);
 			if (bfd->fd < 0)
 				return -EIO;
 			bfd->when = OSMO_FD_READ | OSMO_FD_EXCEPT;
@@ -686,7 +690,7 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 			break;
 		case E1INP_TS_TYPE_HDLC:
 			if (!bfd->fd)
-				bfd->fd = dahdi_open_slot(dev_nr);
+				bfd->fd = dahdi_open_slot(e1i_ts, dev_nr);
 			if (bfd->fd < 0)
 				return -EIO;
 			bfd->when = OSMO_FD_READ | OSMO_FD_EXCEPT;
@@ -703,7 +707,7 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 				e1i_ts->lapd = NULL;
 			}
 			if (!bfd->fd)
-				bfd->fd = dahdi_open_slot(dev_nr);
+				bfd->fd = dahdi_open_slot(e1i_ts, dev_nr);
 			if (bfd->fd < 0)
 				return -EIO;
 			ret = dahdi_set_bufinfo(bfd->fd, 0);
