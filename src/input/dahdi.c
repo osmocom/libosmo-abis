@@ -600,7 +600,7 @@ static int dahdi_open_slot(const struct e1inp_ts *e1i_ts, int dahdi_chan_nr)
 	char name[32];
 #ifndef DAHDI_SPECIFY
 	char openstr[128];
-	snprintf(openstr, sizeof(openstr), "/dev/dahdi/%d", dev_nr);
+	snprintf(openstr, sizeof(openstr), "/dev/dahdi/%d", dahdi_chan_nr);
 #else
 	const char *openstr = "/dev/dahdi/channel";
 #endif
