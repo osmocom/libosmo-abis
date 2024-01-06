@@ -259,7 +259,7 @@ static int handle_ts1_write(struct osmo_fd *bfd)
 		return 0;
 	}
 
-	LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "TX: %s\n", osmo_hexdump(msg->data, msg->len));
+	LOGPITS(e1i_ts, DLMI, LOGL_DEBUG, "TX: %s\n", osmo_hexdump(msg->data, msg->len));
 	lapd_transmit(e1i_ts->lapd, sign_link->tei,
 			sign_link->sapi, msg);
 
