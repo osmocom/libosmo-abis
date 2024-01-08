@@ -47,7 +47,7 @@ static RtpProfile *osmo_pt_profile;
 static void *tall_rtp_ctx;
 
 /* malloc integration */
-
+#if HAVE_ORTP_MEM_FUNC
 static void *osmo_ortp_malloc(size_t sz)
 {
 	return talloc_size(tall_rtp_ctx, sz);
@@ -68,6 +68,7 @@ static OrtpMemoryFunctions osmo_ortp_memfn = {
 	.realloc_fun = osmo_ortp_realloc,
 	.free_fun = osmo_ortp_free
 };
+#endif /* HAVE_ORTP_MEM_FUNC */
 
 /* logging */
 
@@ -121,13 +122,14 @@ static void my_ortp_logfn(
 
 	needs_endl = fmt[fmt_len - 1] != '\n' ? 1 : 0;
 
-	str = osmo_ortp_malloc(domain_len + 2 /*": "*/ + fmt_len + needs_endl + 1);
-	sprintf(str, "%s%s%s%s", domain_str, domain_len ? ": " : "", fmt, needs_endl ? "\n" : "");
+	str = talloc_asprintf(tall_rtp_ctx, "%s%s%s%s",
+			      domain_str, domain_len ? ": " : "",
+			      fmt, needs_endl ? "\n" : "");
 
 	osmo_vlogp(DLMIB, ortp_to_osmo_lvl(lev), __FILE__, 0,
 		   0, str, args);
 
-	osmo_ortp_free(str);
+	talloc_free(str);
 
 }
 
@@ -315,7 +317,9 @@ static void create_payload_types(void)
 void osmo_rtp_init(void *ctx)
 {
 	tall_rtp_ctx = ctx;
+#if HAVE_ORTP_MEM_FUNC
 	ortp_set_memory_functions(&osmo_ortp_memfn);
+#endif
 	ortp_init();
 	ortp_set_log_level_mask(
 #if HAVE_ORTP_LOG_DOMAIN

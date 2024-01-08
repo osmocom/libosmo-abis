@@ -161,6 +161,19 @@ AC_COMPILE_IFELSE(
 		[rtp_session_signal_connect requires ulong parameter])])
 CFLAGS=$_cflags_save
 
+_cflags_save=$CFLAGS
+CFLAGS="$CFLAGS $ORTP_CFLAGS"
+AC_COMPILE_IFELSE(
+	[AC_LANG_PROGRAM(
+		[[#include <ortp/ortp.h>]],
+		[[OrtpMemoryFunctions memfn = { };]]
+	)],
+	[AC_DEFINE([HAVE_ORTP_MEM_FUNC], [1],
+		[OrtpMemoryFunctions is available, will use talloc])],
+	[AC_DEFINE([HAVE_ORTP_MEM_FUNC], [0],
+		[OrtpMemoryFunctions is not available])])
+CFLAGS=$_cflags_save
+
 AC_MSG_RESULT([CFLAGS="$CFLAGS"])
 AC_MSG_RESULT([CPPFLAGS="$CPPFLAGS"])
 
