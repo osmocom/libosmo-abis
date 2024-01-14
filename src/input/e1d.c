@@ -30,6 +30,7 @@
 #include <osmocom/core/bits.h>
 #include <osmocom/core/logging.h>
 #include <osmocom/core/fsm.h>
+#include <osmocom/core/signal.h>
 
 #include <osmocom/vty/vty.h>
 
@@ -75,6 +76,72 @@ static const struct value_string fsm_e1d_client_evt_names[] = {
 	{ 0, NULL }
 };
 
+struct e1inp_line *e1inp_port_find(uint8_t port_nr)
+{
+	struct e1inp_line *e1i_line;
+
+	/* iterate over global list of e1 lines */
+	llist_for_each_entry(e1i_line, &e1inp_line_list, list) {
+		if (e1i_line->port_nr == port_nr)
+			return e1i_line;
+	}
+	return NULL;
+}
+
+static void e1d_client_event_cb(enum osmo_e1dp_msg_type event, uint8_t intf, uint8_t line, uint8_t ts, uint8_t *data, int len)
+{
+	struct e1inp_line *e1_line;
+	struct input_signal_data isd;
+	int signal;
+
+	memset(&isd, 0, sizeof(isd));
+
+	/* we use higher 4 bits for interface, lower 4 bits for line,
+	 * resulting in max. 16 interfaces with 16 lines each */
+	e1_line = e1inp_port_find((intf << 4) | line);
+	if (!e1_line)
+		return;
+	isd.line = e1_line;
+
+	switch (event) {
+	case E1DP_EVT_LOS_ON:
+		signal = S_L_INP_LINE_LOS;
+		break;
+	case E1DP_EVT_LOS_OFF:
+		signal = S_L_INP_LINE_NOLOS;
+		break;
+	case E1DP_EVT_AIS_ON:
+		signal = S_L_INP_LINE_AIS;
+		break;
+	case E1DP_EVT_AIS_OFF:
+		signal = S_L_INP_LINE_NOAIS;
+		break;
+	case E1DP_EVT_RAI_ON:
+		signal = S_L_INP_LINE_RAI;
+		break;
+	case E1DP_EVT_RAI_OFF:
+		signal = S_L_INP_LINE_NORAI;
+		break;
+	case E1DP_EVT_LOF_ON:
+		signal = S_L_INP_LINE_LOF;
+		break;
+	case E1DP_EVT_LOF_OFF:
+		signal = S_L_INP_LINE_NOLOF;
+		break;
+	case E1DP_EVT_SABITS:
+		signal = S_L_INP_LINE_SA_BITS;
+		if (len < 1)
+			return;
+		isd.sa_bits = *data;
+		break;
+	default:
+		/* Ignore all other events. */
+		return;
+	}
+
+	osmo_signal_dispatch(SS_L_INPUT, signal, &isd);
+}
+
 static int fsm_e1_client_timer_cb(struct osmo_fsm_inst *fi)
 {
 	osmo_fsm_inst_dispatch(g_e1d_fsm_inst, EV_CONNECT, NULL);
@@ -92,6 +159,7 @@ static void fsm_e1d_client_disconnected_cb(struct osmo_fsm_inst *fi, uint32_t ev
 				osmo_fsm_inst_state_chg(g_e1d_fsm_inst, ST_DISCONNECTED, 1, 0);
 				return;
 			}
+			osmo_e1dp_client_event_register(g_e1d, e1d_client_event_cb);
 		}
 
 		LOGPFSML(fi, LOGL_NOTICE, "Successfully (re)connected to osmo-e1d daemon!\n");
@@ -766,9 +834,20 @@ static int e1d_line_create(struct e1inp_line *line)
 	return 0;
 }
 
+static int set_sa_bits(struct e1inp_line *line, uint8_t sa_bits)
+{
+	/* we use higher 4 bits for interface, lower 4 bits for line,
+	 * resulting in max. 16 interfaces with 16 lines each */
+	uint8_t e1d_intf = (line->port_nr >> 4) & 0xF;
+	uint8_t e1d_line = line->port_nr & 0xF;
+
+	return osmo_e1dp_client_set_sa_bits(g_e1d, e1d_intf, e1d_line, sa_bits);
+}
+
 struct e1inp_driver e1d_driver = {
 	.name        = "e1d",
 	.want_write  = e1d_want_write,
+	.set_sa_bits = set_sa_bits,
 	.line_update = e1d_line_update,
 	.line_create = e1d_line_create,
 };

@@ -1121,6 +1121,8 @@ const struct value_string e1inp_signal_names[] = {
 	{ S_L_INP_LINE_SLIP_RX,	"LINE-SLIP-RX" },
 	{ S_L_INP_LINE_SLIP_TX,	"LINE-SLIP-TX" },
 	{ S_L_INP_LINE_SA_BITS,	"LINE-SA-BITS" },
+	{ S_L_INP_LINE_LOF,	"LINE-LOF" },
+	{ S_L_INP_LINE_NOLOF,	"LINE-NOLOF" },
 	{ 0, NULL }
 };
 

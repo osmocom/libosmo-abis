@@ -270,6 +270,8 @@ enum e1inp_signal_input {
 	S_L_INP_LINE_SLIP_RX,
 	S_L_INP_LINE_SLIP_TX,
 	S_L_INP_LINE_SA_BITS,
+	S_L_INP_LINE_LOF,
+	S_L_INP_LINE_NOLOF,
 };
 
 extern const struct value_string e1inp_signal_names[];
