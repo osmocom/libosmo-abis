@@ -1,3 +1,18 @@
+libosmo-abis (1.5.1) unstable; urgency=medium
+
+  [ Harald Welte ]
+  * dahdi: Log context (e1inpt_ts name) when opening timeslot devices
+  * dahdi: Fix compilation with ancient DAHDI
+
+  [ Keith ]
+  * DAHDI: Log hexdump of TX at level DEBUG, not ERROR
+
+  [ Vadim Yanitskiy ]
+  * trau/osmo_ortp: support building without OrtpMemoryFunctions API
+  * build: include git-version-gen into the release tarball
+
+ -- Vadim Yanitskiy <vyanitskiy@sysmocom.de>  Sun, 28 Jan 2024 18:04:12 +0700
+
 libosmo-abis (1.5.0) unstable; urgency=medium
 
   [ Philipp Maier ]
