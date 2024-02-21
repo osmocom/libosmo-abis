@@ -160,8 +160,10 @@ static void ipaccess_bsc_keepalive_fsm_alloc(struct e1inp_ts *e1i_ts, struct osm
 
 	ka_fsm = ipa_generic_conn_alloc_keepalive_fsm(tall_ipa_ctx, bfd, line->ipa_kap, id);
 	e1i_ts->driver.ipaccess.ka_fsm = ka_fsm;
-	if (!ka_fsm)
+	if (!ka_fsm) {
+		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Failed to allocate IPA keepalive FSM\n");
 		return;
+	}
 
 	ipa_keepalive_fsm_set_timeout_cb(ka_fsm, ipa_bsc_keepalive_timeout_cb);
 	ipa_keepalive_fsm_set_send_cb(ka_fsm, ipa_bsc_keepalive_write_server_cb);
@@ -198,8 +200,10 @@ static void ipaccess_bts_keepalive_fsm_alloc(struct e1inp_ts *e1i_ts, struct ipa
 
 	ka_fsm = ipa_client_conn_alloc_keepalive_fsm(client, line->ipa_kap, id);
 	e1i_ts->driver.ipaccess.ka_fsm = ka_fsm;
-	if (!ka_fsm)
+	if (!ka_fsm) {
+		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Failed to allocate IPA keepalive FSM\n");
 		return;
+	}
 
 	ipa_keepalive_fsm_set_timeout_cb(ka_fsm, ipa_bts_keepalive_timeout_cb);
 	ipa_keepalive_fsm_set_send_cb(ka_fsm, ipa_bts_keepalive_write_client_cb);
