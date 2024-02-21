@@ -147,6 +147,7 @@ static int ipa_ka_fsm_timer_cb(struct osmo_fsm_inst *fi)
 					ifp->params.wait_for_resp, T_PONG_NOT_RECEIVED);
 		return 0;
 	case T_PONG_NOT_RECEIVED:
+		LOGPFSML(fi, LOGL_NOTICE, "IPA keep-alive FSM timed out: PONG not received\n");
 		/* PONG not received within time */
 		if (ifp->srv_conn)
 			conn = ifp->srv_conn;
@@ -320,7 +321,10 @@ void ipa_keepalive_fsm_pong_received(struct osmo_fsm_inst *fi)
 /*! Start the ping/pong procedure of the IPA Keepalive FSM. */
 void ipa_keepalive_fsm_start(struct osmo_fsm_inst *fi)
 {
+	struct ipa_fsm_priv *ifp = fi->priv;
 	OSMO_ASSERT(fi->fsm == &ipa_keepalive_fsm);
+	LOGPFSML(fi, LOGL_INFO, "Starting IPA keep-alive FSM (interval=%us wait=%us)\n",
+		 ifp->params.interval, ifp->params.wait_for_resp);
 	osmo_fsm_inst_dispatch(fi, OSMO_IPA_KA_E_START, NULL);
 }
 
@@ -328,5 +332,6 @@ void ipa_keepalive_fsm_start(struct osmo_fsm_inst *fi)
 void ipa_keepalive_fsm_stop(struct osmo_fsm_inst *fi)
 {
 	OSMO_ASSERT(fi->fsm == &ipa_keepalive_fsm);
+	LOGPFSML(fi, LOGL_INFO, "Stopping IPA keep-alive FSM\n");
 	osmo_fsm_inst_dispatch(fi, OSMO_IPA_KA_E_STOP, NULL);
 }
