@@ -622,11 +622,11 @@ static void update_fd_settings(struct e1inp_line *line, int fd)
 		ret = setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &val, sizeof(val));
 		if (ret < 0)
 			LOGPIL(line, DLINP, LOGL_ERROR, "Failed to set TCP keepalive count: %s\n", strerror(errno));
-                val = 1000 * line->keepalive_num_probes *
-                        line->keepalive_probe_interval +
-                        line->keepalive_idle_timeout;
+		val = 1000 * line->keepalive_num_probes *
+			line->keepalive_probe_interval +
+			line->keepalive_idle_timeout;
 		ret = setsockopt(fd, IPPROTO_TCP, TCP_USER_TIMEOUT, &val, sizeof(val));
-                if (ret < 0)
+		if (ret < 0)
 			LOGPIL(line, DLINP, LOGL_ERROR, "Failed to set TCP user timeout: %s\n", strerror(errno));
 	}
 
@@ -697,8 +697,8 @@ static int ipaccess_bsc_rsl_cb(struct ipa_server_link *link, int fd)
 	struct osmo_fd *bfd;
 	int i, ret;
 
-        /* We don't know yet which OML link to associate it with. Thus, we
-         * allocate a temporary E1 line until we have received ID. */
+	/* We don't know yet which OML link to associate it with. Thus, we
+	 * allocate a temporary E1 line until we have received ID. */
 	line = e1inp_line_clone(tall_ipa_ctx, link->line, "ipa_bfd");
 	if (line == NULL) {
 		LOGP(DLINP, LOGL_ERROR, "could not clone E1 line\n");
