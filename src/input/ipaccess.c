@@ -595,9 +595,9 @@ static void update_fd_settings(struct e1inp_line *line, int fd)
 		val = 1;
 		ret = setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &val, sizeof(val));
 		if (ret < 0)
-			LOGPIL(line, DLINP, LOGL_ERROR, "Failed to set keepalive: %s\n", strerror(errno));
+			LOGPIL(line, DLINP, LOGL_ERROR, "Failed to enable TCP keepalive: %s\n", strerror(errno));
 		else
-			LOGPIL(line, DLINP, LOGL_NOTICE, "Keepalive is set: %d\n", ret);
+			LOGPIL(line, DLINP, LOGL_NOTICE, "TCP Keepalive is enabled\n");
 
 		/* The following options are not portable! */
 		val = line->keepalive_idle_timeout > 0 ?
@@ -605,29 +605,33 @@ static void update_fd_settings(struct e1inp_line *line, int fd)
 			DEFAULT_TCP_KEEPALIVE_IDLE_TIMEOUT;
 		ret = setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE,
 				 &val, sizeof(val));
-		if (ret < 0)
-			LOGPIL(line, DLINP, LOGL_ERROR, "Failed to set keepalive idle time: %s\n", strerror(errno));
+		if (ret < 0) {
+			LOGPIL(line, DLINP, LOGL_ERROR, "Failed to set TCP keepalive idle time: %s\n",
+			       strerror(errno));
+		}
 		val = line->keepalive_probe_interval > -1 ?
 			line->keepalive_probe_interval :
 			DEFAULT_TCP_KEEPALIVE_INTERVAL;
 		ret = setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL,
 				 &val, sizeof(val));
-		if (ret < 0)
-			LOGPIL(line, DLINP, LOGL_ERROR, "Failed to set keepalive interval: %s\n", strerror(errno));
+		if (ret < 0) {
+			LOGPIL(line, DLINP, LOGL_ERROR, "Failed to set TCP keepalive interval: %s\n",
+			       strerror(errno));
+		}
 		val = line->keepalive_num_probes > 0 ?
 			line->keepalive_num_probes :
 			DEFAULT_TCP_KEEPALIVE_RETRY_COUNT;
 		ret = setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT,
 				 &val, sizeof(val));
 		if (ret < 0)
-			LOGPIL(line, DLINP, LOGL_ERROR, "Failed to set keepalive count: %s\n", strerror(errno));
+			LOGPIL(line, DLINP, LOGL_ERROR, "Failed to set TCP keepalive count: %s\n", strerror(errno));
                 val = 1000 * line->keepalive_num_probes *
                         line->keepalive_probe_interval +
                         line->keepalive_idle_timeout;
                 ret = setsockopt(fd, IPPROTO_TCP, TCP_USER_TIMEOUT,
                                  &val, sizeof(val));
                 if (ret < 0)
-			LOGPIL(line, DLINP, LOGL_ERROR, "Failed to set user timoeut: %s\n", strerror(errno));
+			LOGPIL(line, DLINP, LOGL_ERROR, "Failed to set TCP user timeout: %s\n", strerror(errno));
 	}
 
 	val = 1;
