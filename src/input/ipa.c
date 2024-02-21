@@ -66,6 +66,8 @@ static int ipa_client_read(struct ipa_client_conn *link)
 			LOGIPA(link, LOGL_ERROR, "lost connection with server\n");
 		else if (ret == 0)
 			LOGIPA(link, LOGL_ERROR, "connection closed with server\n");
+		else
+			LOGIPA(link, LOGL_ERROR, "unknown error %d from socket\n", ret);
 		ipa_client_conn_close(link);
 		if (link->updown_cb)
 			link->updown_cb(link, 0);
@@ -410,6 +412,8 @@ static int ipa_server_conn_read(struct ipa_server_conn *conn)
 			LOGIPA(conn, LOGL_ERROR, "lost connection with server\n");
 		else if (ret == 0)
 			LOGIPA(conn, LOGL_ERROR, "connection closed with server\n");
+		else
+			LOGIPA(conn, LOGL_ERROR, "unknown error %d from socket\n", ret);
 		ipa_server_conn_destroy(conn);
 		return -EBADF;
 	}
