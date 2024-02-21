@@ -242,46 +242,40 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 		/* this is not an IPA control message, continue */
 		break;
 	default:
-		LOGP(DLINP, LOGL_ERROR, "Unexpected return from "
-					"ipa_ccm_rcvmsg_base "
-					"(ret=%d)\n", ret);
+		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Unexpected return from ipa_ccm_rcvmsg_base (ret=%d)\n", ret);
 		goto err;
 	}
 
 	switch (msg_type) {
 	case IPAC_MSGT_ID_RESP:
-		DEBUGP(DLMI, "ID_RESP ");
+		LOGPITS(e1i_ts, DLMI, LOGL_DEBUG, "ID_RESP ");
 		/* parse tags, search for Unit ID */
 		ret = ipa_ccm_id_resp_parse(&tlvp, (const uint8_t *)msg->l2h+1, msgb_l2len(msg)-1);
 		DEBUGPC(DLMI, "\n");
 		if (ret < 0) {
-			LOGP(DLINP, LOGL_ERROR, "IPA response message "
-				"with malformed TLVs\n");
+			LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "IPA response message with malformed TLVs\n");
 			goto err;
 		}
 		if (!TLVP_PRESENT(&tlvp, IPAC_IDTAG_UNIT)) {
-			LOGP(DLINP, LOGL_ERROR, "IPA response message "
-				"without unit ID\n");
+			LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "IPA response message without unit ID\n");
 			goto err;
 
 		}
 		len = TLVP_LEN(&tlvp, IPAC_IDTAG_UNIT);
 		if (len < 1) {
-			LOGP(DLINP, LOGL_ERROR, "IPA response message "
-				"with too small unit ID\n");
+			LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "IPA response message with too small unit ID\n");
 			goto err;
 		}
 		unitid = (char *) TLVP_VAL(&tlvp, IPAC_IDTAG_UNIT);
 		unitid[len - 1] = '\0';
 		ret = ipa_parse_unitid(unitid, &unit_data);
 		if (ret) {
-			LOGP(DLINP, LOGL_ERROR, "Failed to parse unit ID '%s'\n", unitid);
+			LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Failed to parse unit ID '%s'\n", unitid);
 			goto err;
 		}
 
 		if (!line->ops->sign_link_up) {
-			LOGP(DLINP, LOGL_ERROR,
-			     "Unable to set signal link, closing socket.\n");
+			LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Unable to set signal link, closing socket.\n");
 			goto err;
 		}
 		/* the BSC creates the new sign links at this stage. */
@@ -290,9 +284,7 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 				line->ops->sign_link_up(&unit_data, line,
 							E1INP_SIGN_OML);
 			if (sign_link == NULL) {
-				LOGP(DLINP, LOGL_ERROR,
-					"Unable to set signal link, "
-					"closing socket.\n");
+				LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Unable to set signal link, closing socket.\n");
 				goto err;
 			}
 
@@ -308,9 +300,7 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 				line->ops->sign_link_up(&unit_data, line,
 							E1INP_SIGN_RSL);
 			if (sign_link == NULL) {
-				LOGP(DLINP, LOGL_ERROR,
-					"Unable to set signal link, "
-					"closing socket.\n");
+				LOGPIL(line, DLINP, LOGL_ERROR, "Unable to set signal link, closing socket.\n");
 				goto err;
 			}
 			/* Finally, we know which OML link is associated with
@@ -319,10 +309,8 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 			/* this is a bugtrap, the BSC should be using the
 			 * virtual E1 line used by OML for this RSL link. */
 			if (new_line == line) {
-				LOGP(DLINP, LOGL_ERROR,
-					"Fix your BSC, you should use the "
-					"E1 line used by the OML link for "
-					"your RSL link.\n");
+				LOGPIL(line, DLINP, LOGL_ERROR, "Fix your BSC, you should use the "
+					"E1 line used by the OML link for your RSL link.\n");
 				return 0;
 			}
 			e1inp_line_get2(new_line, "ipa_bfd");
@@ -345,8 +333,7 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 
 			ret = osmo_fd_register(newbfd);
 			if (ret < 0) {
-				LOGP(DLINP, LOGL_ERROR,
-				     "could not register FD\n");
+				LOGPITS(ts, DLINP, LOGL_ERROR, "could not register FD\n");
 				goto err;
 			}
 			snprintf(tcp_stat_name, sizeof(tcp_stat_name), "site.%u.bts.%u.ipa-rsl.%u",
@@ -359,7 +346,7 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 		}
 		break;
 	default:
-		LOGP(DLINP, LOGL_ERROR, "Unknown IPA message type\n");
+		LOGPIL(line, DLINP, LOGL_ERROR, "Unknown IPA message type\n");
 		goto err;
 	}
 	return 0;
@@ -392,14 +379,14 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 	if (ret < 0) {
 		if (ret == -EAGAIN)
 			return 0;
-		LOGP(DLINP, LOGL_NOTICE, "Sign link problems, "
-			"closing socket. Reason: %s\n", strerror(-ret));
+		LOGPITS(e1i_ts, DLINP, LOGL_NOTICE, "Sign link problems, closing socket. Reason: %s\n",
+			strerror(-ret));
 		goto err;
 	} else if (ret == 0) {
-		LOGP(DLINP, LOGL_NOTICE, "Sign link vanished, dead socket\n");
+		LOGPITS(e1i_ts, DLINP, LOGL_NOTICE, "Sign link vanished, dead socket\n");
 		goto err;
 	}
-	DEBUGP(DLMI, "RX %u: %s\n", ts_nr, osmo_hexdump(msgb_l2(msg), msgb_l2len(msg)));
+	LOGPITS(e1i_ts, DLMI, LOGL_DEBUG, "RX %u: %s\n", ts_nr, osmo_hexdump(msgb_l2(msg), msgb_l2len(msg)));
 
 	hh = (struct ipaccess_head *) msg->data;
 	if (hh->proto == IPAC_PROTO_IPACCESS) {
@@ -410,22 +397,20 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 		return ret != 0 ? -EBADF : 0;
 	} else if (e1i_ts->type == E1INP_TS_TYPE_NONE) {
 		/* this sign link is not know yet.. complain. */
-		LOGP(DLINP, LOGL_ERROR, "Timeslot is not configured.\n");
+		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Timeslot is not configured.\n");
 		goto err_msg;
 	}
 
 	link = e1inp_lookup_sign_link(e1i_ts, hh->proto, 0);
 	if (!link) {
-		LOGP(DLINP, LOGL_ERROR, "no matching signalling link for "
-			"hh->proto=0x%02x\n", hh->proto);
+		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "no matching signalling link for hh->proto=0x%02x\n", hh->proto);
 		goto err_msg;
 	}
 	msg->dst = link;
 
 	/* XXX better use e1inp_ts_rx? */
 	if (!e1i_ts->line->ops->sign_link) {
-		LOGP(DLINP, LOGL_ERROR, "Fix your application, "
-			"no action set for signalling messages.\n");
+		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Fix your application, no action set for signalling messages.\n");
 		goto err_msg;
 	}
 	rc = e1i_ts->line->ops->sign_link(msg);
@@ -434,8 +419,8 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 		 * an error, that's too strict. BTW, the signalling layer is
 		 * resposible for releasing the message.
 		 */
-		LOGP(DLINP, LOGL_ERROR, "Bad signalling message,"
-		     " sign_link returned error: %s.\n", strerror(-rc));
+		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Bad signalling message, sign_link returned error: %s.\n",
+			strerror(-rc));
 	}
 
 	return rc;
@@ -610,10 +595,9 @@ static void update_fd_settings(struct e1inp_line *line, int fd)
 		val = 1;
 		ret = setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &val, sizeof(val));
 		if (ret < 0)
-			LOGP(DLINP, LOGL_ERROR, "Failed to set keepalive: %s\n",
-			     strerror(errno));
+			LOGPIL(line, DLINP, LOGL_ERROR, "Failed to set keepalive: %s\n", strerror(errno));
 		else
-			LOGP(DLINP, LOGL_NOTICE, "Keepalive is set: %i\n", ret);
+			LOGPIL(line, DLINP, LOGL_NOTICE, "Keepalive is set: %d\n", ret);
 
 		/* The following options are not portable! */
 		val = line->keepalive_idle_timeout > 0 ?
@@ -622,42 +606,34 @@ static void update_fd_settings(struct e1inp_line *line, int fd)
 		ret = setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE,
 				 &val, sizeof(val));
 		if (ret < 0)
-			LOGP(DLINP, LOGL_ERROR,
-			     "Failed to set keepalive idle time: %s\n",
-			     strerror(errno));
+			LOGPIL(line, DLINP, LOGL_ERROR, "Failed to set keepalive idle time: %s\n", strerror(errno));
 		val = line->keepalive_probe_interval > -1 ?
 			line->keepalive_probe_interval :
 			DEFAULT_TCP_KEEPALIVE_INTERVAL;
 		ret = setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL,
 				 &val, sizeof(val));
 		if (ret < 0)
-			LOGP(DLINP, LOGL_ERROR,
-			     "Failed to set keepalive interval: %s\n",
-			     strerror(errno));
+			LOGPIL(line, DLINP, LOGL_ERROR, "Failed to set keepalive interval: %s\n", strerror(errno));
 		val = line->keepalive_num_probes > 0 ?
 			line->keepalive_num_probes :
 			DEFAULT_TCP_KEEPALIVE_RETRY_COUNT;
 		ret = setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT,
 				 &val, sizeof(val));
 		if (ret < 0)
-			LOGP(DLINP, LOGL_ERROR,
-			     "Failed to set keepalive count: %s\n",
-			     strerror(errno));
+			LOGPIL(line, DLINP, LOGL_ERROR, "Failed to set keepalive count: %s\n", strerror(errno));
                 val = 1000 * line->keepalive_num_probes *
                         line->keepalive_probe_interval +
                         line->keepalive_idle_timeout;
                 ret = setsockopt(fd, IPPROTO_TCP, TCP_USER_TIMEOUT,
                                  &val, sizeof(val));
                 if (ret < 0)
-			LOGP(DLINP, LOGL_ERROR,
-                             "Failed to set user timoeut: %s\n",
-                             strerror(errno));
+			LOGPIL(line, DLINP, LOGL_ERROR, "Failed to set user timoeut: %s\n", strerror(errno));
 	}
 
 	val = 1;
 	ret = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &val, sizeof(val));
 	if (ret < 0)
-		LOGP(DLINP, LOGL_ERROR, "Failed to set TCP_NODELAY: %s\n", strerror(errno));
+		LOGPIL(line, DLINP, LOGL_ERROR, "Failed to set TCP_NODELAY: %s\n", strerror(errno));
 }
 
 /* callback of the OML listening filedescriptor */
@@ -689,7 +665,7 @@ static int ipaccess_bsc_oml_cb(struct ipa_server_link *link, int fd)
 	osmo_fd_setup(bfd, fd, OSMO_FD_READ, ipaccess_fd_cb, line, E1INP_SIGN_OML);
 	ret = osmo_fd_register(bfd);
 	if (ret < 0) {
-		LOGP(DLINP, LOGL_ERROR, "could not register FD\n");
+		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "could not register FD\n");
 		goto err_line;
 	}
 	osmo_stats_tcp_osmo_fd_register(bfd, "ipa-oml");
@@ -699,8 +675,7 @@ static int ipaccess_bsc_oml_cb(struct ipa_server_link *link, int fd)
 	/* Request ID. FIXME: request LOCATION, HW/SW VErsion, Unit Name, Serno */
 	ret = ipa_ccm_send_id_req(bfd->fd);
 	if (ret < 0) {
-		LOGP(DLINP, LOGL_ERROR, "could not send ID REQ. Reason: %s\n",
-			strerror(errno));
+		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "could not send ID REQ. Reason: %s\n", strerror(errno));
 		goto err_socket;
 	}
 	return ret;
@@ -743,7 +718,7 @@ static int ipaccess_bsc_rsl_cb(struct ipa_server_link *link, int fd)
 	osmo_fd_setup(bfd, fd, OSMO_FD_READ, ipaccess_fd_cb, line, E1INP_SIGN_RSL);
 	ret = osmo_fd_register(bfd);
 	if (ret < 0) {
-		LOGP(DLINP, LOGL_ERROR, "could not register FD\n");
+		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "could not register FD\n");
 		goto err_line;
 	}
 	osmo_stats_tcp_osmo_fd_register(bfd, "ipa-rsl");
@@ -751,8 +726,7 @@ static int ipaccess_bsc_rsl_cb(struct ipa_server_link *link, int fd)
 	/* Request ID. FIXME: request LOCATION, HW/SW VErsion, Unit Name, Serno */
 	ret = ipa_ccm_send_id_req(bfd->fd);
 	if (ret < 0) {
-		LOGP(DLINP, LOGL_ERROR, "could not send ID REQ. Reason: %s\n",
-			strerror(errno));
+		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "could not send ID REQ. Reason: %s\n", strerror(errno));
 		goto err_socket;
 	}
 	update_fd_settings(line, bfd->fd);
@@ -920,13 +894,13 @@ int ipaccess_bts_handle_ccm(struct ipa_client_conn *link,
 			if (link->ofd->priv_nr >= E1INP_SIGN_RSL)
 				trx_nr = link->ofd->priv_nr - E1INP_SIGN_RSL;
 
-			LOGP(DLINP, LOGL_NOTICE, "received ID_GET for unit ID %u/%u/%u\n",
-			     dev->site_id, dev->bts_id, trx_nr);
+			LOGPIL(line, DLINP, LOGL_NOTICE, "received ID_GET for unit ID %u/%u/%u\n",
+			       dev->site_id, dev->bts_id, trx_nr);
 			rmsg = ipa_bts_id_resp(dev, data + 1, len - 1, trx_nr);
 			ret = ipa_send(link->ofd->fd, rmsg->data, rmsg->len);
 			if (ret != rmsg->len) {
-				LOGP(DLINP, LOGL_ERROR, "cannot send ID_RESP "
-				     "message. Reason: %s\n", strerror(errno));
+				LOGPIL(line, DLINP, LOGL_ERROR, "cannot send ID_RESP message. Reason: %s\n",
+				       strerror(errno));
 				goto err_rmsg;
 			}
 			msgb_free(rmsg);
@@ -935,8 +909,8 @@ int ipaccess_bts_handle_ccm(struct ipa_client_conn *link,
 			rmsg = ipa_bts_id_ack();
 			ret = ipa_send(link->ofd->fd, rmsg->data, rmsg->len);
 			if (ret != rmsg->len) {
-				LOGP(DLINP, LOGL_ERROR, "cannot send ID_ACK "
-				     "message. Reason: %s\n", strerror(errno));
+				LOGPIL(line, DLINP, LOGL_ERROR, "cannot send ID_ACK message. Reason: %s\n",
+				       strerror(errno));
 				goto err_rmsg;
 			}
 			msgb_free(rmsg);
@@ -1001,15 +975,15 @@ static int ipaccess_bts_read_cb(struct ipa_client_conn *link, struct msgb *msg)
 	OSMO_ASSERT(e1i_ts != NULL);
 
 	if (e1i_ts->type == E1INP_TS_TYPE_NONE) {
-		LOGP(DLINP, LOGL_ERROR, "Signalling link not initialized. Discarding."
-		     " port=%u msg_type=%u\n", link->port, msg_type);
+		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Signalling link not initialized. Discarding."
+			" port=%u msg_type=%u\n", link->port, msg_type);
 		goto err;
 	}
 
 	/* look up for some existing signaling link. */
 	sign_link = e1inp_lookup_sign_link(e1i_ts, hh->proto, 0);
 	if (sign_link == NULL) {
-		LOGP(DLINP, LOGL_ERROR, "no matching signalling link for "
+		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "no matching signalling link for "
 			"hh->proto=0x%02x\n", hh->proto);
 		goto err;
 	}
@@ -1017,7 +991,7 @@ static int ipaccess_bts_read_cb(struct ipa_client_conn *link, struct msgb *msg)
 
 	/* XXX better use e1inp_ts_rx? */
 	if (!link->line->ops->sign_link) {
-		LOGP(DLINP, LOGL_ERROR, "Fix your application, "
+		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Fix your application, "
 			"no action set for signalling messages.\n");
 		goto err;
 	}
@@ -1043,7 +1017,7 @@ static int ipaccess_line_update(struct e1inp_line *line)
 		line->driver_data = talloc_zero(line, struct ipaccess_line);
 
 	if (!line->driver_data) {
-		LOGP(DLINP, LOGL_ERROR, "ipaccess: OOM in line update\n");
+		LOGPIL(line, DLINP, LOGL_ERROR, "ipaccess: OOM in line update\n");
 		return -ENOMEM;
 	}
 	il = line->driver_data;
@@ -1056,23 +1030,20 @@ static int ipaccess_line_update(struct e1inp_line *line)
 		struct ipa_server_link *oml_link, *rsl_link;
 		const char *ipa = e1inp_ipa_get_bind_addr();
 
-		LOGP(DLINP, LOGL_NOTICE, "enabling ipaccess BSC mode on %s "
-		     "with OML %u and RSL %u TCP ports\n", ipa,
-		     IPA_TCP_PORT_OML, IPA_TCP_PORT_RSL);
+		LOGPIL(line, DLINP, LOGL_NOTICE, "enabling ipaccess BSC mode on %s "
+		       "with OML %u and RSL %u TCP ports\n", ipa, IPA_TCP_PORT_OML, IPA_TCP_PORT_RSL);
 
 		oml_link = ipa_server_link_create(tall_ipa_ctx, line, ipa,
 						  IPA_TCP_PORT_OML,
 						  ipaccess_bsc_oml_cb, NULL);
 		if (oml_link == NULL) {
-			LOGP(DLINP, LOGL_ERROR, "cannot create OML "
-				"BSC link: %s\n", strerror(errno));
+			LOGPIL(line, DLINP, LOGL_ERROR, "cannot create OML BSC link: %s\n", strerror(errno));
 			return -ENOMEM;
 		}
 		oml_link->dscp = g_e1inp_ipaccess_pars.oml.dscp;
 		oml_link->priority = g_e1inp_ipaccess_pars.oml.priority;
 		if (ipa_server_link_open(oml_link) < 0) {
-			LOGP(DLINP, LOGL_ERROR, "cannot open OML BSC link: %s\n",
-				strerror(errno));
+			LOGPIL(line, DLINP, LOGL_ERROR, "cannot open OML BSC link: %s\n", strerror(errno));
 			ipa_server_link_destroy(oml_link);
 			return -EIO;
 		}
@@ -1080,15 +1051,13 @@ static int ipaccess_line_update(struct e1inp_line *line)
 						  IPA_TCP_PORT_RSL,
 						  ipaccess_bsc_rsl_cb, NULL);
 		if (rsl_link == NULL) {
-			LOGP(DLINP, LOGL_ERROR, "cannot create RSL "
-				"BSC link: %s\n", strerror(errno));
+			LOGPIL(line, DLINP, LOGL_ERROR, "cannot create RSL BSC link: %s\n", strerror(errno));
 			return -ENOMEM;
 		}
 		rsl_link->dscp = g_e1inp_ipaccess_pars.rsl.dscp;
 		rsl_link->priority = g_e1inp_ipaccess_pars.rsl.priority;
 		if (ipa_server_link_open(rsl_link) < 0) {
-			LOGP(DLINP, LOGL_ERROR, "cannot open RSL BSC link: %s\n",
-				strerror(errno));
+			LOGPIL(line, DLINP, LOGL_ERROR, "cannot open RSL BSC link: %s\n", strerror(errno));
 			ipa_server_link_destroy(rsl_link);
 			return -EIO;
 		}
@@ -1099,9 +1068,8 @@ static int ipaccess_line_update(struct e1inp_line *line)
 		struct ipa_client_conn *link;
 		struct e1inp_ts *e1i_ts = e1inp_line_ipa_oml_ts(line);
 
-		LOGP(DLINP, LOGL_NOTICE, "enabling ipaccess BTS mode, "
-		     "OML connecting to %s:%u\n", line->ops->cfg.ipa.addr,
-		     IPA_TCP_PORT_OML);
+		LOGPITS(e1i_ts, DLINP, LOGL_NOTICE, "enabling ipaccess BTS mode, "
+			"OML connecting to %s:%u\n", line->ops->cfg.ipa.addr, IPA_TCP_PORT_OML);
 
 		/* Drop previous line */
 		if (il->ipa_cli[0]) {
@@ -1122,15 +1090,13 @@ static int ipaccess_line_update(struct e1inp_line *line)
 					      ipaccess_bts_write_cb,
 					      line);
 		if (link == NULL) {
-			LOGP(DLINP, LOGL_ERROR, "cannot create OML "
-				"BTS link: %s\n", strerror(errno));
+			LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "cannot create OML BTS link: %s\n", strerror(errno));
 			return -ENOMEM;
 		}
 		link->dscp = g_e1inp_ipaccess_pars.oml.dscp;
 		link->priority = g_e1inp_ipaccess_pars.oml.priority;
 		if (ipa_client_conn_open2(link, line->connect_timeout) < 0) {
-			LOGP(DLINP, LOGL_ERROR, "cannot open OML BTS link: %s\n",
-				strerror(errno));
+			LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "cannot open OML BTS link: %s\n", strerror(errno));
 			ipa_client_conn_close(link);
 			ipa_client_conn_destroy(link);
 			return -EIO;
@@ -1166,7 +1132,7 @@ int e1inp_ipa_bts_rsl_connect_n(struct e1inp_line *line,
 	int rc;
 
 	if (E1INP_SIGN_RSL+trx_nr-1 >= NUM_E1_TS) {
-		LOGP(DLINP, LOGL_ERROR, "cannot create RSL BTS link: "
+		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "cannot create RSL BTS link: "
 			"trx_nr (%d) out of range\n", trx_nr);
 		return -EINVAL;
 	}
@@ -1189,15 +1155,13 @@ int e1inp_ipa_bts_rsl_connect_n(struct e1inp_line *line,
 					  ipaccess_bts_write_cb,
 					  line);
 	if (rsl_link == NULL) {
-		LOGP(DLINP, LOGL_ERROR, "cannot create RSL "
-			"BTS link: %s\n", strerror(errno));
+		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "cannot create RSL BTS link: %s\n", strerror(errno));
 		return -ENOMEM;
 	}
 	rsl_link->dscp = g_e1inp_ipaccess_pars.rsl.dscp;
 	rsl_link->priority = g_e1inp_ipaccess_pars.rsl.priority;
 	if (ipa_client_conn_open2(rsl_link, line->connect_timeout) < 0) {
-		LOGP(DLINP, LOGL_ERROR, "cannot open RSL BTS link: %s\n",
-			strerror(errno));
+		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "cannot open RSL BTS link: %s\n", strerror(errno));
 		ipa_client_conn_close(rsl_link);
 		ipa_client_conn_destroy(rsl_link);
 		return -EIO;
@@ -1215,8 +1179,7 @@ int e1inp_ipa_bts_rsl_close_n(struct e1inp_line *line, uint8_t trx_nr)
 	struct e1inp_ts *e1i_ts;
 
 	if (E1INP_SIGN_RSL+trx_nr-1 >= NUM_E1_TS) {
-		LOGP(DLINP, LOGL_ERROR,
-		     "cannot close RSL BTS link: trx_nr (%d) out of range\n", trx_nr);
+		LOGPIL(line, DLINP, LOGL_ERROR, "cannot close RSL BTS link: trx_nr (%d) out of range\n", trx_nr);
 		return -EINVAL;
 	}
 
