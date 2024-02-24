@@ -599,7 +599,7 @@ struct e1inp_driver ipaccess_driver = {
 static void update_fd_settings(struct e1inp_line *line, int fd)
 {
 	int ret;
-	int val;
+	int val, idle_val, interval_val, retry_count_val, user_timeout_val;
 
 	if (line->keepalive_num_probes) {
 		/* Enable TCP keepalive to find out if the connection is gone */
@@ -611,42 +611,39 @@ static void update_fd_settings(struct e1inp_line *line, int fd)
 		else
 			LOGP(DLINP, LOGL_NOTICE, "TCP Keepalive is enabled\n");
 
+		idle_val = line->keepalive_idle_timeout > 0 ?
+				line->keepalive_idle_timeout :
+				DEFAULT_TCP_KEEPALIVE_IDLE_TIMEOUT;
+		interval_val = line->keepalive_probe_interval > -1 ?
+				line->keepalive_probe_interval :
+				DEFAULT_TCP_KEEPALIVE_INTERVAL;
+		retry_count_val = line->keepalive_num_probes > 0 ?
+				line->keepalive_num_probes :
+				DEFAULT_TCP_KEEPALIVE_RETRY_COUNT;
+		user_timeout_val = 1000 * retry_count_val * (interval_val + idle_val);
+		LOGP(DLINP, LOGL_NOTICE,
+		     "TCP keepalive idle_timeout=%us, interval=%us, retry_count=%u user_timeout=%ums\n",
+		     idle_val, interval_val, retry_count_val, user_timeout_val);
 		/* The following options are not portable! */
-		val = line->keepalive_idle_timeout > 0 ?
-			line->keepalive_idle_timeout :
-			DEFAULT_TCP_KEEPALIVE_IDLE_TIMEOUT;
-		ret = setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE,
-				 &val, sizeof(val));
+		ret = setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &idle_val, sizeof(idle_val));
 		if (ret < 0) {
 			LOGP(DLINP, LOGL_ERROR,
 			     "Failed to set TCP keepalive idle time: %s\n",
 			     strerror(errno));
 		}
-		val = line->keepalive_probe_interval > -1 ?
-			line->keepalive_probe_interval :
-			DEFAULT_TCP_KEEPALIVE_INTERVAL;
-		ret = setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL,
-				 &val, sizeof(val));
+		ret = setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &interval_val, sizeof(interval_val));
 		if (ret < 0) {
 			LOGP(DLINP, LOGL_ERROR,
 			     "Failed to set TCP keepalive interval: %s\n",
 			     strerror(errno));
 		}
-		val = line->keepalive_num_probes > 0 ?
-			line->keepalive_num_probes :
-			DEFAULT_TCP_KEEPALIVE_RETRY_COUNT;
-		ret = setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT,
-				 &val, sizeof(val));
+		ret = setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &retry_count_val, sizeof(retry_count_val));
 		if (ret < 0) {
 			LOGP(DLINP, LOGL_ERROR,
 			     "Failed to set TCP keepalive count: %s\n",
 			     strerror(errno));
 		}
-		val = 1000 * line->keepalive_num_probes *
-			line->keepalive_probe_interval +
-			line->keepalive_idle_timeout;
-		ret = setsockopt(fd, IPPROTO_TCP, TCP_USER_TIMEOUT,
-				 &val, sizeof(val));
+		ret = setsockopt(fd, IPPROTO_TCP, TCP_USER_TIMEOUT, &user_timeout_val, sizeof(user_timeout_val));
 		if (ret < 0) {
 			LOGP(DLINP, LOGL_ERROR,
 			     "Failed to set TCP user timeout: %s\n",
