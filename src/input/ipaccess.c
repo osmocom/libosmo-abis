@@ -894,13 +894,13 @@ int ipaccess_bts_handle_ccm(struct ipa_client_conn *link,
 			if (link->ofd->priv_nr >= E1INP_SIGN_RSL)
 				trx_nr = link->ofd->priv_nr - E1INP_SIGN_RSL;
 
-			LOGPIL(line, DLINP, LOGL_NOTICE, "received ID_GET for unit ID %u/%u/%u\n",
-			       dev->site_id, dev->bts_id, trx_nr);
+			LOGP(DLINP, LOGL_NOTICE, "received ID_GET for unit ID %u/%u/%u\n",
+			     dev->site_id, dev->bts_id, trx_nr);
 			rmsg = ipa_bts_id_resp(dev, data + 1, len - 1, trx_nr);
 			ret = ipa_send(link->ofd->fd, rmsg->data, rmsg->len);
 			if (ret != rmsg->len) {
-				LOGPIL(line, DLINP, LOGL_ERROR, "cannot send ID_RESP message. Reason: %s\n",
-				       strerror(errno));
+				LOGP(DLINP, LOGL_ERROR, "cannot send ID_RESP message. Reason: %s\n",
+				     strerror(errno));
 				goto err_rmsg;
 			}
 			msgb_free(rmsg);
@@ -909,8 +909,8 @@ int ipaccess_bts_handle_ccm(struct ipa_client_conn *link,
 			rmsg = ipa_bts_id_ack();
 			ret = ipa_send(link->ofd->fd, rmsg->data, rmsg->len);
 			if (ret != rmsg->len) {
-				LOGPIL(line, DLINP, LOGL_ERROR, "cannot send ID_ACK message. Reason: %s\n",
-				       strerror(errno));
+				LOGP(DLINP, LOGL_ERROR, "cannot send ID_ACK message. Reason: %s\n",
+				     strerror(errno));
 				goto err_rmsg;
 			}
 			msgb_free(rmsg);
