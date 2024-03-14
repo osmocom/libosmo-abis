@@ -1,3 +1,12 @@
+libosmo-abis (1.4.2) unstable; urgency=medium
+
+  [ Harald Welte ]
+  * [cosmetic] input/ipaccess.c: We use tab indent, not spaces [wtf]
+  * input/ipaccess: Make sure to say "TCP keepalive"
+  * Fix critical bug in default TCP keepalive user timeout
+
+ -- Vadim Yanitskiy <vyanitskiy@sysmocom.de>  Fri, 15 Mar 2024 00:53:26 +0700
+
 libosmo-abis (1.4.1) unstable; urgency=medium
 
   [ Oliver Smith ]
