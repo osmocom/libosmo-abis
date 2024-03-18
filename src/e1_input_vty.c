@@ -457,12 +457,59 @@ DEFUN(show_e1drv,
 	return CMD_SUCCESS;
 }
 
+static void e1line_ka_dump_vty(struct vty *vty, const struct e1inp_line *line)
+{
+	if (line->keepalive_num_probes == 0) {
+		vty_out(vty, "Keepalive: disabled%s", VTY_NEWLINE);
+		return;
+	}
+
+	vty_out(vty, "Keepalive: enabled%s", VTY_NEWLINE);
+
+	vty_out(vty, "  Number of probes: ");
+	if (line->keepalive_num_probes != E1INP_USE_DEFAULT)
+		vty_out(vty, "%d", line->keepalive_num_probes);
+	else
+		vty_out(vty, "(driver's default)");
+	vty_out(vty, "%s", VTY_NEWLINE);
+
+	vty_out(vty, "  Idle timeout: ");
+	if (line->keepalive_idle_timeout != E1INP_USE_DEFAULT)
+		vty_out(vty, "%ds", line->keepalive_idle_timeout);
+	else
+		vty_out(vty, "(driver's default)");
+	vty_out(vty, "%s", VTY_NEWLINE);
+
+	vty_out(vty, "  Probe interval: ");
+	if (line->keepalive_probe_interval != E1INP_USE_DEFAULT)
+		vty_out(vty, "%ds", line->keepalive_probe_interval);
+	else
+		vty_out(vty, "(driver's default)");
+	vty_out(vty, "%s", VTY_NEWLINE);
+}
+
+static void e1line_ipa_ka_dump_vty(struct vty *vty, const struct e1inp_line *line)
+{
+	if (line->ipa_kap == NULL) {
+		vty_out(vty, "IPA Keepalive: disabled%s", VTY_NEWLINE);
+		return;
+	}
+
+	vty_out(vty, "IPA Keepalive: enabled%s", VTY_NEWLINE);
+	vty_out(vty, "  Interval: %us%s", line->ipa_kap->interval, VTY_NEWLINE);
+	vty_out(vty, "  Timeout: %us%s", line->ipa_kap->wait_for_resp, VTY_NEWLINE);
+}
+
 static void e1line_dump_vty(struct vty *vty, struct e1inp_line *line,
 			    int stats)
 {
 	vty_out(vty, "E1 Line Number %u, Name %s, Driver %s%s",
 		line->num, line->name ? line->name : "",
 		line->driver->name, VTY_NEWLINE);
+	if (line->driver->has_keepalive)
+		e1line_ka_dump_vty(vty, line);
+	if (!strcmp(line->driver->name, "ipa"))
+		e1line_ipa_ka_dump_vty(vty, line);
 	if (line->pcap_file)
 		vty_out(vty, "PCAP %s%s", line->pcap_file, VTY_NEWLINE);
 	if (line->driver->vty_show)
