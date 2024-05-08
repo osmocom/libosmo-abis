@@ -15,7 +15,6 @@ dist-hook:
 EXTRA_DIST = \
 	     .version \
 	     README.md \
-	     contrib/libosmo-abis.spec.in \
 	     debian \
 	     git-version-gen \
 	     $(NULL)

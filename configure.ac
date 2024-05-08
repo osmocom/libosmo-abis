@@ -183,5 +183,4 @@ AC_OUTPUT(
 	include/Makefile
 	src/Makefile
 	tests/Makefile
-	Makefile
-	contrib/libosmo-abis.spec)
+	Makefile)
