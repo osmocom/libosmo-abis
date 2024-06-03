@@ -70,7 +70,20 @@ PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 1.9.0)
 PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 1.9.0)
 PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 1.9.0)
 PKG_CHECK_MODULES(LIBOSMOCODEC, libosmocodec >= 1.9.0)
-PKG_CHECK_MODULES(ORTP, ortp >= 0.22.0)
+
+AC_ARG_ENABLE([ortp], [AS_HELP_STRING([--disable-ortp], [Build without ortp support])],
+    [
+        ENABLE_ORTP=$enableval
+    ],
+    [
+        ENABLE_ORTP="yes"
+    ])
+AS_IF([test "x$ENABLE_ORTP" = "xyes"], [
+	PKG_CHECK_MODULES(ORTP, ortp >= 0.22.0)
+	AC_DEFINE([HAVE_ORTP],[1],[Build with ortp support])
+])
+AM_CONDITIONAL(ENABLE_ORTP, test "x$ENABLE_ORTP" = "xyes")
+AC_SUBST(ENABLE_ORTP)
 
 AC_ARG_ENABLE([dahdi],
 	      AC_HELP_STRING([--disable-dahdi],
@@ -134,45 +147,50 @@ then
 	CPPFLAGS="$CPPFLAGS $WERROR_FLAGS"
 fi
 
-_cflags_save=$CFLAGS
-CFLAGS="$CFLAGS $ORTP_CFLAGS"
-AC_COMPILE_IFELSE(
-	[AC_LANG_PROGRAM(
-		[[#include <ortp/ortp.h>]],
-		[[ortp_set_log_level_mask(NULL, 0xffff);]]
-	)],
-	[AC_DEFINE([HAVE_ORTP_LOG_DOMAIN], [1],
-		[ortp_set_log_level_mask requires domain parameter])],
-	[AC_DEFINE([HAVE_ORTP_LOG_DOMAIN], [0],
-		[ortp_set_log_level_mask has no domain parameter])])
-CFLAGS=$_cflags_save
+if test x"$ENABLE_ORTP" = x"yes"
+then
 
-_cflags_save=$CFLAGS
-CFLAGS="$CFLAGS $ORTP_CFLAGS -Werror"
-AC_COMPILE_IFELSE(
-	[AC_LANG_PROGRAM(
-		[[#include <ortp/ortp.h>
-		void fake_cb(struct _RtpSession *r, void *arg1, void *arg2, void *arg3) { return; }]],
-		[[rtp_session_signal_connect(NULL, "", fake_cb, (void*) fake_cb);]]
-	)],
-	[AC_DEFINE([RTP_SIGNAL_PTR_CAST(arg)], [(void*)(arg)],
-		[rtp_session_signal_connect requires pointer parameter])],
-	[AC_DEFINE([RTP_SIGNAL_PTR_CAST(arg)], [(unsigned long)(arg)],
-		[rtp_session_signal_connect requires ulong parameter])])
-CFLAGS=$_cflags_save
+	_cflags_save=$CFLAGS
+	CFLAGS="$CFLAGS $ORTP_CFLAGS"
+	AC_COMPILE_IFELSE(
+		[AC_LANG_PROGRAM(
+			[[#include <ortp/ortp.h>]],
+			[[ortp_set_log_level_mask(NULL, 0xffff);]]
+		)],
+		[AC_DEFINE([HAVE_ORTP_LOG_DOMAIN], [1],
+			[ortp_set_log_level_mask requires domain parameter])],
+		[AC_DEFINE([HAVE_ORTP_LOG_DOMAIN], [0],
+			[ortp_set_log_level_mask has no domain parameter])])
+	CFLAGS=$_cflags_save
 
-_cflags_save=$CFLAGS
-CFLAGS="$CFLAGS $ORTP_CFLAGS"
-AC_COMPILE_IFELSE(
-	[AC_LANG_PROGRAM(
-		[[#include <ortp/ortp.h>]],
-		[[OrtpMemoryFunctions memfn = { };]]
-	)],
-	[AC_DEFINE([HAVE_ORTP_MEM_FUNC], [1],
-		[OrtpMemoryFunctions is available, will use talloc])],
-	[AC_DEFINE([HAVE_ORTP_MEM_FUNC], [0],
-		[OrtpMemoryFunctions is not available])])
-CFLAGS=$_cflags_save
+	_cflags_save=$CFLAGS
+	CFLAGS="$CFLAGS $ORTP_CFLAGS -Werror"
+	AC_COMPILE_IFELSE(
+		[AC_LANG_PROGRAM(
+			[[#include <ortp/ortp.h>
+			void fake_cb(struct _RtpSession *r, void *arg1, void *arg2, void *arg3) { return; }]],
+			[[rtp_session_signal_connect(NULL, "", fake_cb, (void*) fake_cb);]]
+		)],
+		[AC_DEFINE([RTP_SIGNAL_PTR_CAST(arg)], [(void*)(arg)],
+			[rtp_session_signal_connect requires pointer parameter])],
+		[AC_DEFINE([RTP_SIGNAL_PTR_CAST(arg)], [(unsigned long)(arg)],
+			[rtp_session_signal_connect requires ulong parameter])])
+	CFLAGS=$_cflags_save
+
+	_cflags_save=$CFLAGS
+	CFLAGS="$CFLAGS $ORTP_CFLAGS"
+	AC_COMPILE_IFELSE(
+		[AC_LANG_PROGRAM(
+			[[#include <ortp/ortp.h>]],
+			[[OrtpMemoryFunctions memfn = { };]]
+		)],
+		[AC_DEFINE([HAVE_ORTP_MEM_FUNC], [1],
+			[OrtpMemoryFunctions is available, will use talloc])],
+		[AC_DEFINE([HAVE_ORTP_MEM_FUNC], [0],
+			[OrtpMemoryFunctions is not available])])
+	CFLAGS=$_cflags_save
+
+fi	# ENABLE_ORTP
 
 AC_MSG_RESULT([CFLAGS="$CFLAGS"])
 AC_MSG_RESULT([CPPFLAGS="$CPPFLAGS"])
