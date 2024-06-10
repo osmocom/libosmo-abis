@@ -367,8 +367,20 @@ static bool is_rtp_hr_sid(const uint8_t *data, const uint8_t data_len)
 
 static int rtp2trau_hr16(struct osmo_trau_frame *tf, const uint8_t *data, size_t data_len)
 {
-	if (data_len < GSM_HR_BYTES && data_len != 0)
+	/* accept both TS 101 318 and RFC 5993 payloads */
+	switch (data_len) {
+	case GSM_HR_BYTES:
+		break;
+	case GSM_HR_BYTES_RTP_RFC5993:
+		data++;
+		data_len--;
+		break;
+	case 0:
+		/* accept no-data input */
+		break;
+	default:
 		return -EINVAL;
+	}
 
 	tf->type = OSMO_TRAU16_FT_HR;
 
