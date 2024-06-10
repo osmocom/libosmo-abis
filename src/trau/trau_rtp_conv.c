@@ -269,13 +269,29 @@ static int rtp2trau_fr(struct osmo_trau_frame *tf, const uint8_t *data, size_t d
 {
 	int i, j, k, l, o;
 	enum osmo_gsm631_sid_class sidc;
+	bool bfi = false, taf = false, dtxd = false;
 
-	/* data_len == 0 for BFI frame */
-	if (data_len < GSM_FR_BYTES && data_len != 0)
-		return -EINVAL;
+	/* accept TW-TS-001 input */
+	if (data_len > 0 && (data[0] & 0xF0) == 0xE0) {
+		dtxd = (data[0] & 0x08) != 0;
+		bfi  = (data[0] & 0x02) != 0;
+		taf  = (data[0] & 0x01) != 0;
+		data++;
+		data_len--;
+	}
 
-	if (data_len && data[0] >> 4 != 0xd)
+	/* now we must have either standard FR or no-data input */
+	switch (data_len) {
+	case GSM_FR_BYTES:
+		if ((data[0] & 0xF0) != 0xD0)
+			return -EINVAL;
+		break;
+	case 0:
+		bfi = true;
+		break;
+	default:
 		return -EINVAL;
+	}
 
 	tf->type = OSMO_TRAU16_FT_FR;
 
@@ -308,20 +324,19 @@ static int rtp2trau_fr(struct osmo_trau_frame *tf, const uint8_t *data, size_t d
 	}
 	memset(&tf->c_bits[5], 0, 6);	/* C6 .. C11: Time Alignment */
 	if (tf->dir == OSMO_TRAU_DIR_UL) {
+		tf->c_bits[11] = bfi;		/* C12: BFI */
 		if (data_len == 0) {
-			tf->c_bits[11] = 1;	/* C12: BFI */
 			tf->c_bits[12] = 0;	/* C13: SID=0 */
 			tf->c_bits[13] = 0;	/* C14: SID=0 */
 		} else {
-			tf->c_bits[11] = 0;	/* C12: BFI */
 			/* SID classification per GSM 06.31 section 6.1.1 */
 			sidc = osmo_fr_sid_classify(data);
 			tf->c_bits[12] = (sidc >> 1) & 1; /* C13: msb */
 			tf->c_bits[13] = (sidc >> 0) & 1; /* C14: lsb */
 		}
-		tf->c_bits[14] = 0; /* C15: TAF (SACCH or not) */
-		tf->c_bits[15] = 1; /* C16: spare */
-		tf->c_bits[16] = 0; /* C17: DTXd not applied */
+		tf->c_bits[14] = taf;  /* C15: TAF (SACCH or not) */
+		tf->c_bits[15] = 1;    /* C16: spare */
+		tf->c_bits[16] = dtxd; /* C17: DTXd applied or not */
 	} else {
 		memset(&tf->c_bits[11], 1, 4);	/* C12 .. C15: spare */
 		if (data_len && osmo_fr_check_sid(data, data_len))
@@ -461,13 +476,29 @@ static int rtp2trau_efr(struct osmo_trau_frame *tf, const uint8_t *data, size_t 
 	int i, j;
 	ubit_t check_bits[26];
 	enum osmo_gsm631_sid_class sidc;
+	bool bfi = false, taf = false, dtxd = false;
 
-	/* data_len == 0 for BFI frame */
-	if (data_len < GSM_EFR_BYTES && data_len != 0)
-		return -EINVAL;
+	/* accept TW-TS-001 input */
+	if (data_len > 0 && (data[0] & 0xF0) == 0xE0) {
+		dtxd = (data[0] & 0x08) != 0;
+		bfi  = (data[0] & 0x02) != 0;
+		taf  = (data[0] & 0x01) != 0;
+		data++;
+		data_len--;
+	}
 
-	if (data_len && data[0] >> 4 != 0xc)
+	/* now we must have either standard EFR or no-data input */
+	switch (data_len) {
+	case GSM_EFR_BYTES:
+		if ((data[0] & 0xF0) != 0xC0)
+			return -EINVAL;
+		break;
+	case 0:
+		bfi = true;
+		break;
+	default:
 		return -EINVAL;
+	}
 
 	tf->type = OSMO_TRAU16_FT_EFR;
 
@@ -492,20 +523,19 @@ static int rtp2trau_efr(struct osmo_trau_frame *tf, const uint8_t *data, size_t 
 
 	memset(&tf->c_bits[5], 0, 6); /* C6 .. C11: Time Alignment */
 	if (tf->dir == OSMO_TRAU_DIR_UL) {
+		tf->c_bits[11] = bfi;		/* C12: BFI */
 		if (data_len == 0) {
-			tf->c_bits[11] = 1;	/* C12: BFI */
 			tf->c_bits[12] = 0;	/* C13: SID=0 */
 			tf->c_bits[13] = 0;	/* C14: SID=0 */
 		} else {
-			tf->c_bits[11] = 0;	/* C12: BFI */
 			/* SID classification per GSM 06.81 section 6.1.1 */
 			sidc = osmo_efr_sid_classify(data);
 			tf->c_bits[12] = (sidc >> 1) & 1; /* C13: msb */
 			tf->c_bits[13] = (sidc >> 0) & 1; /* C14: lsb */
 		}
-		tf->c_bits[14] = 0; /* C15: TAF (SACCH) */
-		tf->c_bits[15] = 1; /* C16: spare */
-		tf->c_bits[16] = 0; /* C17: DTXd applied */
+		tf->c_bits[14] = taf;  /* C15: TAF (SACCH or not) */
+		tf->c_bits[15] = 1;    /* C16: spare */
+		tf->c_bits[16] = dtxd; /* C17: DTXd applied or not */
 	} else {
 		tf->c_bits[11] = 1; /* C12: UFE (good uplink) */
 		memset(&tf->c_bits[12], 1, 3);	/* C13 .. C15: spare */
