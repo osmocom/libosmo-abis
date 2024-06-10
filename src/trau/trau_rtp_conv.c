@@ -47,7 +47,7 @@ static const uint8_t gsm_fr_map[] = {
 
 
 /*
- * EFR TRAU parity
+ * EFR TRAU parity (also used for HR)
  *
  * g(x) = x^3 + x^1 + 1
  */
@@ -461,11 +461,12 @@ static int rtp2trau_hr16(struct osmo_trau_frame *tf, const uint8_t *data, size_t
 		tf->ufi = 0;
 	else
 		tf->ufi = 1;
-	/* CRC is computed by TRAU frame encoder */
 	if (data_len)
 		osmo_pbit2ubit(tf->d_bits, data, GSM_HR_BYTES * 8);
 	else
 		memset(tf->d_bits, 0, GSM_HR_BYTES * 8);
+	/* CRC is *not* computed by TRAU frame encoder - we have to do it */
+	osmo_crc8gen_set_bits(&gsm0860_efr_crc3, tf->d_bits, 44, tf->crc_bits);
 
 	return 0;
 }
