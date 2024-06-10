@@ -147,40 +147,51 @@ enum rtp_hr_ietf_ft {
 
 static const uint8_t rtp_hr_sid[14] = { 0x00, 0x00, 0x00, 0x00, 0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 
-/*! Generate the 14 bytes ETSI TS 101 318 RTP payload for HR from a decoded 16k TRAU frame.
- *  Note that thsi differs from the IETF RFC5993 format.  However, as OsmoBTS implements
- *  the TS 101 318 format, we also use the same format here. osmo-mgw can convert them.
+/*! Generate an RFC 5993 RTP payload for HR from a decoded 16k TRAU frame.
+ *  We previously emitted TS 101 318 format; however, RFC 5993 is the format
+ *  specified in TS 48.103 for AoIP, it can also be extended with TRAU-UL-like
+ *  capabilities with TW-TS-002, and we now support RFC 5993 output in OsmoBTS
+ *  on all models.
  *  \param[out] out caller-provided output buffer
  *  \param[in] out_len length of out buffer in bytes
  *  \param[in] tf input TRAU frame in decoded form
  *  \returns number of bytes generated in 'out'; negative on error. */
 static int trau2rtp_hr16(uint8_t *out, size_t out_len, const struct osmo_trau_frame *tf)
 {
-	unsigned int i;
+	enum osmo_gsm631_sid_class sidc;
 
 	if (tf->type != OSMO_TRAU16_FT_HR)
 		return -EINVAL;
 
+	if (out_len < GSM_HR_BYTES_RTP_RFC5993)
+		return -ENOSPC;
+
 	/* HR Data Bits according to TS 48.061 Section 5.1.4.1.1 */
 
-	if (tf->dir == OSMO_TRAU_DIR_UL && tf->c_bits[11]) /* C12: BFI */
+	sidc = (tf->c_bits[12] << 1) | tf->c_bits[13];
+	/* both C13 and C14 being set is invalid combination */
+	if (sidc > OSMO_GSM631_SID_CLASS_VALID)
 		goto bad_frame;
 
-	if (out_len < GSM_HR_BYTES)
-		return -ENOSPC;
+	/* Plain RFC 5993 without TW-TS-002 extensions does not allow
+	 * BFI or invalid SID packets. */
+	if (tf->c_bits[11] || sidc == OSMO_GSM631_SID_CLASS_INVALID)
+		goto bad_frame;
+
+	/* RFC 5993 Frame Type is equal to GSM 06.41 SID classification,
+	 * restricted to just speech or valid SID per above. */
+	out[0] = sidc << 4;
 
 	/* TS 101 318 Section 5.2: The order of occurrence of the codec parameters in the buffer is
 	 * the same as order of occurrence over the Abis as defined in annex B of ETS 300 969
 	 * [which is 3GPP TS 46.020 */
-	osmo_ubit2pbit(out, tf->d_bits, 112);
+	osmo_ubit2pbit(out + 1, tf->d_bits, 112);
 
-	if (tf->c_bits[12] || tf->c_bits[13]) {
-		/* Generate SID frame as per TS 101 318 Section 5.2.2 */
-		for (i = 0; i < sizeof(rtp_hr_sid); i++)
-			out[i] = out[i] | rtp_hr_sid[i];
-	}
+	/* RFC 5993 requires SID frames to be perfect, error-free */
+	if (sidc == OSMO_GSM631_SID_CLASS_VALID)
+		osmo_hr_sid_reset(out + 1);
 
-	return GSM_HR_BYTES;
+	return GSM_HR_BYTES_RTP_RFC5993;
 
 bad_frame:
 	return 0;
