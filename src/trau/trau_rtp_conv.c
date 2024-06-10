@@ -186,6 +186,7 @@ static void twtw002_hr16_set_extra_flags(uint8_t *out, const struct osmo_trau_fr
 static int trau2rtp_hr16(uint8_t *out, size_t out_len, const struct osmo_trau_frame *tf, bool emit_twts002)
 {
 	enum osmo_gsm631_sid_class sidc;
+	int rc;
 
 	if (tf->type != OSMO_TRAU16_FT_HR)
 		return -EINVAL;
@@ -194,6 +195,12 @@ static int trau2rtp_hr16(uint8_t *out, size_t out_len, const struct osmo_trau_fr
 		return -ENOSPC;
 
 	/* HR Data Bits according to TS 48.061 Section 5.1.4.1.1 */
+
+	/* bad CRC means bad frame, no matter what else is going on */
+	rc = osmo_crc8gen_check_bits(&gsm0860_efr_crc3, tf->d_bits, 44,
+				     tf->crc_bits);
+	if (rc)
+		goto bad_frame;
 
 	sidc = (tf->c_bits[12] << 1) | tf->c_bits[13];
 	/* both C13 and C14 being set is invalid combination */
