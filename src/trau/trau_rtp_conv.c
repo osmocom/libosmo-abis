@@ -407,7 +407,7 @@ static int rtp2trau_hr16(struct osmo_trau_frame *tf, const uint8_t *data, size_t
 		tf->c_bits[15] = 0; /* C16: SP */
 		tf->c_bits[16] = 0; /* C17: DTXd shall not be applied */
 	} else {
-		tf->c_bits[11] = 0; /* C12: UFE */
+		tf->c_bits[11] = 1; /* C12: UFE */
 		tf->c_bits[12] = 1; /* C13: spare */
 		tf->c_bits[13] = 1; /* C14: spare */
 		tf->c_bits[14] = 1; /* C15: spare */
