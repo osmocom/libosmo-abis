@@ -425,7 +425,9 @@ static int rtp2trau_hr16(struct osmo_trau_frame *tf, const uint8_t *data, size_t
 		tf->ufi = 1;
 	/* CRC is computed by TRAU frame encoder */
 	if (data_len)
-		memcpy(tf->d_bits, data, GSM_HR_BYTES);
+		osmo_pbit2ubit(tf->d_bits, data, GSM_HR_BYTES * 8);
+	else
+		memset(tf->d_bits, 0, GSM_HR_BYTES * 8);
 
 	return 0;
 }
