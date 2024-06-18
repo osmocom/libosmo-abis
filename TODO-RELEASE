@@ -9,3 +9,4 @@
 #library	what		description / commit summary line
 libosmotrau	struct osmo_trau2rtp_state extended (ABI break)
 libosmogsm	>1.9.0		rtp_extensions.h new header
+libosmocodec	>1.9.0		bugfix in osmo_hr_check_sid() in case length=0

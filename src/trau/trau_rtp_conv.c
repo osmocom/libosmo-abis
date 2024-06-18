@@ -162,8 +162,6 @@ enum super5993_ft {
 	FT_NO_DATA		= 7,
 };
 
-static const uint8_t rtp_hr_sid[14] = { 0x00, 0x00, 0x00, 0x00, 0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
-
 static void twtw002_hr16_set_extra_flags(uint8_t *out, const struct osmo_trau_frame *tf)
 {
 	if (tf->c_bits[16])	/* DTXd */
@@ -446,21 +444,6 @@ static int rtp2trau_fr(struct osmo_trau_frame *tf, const uint8_t *data, size_t d
 	return 0;
 }
 
-/* does the RTP HR payload resemble a SID frame or not */
-static bool is_rtp_hr_sid(const uint8_t *data, const uint8_t data_len)
-{
-	int i;
-
-	if (data_len < GSM_HR_BYTES)
-		return false;
-
-	for (i = 0; i < GSM_HR_BYTES; i++) {
-		if ((data[i] & rtp_hr_sid[i]) != rtp_hr_sid[i])
-			return false;
-	}
-	return true;
-}
-
 static int rtp2trau_hr16(struct osmo_trau_frame *tf, const uint8_t *data, size_t data_len)
 {
 	/* accept both TS 101 318 and RFC 5993 payloads */
@@ -503,7 +486,7 @@ static int rtp2trau_hr16(struct osmo_trau_frame *tf, const uint8_t *data, size_t
 			tf->c_bits[11] = 1;
 		else
 			tf->c_bits[11] = 0;
-		if (is_rtp_hr_sid(data, data_len)) {
+		if (osmo_hr_check_sid(data, data_len)) {
 			/* SID=2 is a valid SID frame */
 			tf->c_bits[12] = 1;
 			tf->c_bits[13] = 0;
@@ -519,7 +502,7 @@ static int rtp2trau_hr16(struct osmo_trau_frame *tf, const uint8_t *data, size_t
 		tf->c_bits[12] = 1; /* C13: spare */
 		tf->c_bits[13] = 1; /* C14: spare */
 		tf->c_bits[14] = 1; /* C15: spare */
-		if (is_rtp_hr_sid(data, data_len))
+		if (osmo_hr_check_sid(data, data_len))
 			tf->c_bits[15] = 0; /* C16: SP */
 		else
 			tf->c_bits[15] = 1; /* C16: SP */
