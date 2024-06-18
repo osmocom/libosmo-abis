@@ -162,7 +162,7 @@ enum super5993_ft {
 	FT_NO_DATA		= 7,
 };
 
-static void twtw002_hr16_set_extra_flags(uint8_t *out, const struct osmo_trau_frame *tf)
+static void twts002_hr16_set_extra_flags(uint8_t *out, const struct osmo_trau_frame *tf)
 {
 	if (tf->c_bits[16])	/* DTXd */
 		out[0] |= 0x08;
@@ -223,7 +223,7 @@ static int trau2rtp_hr16(uint8_t *out, size_t out_len, const struct osmo_trau_fr
 	if (emit_twts002) {
 		if (tf->c_bits[11] && sidc == OSMO_GSM631_SID_CLASS_SPEECH)
 			out[0] = FT_BFI_WITH_DATA << 4;
-		twtw002_hr16_set_extra_flags(out, tf);
+		twts002_hr16_set_extra_flags(out, tf);
 		/* invalid SID frames are truncated in TW-TS-002 */
 		if (sidc == OSMO_GSM631_SID_CLASS_INVALID)
 			return 1;
@@ -243,7 +243,7 @@ static int trau2rtp_hr16(uint8_t *out, size_t out_len, const struct osmo_trau_fr
 bad_frame:
 	if (emit_twts002) {
 		out[0] = FT_NO_DATA << 4;
-		twtw002_hr16_set_extra_flags(out, tf);
+		twts002_hr16_set_extra_flags(out, tf);
 		return 1;
 	} else
 		return 0;
