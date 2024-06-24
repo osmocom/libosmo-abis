@@ -82,7 +82,7 @@ enum ts48060_amr_frame_classification {
 	TS48060_AMR_FC_NO_SPEECH	= 0x0,
 };
 
-/* 16k sub-slots */
+/* GSM 08.60 frame types, 16k sub-slots */
 static const ubit_t ft_fr_up_bits[5] =		{ 0, 0, 0, 1, 0 };
 static const ubit_t ft_fr_down_bits[5] =	{ 1, 1, 1, 0, 0 };
 static const ubit_t ft_data_up_bits[5] =	{ 0, 1, 0, 0, 0 };
@@ -96,7 +96,7 @@ static const ubit_t ft_oam_down_bits[5] =	{ 1, 1, 0, 1, 1 };
 static const ubit_t ft_d145s_bits[5] =		{ 1, 0, 1, 0, 0 };
 static const ubit_t ft_edata_bits[5] =		{ 1, 1, 1, 1, 1 };
 
-/* 8k sub-slots */
+/* GSM 08.61 frame types, still on 16k sub-slots */
 static const ubit_t ft_hr_up_bits[5] =		{ 0, 0, 0, 1, 1 };
 static const ubit_t ft_hr_down_bits[5] =	{ 1, 1, 1, 0, 1 };
 static const ubit_t ft_data_hr_up_bits[5] =	{ 0, 1, 0, 0, 1 };
