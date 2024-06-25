@@ -249,6 +249,110 @@ bad_frame:
 		return 0;
 }
 
+static bool hr8_xc_bits_good_parity(const ubit_t *xc_bits)
+{
+	int i;
+	unsigned int sum = 0;
+
+	for (i = 0; i < 6; i++)
+		sum += xc_bits[i];
+	if (sum & 1)
+		return true;	/* odd sum good */
+	else
+		return false;	/* even sum bad */
+}
+
+static void twts002_hr8_set_extra_flags(uint8_t *out, const struct osmo_trau_frame *tf)
+{
+	if (tf->c_bits[8])	/* DTXd */
+		out[0] |= 0x08;
+	if (tf->xc_bits[4])	/* UFI */
+		out[0] |= 0x02;
+}
+
+/*! Generate an RFC 5993 or TW-TS-002 RTP payload for HRv1
+ *  from a decoded 8k TRAU frame.
+ *  \param[out] out caller-provided output buffer
+ *  \param[in] out_len length of out buffer in bytes
+ *  \param[in] tf input TRAU frame in decoded form
+ *  \param[in] emit_twts002 self-explanatory
+ *  \returns number of bytes generated in 'out'; negative on error. */
+static int trau2rtp_hr8(uint8_t *out, size_t out_len,
+			const struct osmo_trau_frame *tf, bool emit_twts002)
+{
+	unsigned xc1_4;
+
+	/* function interface preliminaries */
+	if (tf->type != OSMO_TRAU8_SPEECH)
+		return -EINVAL;
+	if (out_len < GSM_HR_BYTES_RTP_RFC5993)
+		return -ENOSPC;
+
+	/* Before considering anything else, if we have bad parity in
+	 * frame classification bits or bad CRC in payload bits,
+	 * we treat this frame as totally invalid: BFI with no data. */
+	if (!hr8_xc_bits_good_parity(tf->xc_bits) ||
+	    osmo_crc8gen_check_bits(&gsm0860_efr_crc3, tf->d_bits, 44,
+				    tf->crc_bits))
+		goto bad_frame;
+
+	/* classify this frame per XC1..XC4 */
+	xc1_4 = (tf->xc_bits[0] << 3) | (tf->xc_bits[1] << 2) |
+		(tf->xc_bits[2] << 1) | (tf->xc_bits[3] << 0);
+	switch (xc1_4) {
+	case 0:
+		/* good speech frame (BFI=0, SID=0) */
+		out[0] = FT_GOOD_SPEECH << 4;
+		if (emit_twts002)
+			twts002_hr8_set_extra_flags(out, tf);
+		osmo_ubit2pbit(out + 1, tf->d_bits, 112);
+		return GSM_HR_BYTES_RTP_RFC5993;
+	case 1:
+		/* valid SID frame (BFI=0, SID=2) */
+		out[0] = FT_GOOD_SID << 4;
+		if (emit_twts002)
+			twts002_hr8_set_extra_flags(out, tf);
+		osmo_ubit2pbit(out + 1, tf->d_bits, 112);
+		/* RFC 5993 requires SID frames to be perfect, error-free */
+		if (!emit_twts002)
+			osmo_hr_sid_reset(out + 1);
+		return GSM_HR_BYTES_RTP_RFC5993;
+	case 4:
+	case 5:
+		/* invalid SID frame (multiple BFI/SID combinations) */
+		/* can be represented only in TW-TS-002, not in RFC 5993 */
+		if (!emit_twts002)
+			return 0;
+		out[0] = FT_INVALID_SID << 4;
+		twts002_hr8_set_extra_flags(out, tf);
+		/* XC4 is TAF with this frame type */
+		if (tf->xc_bits[3])
+			out[0] |= 0x01;
+		return 1;	/* short format per TW-TS-002 */
+	case 6:
+	case 7:
+		/* bad speech frame (BFI=1, SID=0) */
+		if (!emit_twts002)
+			return 0;
+		out[0] = FT_BFI_WITH_DATA << 4;
+		twts002_hr8_set_extra_flags(out, tf);
+		/* XC4 is TAF with this frame type */
+		if (tf->xc_bits[3])
+			out[0] |= 0x01;
+		osmo_ubit2pbit(out + 1, tf->d_bits, 112);
+		return GSM_HR_BYTES_RTP_RFC5993;
+	default:
+bad_frame:
+		/* received garbage, emit BFI with no data */
+		if (emit_twts002) {
+			out[0] = FT_NO_DATA << 4;
+			twts002_hr8_set_extra_flags(out, tf);
+			return 1;
+		} else
+			return 0;
+	}
+}
+
 /*! Generate the 31 bytes RTP payload for GSM-EFR from a decoded TRAU frame.
  *  \param[out] out caller-provided output buffer
  *  \param[in] out_len length of out buffer in bytes
@@ -514,6 +618,69 @@ static int rtp2trau_hr16(struct osmo_trau_frame *tf, const uint8_t *data, size_t
 		tf->ufi = 0;
 	else
 		tf->ufi = 1;
+	if (data_len)
+		osmo_pbit2ubit(tf->d_bits, data, GSM_HR_BYTES * 8);
+	else
+		memset(tf->d_bits, 0, GSM_HR_BYTES * 8);
+	/* CRC is *not* computed by TRAU frame encoder - we have to do it */
+	osmo_crc8gen_set_bits(&gsm0860_efr_crc3, tf->d_bits, 44, tf->crc_bits);
+
+	return 0;
+}
+
+static int rtp2trau_hr8(struct osmo_trau_frame *tf, const uint8_t *data, size_t data_len)
+{
+	/* accept both TS 101 318 and RFC 5993 payloads */
+	switch (data_len) {
+	case GSM_HR_BYTES:
+		break;
+	case GSM_HR_BYTES_RTP_RFC5993:
+		data++;
+		data_len--;
+		break;
+	case 0:
+		/* accept no-data input */
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	/* FIXME: implement TRAU-UL frame generation if and when
+	 * someone actually needs it in a program that uses
+	 * this library. */
+	if (tf->dir != OSMO_TRAU_DIR_DL)
+		return -ENOTSUP;
+
+	tf->type = OSMO_TRAU8_SPEECH;
+
+	/* C1..C5 */
+	tf->c_bits[0] = 0;
+	tf->c_bits[1] = 0;
+	tf->c_bits[2] = 0;
+	tf->c_bits[3] = 1;	/* UFE: good uplink */
+	tf->c_bits[4] = 0;	/* odd parity */
+	/* C6..C9: spare bits */
+	memset(tf->c_bits + 5, 1, 4);
+
+	/* XC1..XC6 */
+	if (osmo_hr_check_sid(data, data_len)) {
+		tf->xc_bits[0] = 0;
+		tf->xc_bits[1] = 0;
+		tf->xc_bits[2] = 0;
+		tf->xc_bits[3] = 1;
+		tf->xc_bits[4] = 0;
+		tf->xc_bits[5] = 0;	/* odd parity */
+	} else {
+		tf->xc_bits[0] = 0;
+		tf->xc_bits[1] = 0;
+		tf->xc_bits[2] = 0;
+		tf->xc_bits[3] = 0;
+		tf->xc_bits[4] = 0;
+		tf->xc_bits[5] = 1;	/* odd parity */
+	}
+
+	memset(&tf->t_bits[0], 1, 2);
+
 	if (data_len)
 		osmo_pbit2ubit(tf->d_bits, data, GSM_HR_BYTES * 8);
 	else
@@ -801,6 +968,8 @@ int osmo_trau2rtp(uint8_t *out, size_t out_len, const struct osmo_trau_frame *tf
 		return trau2rtp_efr(out, out_len, tf, check_twts001(st));
 	case OSMO_TRAU16_FT_HR:
 		return trau2rtp_hr16(out, out_len, tf, check_twts002(st));
+	case OSMO_TRAU8_SPEECH:
+		return trau2rtp_hr8(out, out_len, tf, check_twts002(st));
 	default:
 		return -EINVAL;
 	}
@@ -816,6 +985,8 @@ int osmo_rtp2trau(struct osmo_trau_frame *tf, const uint8_t *rtp, size_t rtp_len
 		return rtp2trau_efr(tf, rtp, rtp_len);
 	case OSMO_TRAU16_FT_HR:
 		return rtp2trau_hr16(tf, rtp, rtp_len);
+	case OSMO_TRAU8_SPEECH:
+		return rtp2trau_hr8(tf, rtp, rtp_len);
 	default:
 		return -EINVAL;
 	}
