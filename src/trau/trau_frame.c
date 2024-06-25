@@ -1360,7 +1360,7 @@ int osmo_trau_frame_decode_16k(struct osmo_trau_frame *fr, const ubit_t *bits,
 #define TRAU8_FT_AMR_NO_SPEECH_CMR	0x14	/* 1, 0, 1, 0, 0 */
 #define TRAU8_FT_AMR_475_515_590	0..7
 
-const uint8_t bit8_0[16] = { 0,  };
+static const uint8_t bit8_0[8] = { 0,  };
 
 /*!< check sync pattern for hr/data/oam */
 static bool is_hr(const ubit_t *bits)
