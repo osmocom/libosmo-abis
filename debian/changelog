@@ -1,3 +1,46 @@
+libosmo-abis (1.6.0) unstable; urgency=medium
+
+  [ Andreas Eversberg ]
+  * Add support for sending and receiving Sa bits, as well as some line signals
+
+  [ Harald Welte ]
+  * ipaccess: Log ERROR message if IPA keep-alive FSM allocation fails
+  * ipa_keepalive: Make FSM a bit less quiet
+  * input/ipaccess: Always log with context, if we have any
+  * input/ipaccess: Makes sure to say "TCP keepalive"
+  * [cosmetic] Don't break lines shorter than 120 chars
+  * input/ipa: Log error message also in unexpeted error paths
+  * [cosmetic] input/ipaccess.c: We use tab indent, not spaces [wtf]
+  * Fix critical bug in default TCP keepalive user timeout
+
+  [ Vadim Yanitskiy ]
+  * input/ipaccess: fix regression in ipaccess_bts_handle_ccm()
+  * e1line_dump_vty(): dump keepalive state and params
+  * README.md: cosmetic: fix a typo
+
+  [ Oliver Smith ]
+  * contrib: remove rpm spec file
+
+  [ Mychaela N. Falconia ]
+  * rtp2trau_hr16: fix UFE bit setting
+  * TRAU<->RTP HRv1: fix SID frame definition
+  * rtp2trau_hr16: set D bits correctly
+  * rtp2trau_hr16: accept both TS 101 318 and RFC 5993 payload formats
+  * trau2rtp_hr16: change output format to RFC 5993
+  * RTP->TRAU, FR/EFR: accept TW-TS-001 extended payloads
+  * rtp2trau_hr16: set CRC bits correctly
+  * TRAU->RTP: add support for TW-TS-001 & TW-TS-002
+  * trau2rtp_hr16: check CRC bits in the TRAU frame
+  * rtp2trau_hr16: use osmo_hr_check_sid()
+  * trau_rtp_conv.c cosmetic: fix typo in name of static function
+  * trau_frame.c cosmetic: fix misleading comment
+  * {de,en}code8_hr: fix totally broken functions
+  * trau_frame: fix 8k decoding
+  * trau_rtp_conv: add support for HRv1 in 8k format
+  * build config: add --disable-ortp option
+
+ -- Oliver Smith <osmith@sysmocom.de>  Wed, 24 Jul 2024 11:41:07 +0200
+
 libosmo-abis (1.5.1) unstable; urgency=medium
 
   [ Harald Welte ]
