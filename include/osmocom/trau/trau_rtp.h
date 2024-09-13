@@ -25,6 +25,7 @@
 struct osmo_trau2rtp_state {
 	enum osmo_trau_frame_type type;
 	uint8_t rtp_extensions;
+	bool interm_rate_16k;
 };
 
 

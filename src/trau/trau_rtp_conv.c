@@ -1055,6 +1055,220 @@ static int trau2rtp_data_hr8(uint8_t *out, size_t out_len,
 	return RFC4040_RTP_PLEN;
 }
 
+/*
+ * CSD in the opposite direction: from clearmode RTP input
+ * to TRAU frame output.
+ *
+ * Important note about V.110 frame alignment: in the output from trau2rtp
+ * process or from OsmoBTS, the 2 or 4 V.110 frames that fit into a 20 ms
+ * RTP clearmode packet are always perfectly aligned in that packet.
+ * However, there does not seem to be any formally defined policy in
+ * Osmocom as to whether this alignment is required in RTP input to
+ * OsmoBTS or to the future RTP-to-E1 MGW (OsmoMGW extension or otherwise),
+ * or if these processes are required to hunt for arbitrary V.110 frame
+ * alignment in their RTP input.
+ *
+ * Given that the current CSD implementation in OsmoBTS requires perfect
+ * V.110 alignment in RTP input, and given that a stateful V.110 alignment
+ * hunt implementation cannot be fitted into osmo_rtp2trau API,
+ * the approach implemented here is to also require perfect alignment.
+ * If our RTP input is not a perfectly aligned pair or quadruple of
+ * V.110 frames, we emit an idle data frame (all bits set to 1) per
+ * TS 48.060 section 6.5.1 and TS 48.061 section 6.7.4.
+ *
+ * Also note: in the case of OSMO_TRAU16_FT_DATA output, the caller of
+ * osmo_rtp2trau() API must set st->interm_rate_16k (a Boolean flag)
+ * appropriately for 8 kbit/s or 16 kbit/s intermediate rate.
+ * In the absence of out-of-band information, this flag can be set
+ * from control bit C6 of the first received TRAU-UL frame - that is
+ * how traditional TRAUs do it.
+ */
+
+static bool check_v110_align(const ubit_t *ra_bits)
+{
+	int i;
+
+	for (i = 0; i < 8; i++) {
+		if (ra_bits[i])
+			return false;
+	}
+	for (i = 1; i < 10; i++) {
+		if (!ra_bits[i * 8])
+			return false;
+	}
+	return true;
+}
+
+static void v110_to_63bits(ubit_t *out, const ubit_t *ra_bits)
+{
+	memcpy(out, ra_bits + 9, 7);
+	memcpy(out + 7, ra_bits + 17, 7);
+	memcpy(out + 14, ra_bits + 25, 7);
+	memcpy(out + 21, ra_bits + 33, 7);
+	memcpy(out + 28, ra_bits + 41, 7);
+	memcpy(out + 35, ra_bits + 49, 7);
+	memcpy(out + 42, ra_bits + 57, 7);
+	memcpy(out + 49, ra_bits + 65, 7);
+	memcpy(out + 56, ra_bits + 73, 7);
+}
+
+/* intermediate rate 8 kbit/s */
+static void rtp2trau_data_ir8(struct osmo_trau_frame *tf, const uint8_t *data,
+			      size_t data_len, unsigned second_offset)
+{
+	ubit_t ra_bits[80 * 2];
+	int i;
+
+	if (data_len != RFC4040_RTP_PLEN)
+		goto idle_fill;
+
+	/* reverse RA2 first */
+	for (i = 0; i < sizeof(ra_bits); i++)
+		ra_bits[i] = (data[i] >> 7) & 1;
+
+	/* enforce two properly aligned V.110 frames */
+	if (!check_v110_align(ra_bits))
+		goto idle_fill;
+	if (!check_v110_align(ra_bits + 80))
+		goto idle_fill;
+
+	/* all checks passed - copy the payload */
+	v110_to_63bits(tf->d_bits, ra_bits);
+	v110_to_63bits(tf->d_bits + second_offset, ra_bits + 80);
+	return;
+
+idle_fill:
+	memset(tf->d_bits, 1, 63);
+	memset(tf->d_bits + second_offset, 1, 63);
+}
+
+/* intermediate rate 16 kbit/s */
+static void rtp2trau_data_ir16(struct osmo_trau_frame *tf, const uint8_t *data,
+			       size_t data_len)
+{
+	ubit_t ra_bits[80 * 4];
+	int i, o;
+
+	if (data_len != RFC4040_RTP_PLEN)
+		goto idle_fill;
+
+	/* reverse RA2 first */
+	o = 0;
+	for (i = 0; i < RFC4040_RTP_PLEN; i++) {
+		ra_bits[o++] = (data[i] >> 7) & 1;
+		ra_bits[o++] = (data[i] >> 6) & 1;
+	}
+
+	/* enforce 4 properly aligned V.110 frames */
+	if (!check_v110_align(ra_bits))
+		goto idle_fill;
+	if (!check_v110_align(ra_bits + 80))
+		goto idle_fill;
+	if (!check_v110_align(ra_bits + 80 * 2))
+		goto idle_fill;
+	if (!check_v110_align(ra_bits + 80 * 3))
+		goto idle_fill;
+
+	/* all checks passed - copy the payload */
+	v110_to_63bits(tf->d_bits, ra_bits);
+	v110_to_63bits(tf->d_bits + 63, ra_bits + 80);
+	v110_to_63bits(tf->d_bits + 63 * 2, ra_bits + 80 * 2);
+	v110_to_63bits(tf->d_bits + 63 * 3, ra_bits + 80 * 3);
+	return;
+
+idle_fill:
+	memset(tf->d_bits, 1, 63 * 4);
+}
+
+static int rtp2trau_data_fr(struct osmo_trau_frame *tf, const uint8_t *data,
+			    size_t data_len, bool interm_rate_16k)
+{
+	tf->type = OSMO_TRAU16_FT_DATA;
+
+	if (tf->dir == OSMO_TRAU_DIR_UL) {
+		/* C1 .. C5: FR data UL */
+		tf->c_bits[0] = 0;
+		tf->c_bits[1] = 1;
+		tf->c_bits[2] = 0;
+		tf->c_bits[3] = 0;
+		tf->c_bits[4] = 0;
+	} else {
+		/* C1 .. C5: FR data DL */
+		tf->c_bits[0] = 1;
+		tf->c_bits[1] = 0;
+		tf->c_bits[2] = 1;
+		tf->c_bits[3] = 1;
+		tf->c_bits[4] = 0;
+	}
+
+	if (interm_rate_16k) {
+		tf->c_bits[5] = 1;
+		rtp2trau_data_ir16(tf, data, data_len);
+	} else {
+		tf->c_bits[5] = 0;
+		rtp2trau_data_ir8(tf, data, data_len, 63 * 2);
+		/* remaining data positions are unused in this format */
+		memset(tf->d_bits + 63, 1, 63);
+		memset(tf->d_bits + 63 * 3, 1, 63);
+	}
+
+	/* remaining C bits are unused */
+	memset(tf->c_bits + 6, 1, 9);
+
+	return 0;
+}
+
+static int rtp2trau_data_hr16(struct osmo_trau_frame *tf, const uint8_t *data,
+			      size_t data_len)
+{
+	tf->type = OSMO_TRAU16_FT_DATA_HR;
+
+	if (tf->dir == OSMO_TRAU_DIR_UL) {
+		/* C1 .. C5: HR data UL */
+		tf->c_bits[0] = 0;
+		tf->c_bits[1] = 1;
+		tf->c_bits[2] = 0;
+		tf->c_bits[3] = 0;
+		tf->c_bits[4] = 1;
+	} else {
+		/* C1 .. C5: HR data DL */
+		tf->c_bits[0] = 1;
+		tf->c_bits[1] = 0;
+		tf->c_bits[2] = 1;
+		tf->c_bits[3] = 1;
+		tf->c_bits[4] = 1;
+	}
+
+	tf->c_bits[5] = 0;
+	/* Note that Osmocom trau_frame decoding and encoding API
+	 * puts the second reduced V.110 frame at d_bits position 63,
+	 * unlike 8 kbit/s IR in FR-data frame type where it resides
+	 * at d_bits position 63 * 2. */
+	rtp2trau_data_ir8(tf, data, data_len, 63);
+
+	/* remaining C bits are unused */
+	memset(tf->c_bits + 6, 1, 9);
+
+	return 0;
+}
+
+static int rtp2trau_data_hr8(struct osmo_trau_frame *tf, const uint8_t *data,
+			     size_t data_len)
+{
+	tf->type = OSMO_TRAU8_DATA;
+
+	/* C1 .. C5: HR data */
+	tf->c_bits[0] = 0;
+	tf->c_bits[1] = 0;
+	tf->c_bits[2] = 1;
+	tf->c_bits[3] = 1;
+	tf->c_bits[4] = 1;
+
+	rtp2trau_data_ir8(tf, data, data_len, 63);
+
+	return 0;
+}
+
 static inline bool check_twts001(struct osmo_trau2rtp_state *st)
 {
 	if (st->rtp_extensions & OSMO_RTP_EXT_TWTS001)
@@ -1104,8 +1318,14 @@ int osmo_rtp2trau(struct osmo_trau_frame *tf, const uint8_t *rtp, size_t rtp_len
 		return rtp2trau_efr(tf, rtp, rtp_len);
 	case OSMO_TRAU16_FT_HR:
 		return rtp2trau_hr16(tf, rtp, rtp_len);
+	case OSMO_TRAU16_FT_DATA:
+		return rtp2trau_data_fr(tf, rtp, rtp_len, st->interm_rate_16k);
+	case OSMO_TRAU16_FT_DATA_HR:
+		return rtp2trau_data_hr16(tf, rtp, rtp_len);
 	case OSMO_TRAU8_SPEECH:
 		return rtp2trau_hr8(tf, rtp, rtp_len);
+	case OSMO_TRAU8_DATA:
+		return rtp2trau_data_hr8(tf, rtp, rtp_len);
 	default:
 		return -EINVAL;
 	}
