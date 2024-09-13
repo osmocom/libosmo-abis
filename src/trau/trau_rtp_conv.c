@@ -31,6 +31,9 @@
 #include <osmocom/trau/trau_frame.h>
 #include <osmocom/trau/trau_rtp.h>
 
+/* RFC4040 "clearmode" RTP payload length */
+#define RFC4040_RTP_PLEN 160
+
 /* this corresponds to the bit-lengths of the individual codec
  * parameters as indicated in Table 1.1 of TS 46.010 */
 static const uint8_t gsm_fr_map[] = {
@@ -45,7 +48,6 @@ static const uint8_t gsm_fr_map[] = {
 	3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3
 };
-
 
 /*
  * EFR TRAU parity (also used for HR)
@@ -942,6 +944,117 @@ int trau2rtp_amr(uint8_t *out, const struct osmo_trau_frame *tf, enum osmo_amr_m
 }
 #endif
 
+/*
+ * CSD support: converting TRAU frames of type 'data' to 64 kbit/s
+ * like the RA part of TRAU, using RTP clearmode representation.
+ */
+
+static void trau2v110_bits(ubit_t *out, const ubit_t *in)
+{
+	int i;
+
+	/* the first 8 bits are sync zeros */
+	memset(out, 0, 8);
+	out += 8;
+	/* for the rest, we have to expand 63 bits into 72 */
+	for (i = 0; i < 9; i++) {
+		*out++ = 1;
+		memcpy(out, in, 7);
+		in += 7;
+		out += 7;
+	}
+}
+
+/* intermediate rate 8 kbit/s */
+static void trau2v110_ir8(uint8_t *out, const ubit_t *in)
+{
+	ubit_t ra_bits[80];
+	int i;
+
+	trau2v110_bits(ra_bits, in);
+
+	/* RA2: 1 bit per output byte */
+	for (i = 0; i < 80; i++)
+		out[i] = 0x7F | (ra_bits[i] << 7);
+}
+
+/* intermediate rate 16 kbit/s */
+static void trau2v110_ir16(uint8_t *out, const ubit_t *in)
+{
+	ubit_t ra_bits[80];
+	int i, o;
+	uint8_t b;
+
+	trau2v110_bits(ra_bits, in);
+
+	/* RA2: 2 bits per output byte */
+	i = 0;
+	for (o = 0; o < 40; o++) {
+		b = 0x3F;
+		b |= (ra_bits[i++] << 7);
+		b |= (ra_bits[i++] << 6);
+		out[o] = b;
+	}
+}
+
+static int trau2rtp_data_fr(uint8_t *out, size_t out_len,
+			    const struct osmo_trau_frame *tf)
+{
+	/* function interface preliminaries */
+	if (tf->type != OSMO_TRAU16_FT_DATA)
+		return -EINVAL;
+	if (out_len < RFC4040_RTP_PLEN)
+		return -ENOSPC;
+
+	/* Is it TCH/F9.6 with 16 kbit/s IR,
+	 * or TCH/F4.8 or TCH/F2.4 with 8 kbit/s IR? */
+	if (tf->c_bits[5]) {
+		trau2v110_ir16(out, tf->d_bits);
+		trau2v110_ir16(out + 40, tf->d_bits + 63);
+		trau2v110_ir16(out + 80, tf->d_bits + 63 * 2);
+		trau2v110_ir16(out + 120, tf->d_bits + 63 * 3);
+	} else {
+		trau2v110_ir8(out, tf->d_bits);
+		trau2v110_ir8(out + 80, tf->d_bits + 63 * 2);
+	}
+
+	return RFC4040_RTP_PLEN;
+}
+
+static int trau2rtp_data_hr16(uint8_t *out, size_t out_len,
+			      const struct osmo_trau_frame *tf)
+{
+	/* function interface preliminaries */
+	if (tf->type != OSMO_TRAU16_FT_DATA_HR)
+		return -EINVAL;
+	if (out_len < RFC4040_RTP_PLEN)
+		return -ENOSPC;
+
+	/* Note that Osmocom trau_frame decoding and encoding API
+	 * puts the second reduced V.110 frame at d_bits position 63,
+	 * unlike 8 kbit/s IR in FR-data frame type where it resides
+	 * at d_bits position 63 * 2. */
+	trau2v110_ir8(out, tf->d_bits);
+	trau2v110_ir8(out + 80, tf->d_bits + 63);
+
+	return RFC4040_RTP_PLEN;
+}
+
+static int trau2rtp_data_hr8(uint8_t *out, size_t out_len,
+			      const struct osmo_trau_frame *tf)
+{
+	/* function interface preliminaries */
+	if (tf->type != OSMO_TRAU8_DATA)
+		return -EINVAL;
+	if (out_len < RFC4040_RTP_PLEN)
+		return -ENOSPC;
+
+	trau2v110_ir8(out, tf->d_bits);
+	trau2v110_ir8(out + 80, tf->d_bits + 63);
+
+	return RFC4040_RTP_PLEN;
+}
+
 static inline bool check_twts001(struct osmo_trau2rtp_state *st)
 {
 	if (st->rtp_extensions & OSMO_RTP_EXT_TWTS001)
@@ -968,8 +1081,14 @@ int osmo_trau2rtp(uint8_t *out, size_t out_len, const struct osmo_trau_frame *tf
 		return trau2rtp_efr(out, out_len, tf, check_twts001(st));
 	case OSMO_TRAU16_FT_HR:
 		return trau2rtp_hr16(out, out_len, tf, check_twts002(st));
+	case OSMO_TRAU16_FT_DATA:
+		return trau2rtp_data_fr(out, out_len, tf);
+	case OSMO_TRAU16_FT_DATA_HR:
+		return trau2rtp_data_hr16(out, out_len, tf);
 	case OSMO_TRAU8_SPEECH:
 		return trau2rtp_hr8(out, out_len, tf, check_twts002(st));
+	case OSMO_TRAU8_DATA:
+		return trau2rtp_data_hr8(out, out_len, tf);
 	default:
 		return -EINVAL;
 	}
