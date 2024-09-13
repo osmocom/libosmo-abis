@@ -1466,7 +1466,7 @@ int osmo_trau_frame_decode_8k(struct osmo_trau_frame *fr, const ubit_t *bits,
 				return decode8_hr(fr, bits, dir);
 			case 0x07:
 				return decode8_data(fr, bits, dir);
-			case 0x13:
+			case 0x0B:
 				return decode8_oam(fr, bits, dir);
 			}
 		} else {
