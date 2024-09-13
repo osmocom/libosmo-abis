@@ -1376,7 +1376,7 @@ static bool is_hr(const ubit_t *bits)
 		return false;
 	if (bits[16] != 0 || bits[17] != 1)
 		return false;
-	for (i = 24; i < 20 * 8; i += 16) {
+	for (i = 24; i < 20 * 8; i += 8) {
 		if (bits[i] != 1)
 			return false;
 	}
@@ -1398,7 +1398,7 @@ static bool is_amr_low(const ubit_t *bits)
 		return false;
 	if (bits[24] != 0 || bits[25] != 1)
 		return false;
-	for (i = 32; i < 20 * 8; i += 16) {
+	for (i = 32; i < 20 * 8; i += 8) {
 		if (bits[i] != 1)
 			return false;
 	}
