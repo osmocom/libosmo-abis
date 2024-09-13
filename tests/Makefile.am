@@ -7,9 +7,12 @@ check_PROGRAMS = e1inp_ipa_bsc_test	\
 		  ipa_proxy_test	\
 		  subchan_demux/subchan_demux_test \
 		  ipa_recv/ipa_recv_test \
-		  rtp_test/rtp_test \
 		  trau_sync/trau_sync_test \
 		  trau_pcu_ericsson/trau_pcu_ericsson_test
+
+if ENABLE_ORTP
+check_PROGRAMS += rtp_test/rtp_test
+endif
 
 e1inp_ipa_bsc_test_SOURCES = e1inp_ipa_bsc_test.c
 e1inp_ipa_bsc_test_LDADD = $(top_builddir)/src/libosmoabis.la \
