@@ -7,6 +7,7 @@ check_PROGRAMS = e1inp_ipa_bsc_test	\
 		  ipa_proxy_test	\
 		  subchan_demux/subchan_demux_test \
 		  ipa_recv/ipa_recv_test \
+		  trau_conv/trau16_to_rtp \
 		  trau_sync/trau_sync_test \
 		  trau_pcu_ericsson/trau_pcu_ericsson_test
 
@@ -41,6 +42,10 @@ rtp_test_rtp_test_SOURCES = rtp_test/rtp_test.c
 rtp_test_rtp_test_LDADD = $(top_builddir)/src/libosmotrau.la \
 			$(LIBOSMOCORE_LIBS)
 
+trau_conv_trau16_to_rtp_SOURCES = trau_conv/trau16_to_rtp.c
+trau_conv_trau16_to_rtp_LDADD = $(top_builddir)/src/libosmotrau.la \
+			$(LIBOSMOCORE_LIBS) $(LIBOSMOCODEC_LIBS)
+
 trau_sync_trau_sync_test_SOURCES = trau_sync/trau_sync_test.c
 trau_sync_trau_sync_test_LDADD = $(top_builddir)/src/libosmotrau.la \
 			$(LIBOSMOCORE_LIBS)
@@ -72,6 +77,10 @@ EXTRA_DIST = testsuite.at $(srcdir)/package.m4 $(TESTSUITE) \
 	subchan_demux/subchan_demux_test.ok \
 	ipa_recv/ipa_recv_test.ok \
 	rtp_test/rtp_test.ok \
+	trau_conv/trau16_efr.in trau_conv/trau16_efr_std.ok \
+	trau_conv/trau16_efr_twts001.ok \
+	trau_conv/trau16_fr.in trau_conv/trau16_fr_std.ok \
+	trau_conv/trau16_fr_twts001.ok \
 	trau_sync/trau_sync_test.ok trau_sync/trau_sync_test.err \
 	trau_pcu_ericsson/trau_pcu_ericsson_test.ok
 

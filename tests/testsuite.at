@@ -42,3 +42,27 @@ AT_KEYWORDS([trau_pcu_ericsson])
 cat $abs_srcdir/trau_pcu_ericsson/trau_pcu_ericsson_test.ok > expout
 AT_CHECK([$abs_top_builddir/tests/trau_pcu_ericsson/trau_pcu_ericsson_test], [0], [expout], [ignore])
 AT_CLEANUP
+
+AT_SETUP([trau2rtp_fr_std])
+AT_KEYWORDS([trau2rtp_fr_std])
+cat $abs_srcdir/trau_conv/trau16_fr_std.ok > expout
+AT_CHECK([$abs_top_builddir/tests/trau_conv/trau16_to_rtp $abs_srcdir/trau_conv/trau16_fr.in ul std], [0], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([trau2rtp_fr_twts001])
+AT_KEYWORDS([trau2rtp_fr_twts001])
+cat $abs_srcdir/trau_conv/trau16_fr_twts001.ok > expout
+AT_CHECK([$abs_top_builddir/tests/trau_conv/trau16_to_rtp $abs_srcdir/trau_conv/trau16_fr.in ul tw-ts-001], [0], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([trau2rtp_efr_std])
+AT_KEYWORDS([trau2rtp_efr_std])
+cat $abs_srcdir/trau_conv/trau16_efr_std.ok > expout
+AT_CHECK([$abs_top_builddir/tests/trau_conv/trau16_to_rtp $abs_srcdir/trau_conv/trau16_efr.in ul std], [0], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([trau2rtp_efr_twts001])
+AT_KEYWORDS([trau2rtp_efr_twts001])
+cat $abs_srcdir/trau_conv/trau16_efr_twts001.ok > expout
+AT_CHECK([$abs_top_builddir/tests/trau_conv/trau16_to_rtp $abs_srcdir/trau_conv/trau16_efr.in ul tw-ts-001], [0], [expout], [ignore])
+AT_CLEANUP

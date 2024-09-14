@@ -1,0 +1,204 @@
+ID efr-dtx.bin frame 0x8e11
+0000e808c0e1ab5dbb94ef0ee7c6967ce3b5846ec1b19ededdbab7ddd5b48e51acd6bde2aefab2ff
+  TRAU frame type: EFR
+  osmo_trau2rtp() result: 32
+  TW-TS-001 TEH octet: 0xE2
+  EFR frame:
+    LPC 1 194 346 235 46
+    311 8 7 6 7 12 6 1 3 1 7 4 24
+    26 8 4 6 14 8 3 3 0 4 7 5 23
+    237 13 3 7 13 13 10 5 5 5 0 1 25
+    10 12 13 6 7 11 12 2 2 7 3 7 9
+    SID recompute: 0
+ID efr-dtx.bin frame 0x8eb1
+0000e808f4d7b875e9538027a20597dc8affe571f92ba6fe986af0fe98cd97e3c138cda2fe45daff
+  TRAU frame type: EFR
+  osmo_trau2rtp() result: 32
+  TW-TS-001 TEH octet: 0xE2
+  EFR frame:
+    LPC 105 174 451 174 37
+    192 1 3 10 2 0 5 1 3 7 3 4 2
+    63 14 5 7 1 15 2 2 5 5 1 5 31
+    195 5 7 0 15 14 3 0 6 3 2 2 31
+    28 1 3 8 9 11 4 2 7 7 1 0 22
+    SID recompute: 0
+ID efr-dtx.bin frame 0x8f51
+0000e809c4b6d46fa0a6c763fa80fb499311b22eb576a68da81b971cd89fe22ebe4190908ee9caff
+  TRAU frame type: EFR
+  osmo_trau2rtp() result: 32
+  TW-TS-001 TEH octet: 0xE3
+  EFR frame:
+    LPC 9 109 163 122 2
+    419 11 1 15 10 8 0 7 5 5 1 1 4
+    8 11 2 2 14 6 10 7 3 1 1 5 3
+    320 13 9 7 1 12 11 0 4 7 7 4 8
+    51 14 4 1 2 1 2 0 0 7 3 5 6
+    SID recompute: 0
+ID efr-dtx.bin frame 0x9311
+0000e8c0ecc6e6d39ae5ac008013b21780ec800080008002aad6800080008036eb00800080008eff
+  TRAU frame type: EFR
+  osmo_trau2rtp() result: 32
+  TW-TS-001 TEH octet: 0xE0
+  EFR frame:
+    LPC 89 141 310 153 43
+    342 0 0 0 0 1 3 3 1 0 2 7 0
+    54 0 0 0 0 0 0 0 0 0 0 0 0
+    342 11 0 0 0 0 0 0 0 0 0 0 0
+    54 11 0 0 0 0 0 0 0 0 0 0 0
+    SID recompute: 0
+ID efr-dtx.bin frame 0x93b1
+0000e8c0c5959c70daf191608000800081abb8ccf580a07c873fb977a81cc410f1588c7fdd61ceff
+  TRAU frame type: EFR
+  osmo_trau2rtp() result: 32
+  TW-TS-001 TEH octet: 0xE0
+  EFR frame:
+    LPC 11 42 227 133 43
+    72 11 0 0 0 0 0 0 0 0 0 0 0
+    21 11 8 12 12 14 11 0 0 1 0 0 31
+    57 15 11 9 7 7 5 0 0 7 1 0 16
+    7 1 5 8 1 8 15 7 5 6 5 4 6
+    SID recompute: 0
+ID efr-dtx.bin frame 0x9451
+0000e8c0d01dc9f2f67a885ff583d73fa9daf2cca28a91babde68c43a24efc32aa69ad8af003caff
+  TRAU frame type: EFR
+  osmo_trau2rtp() result: 32
+  TW-TS-001 TEH octet: 0xE0
+  EFR frame:
+    LPC 32 59 79 151 25
+    132 2 15 15 5 8 3 5 3 4 7 7 10
+    45 7 2 12 12 4 5 0 5 0 4 3 14
+    495 3 0 12 4 3 4 2 2 3 5 7 16
+    18 10 6 9 5 11 1 2 7 0 0 0 14
+    SID recompute: 0
+ID efr-dtx.bin frame 0x9e51
+0000e8c1c9dfd7d1dfbff22fe2dceb339454b771e18ba09ddbccab2ce3dc821386be9b1d9fe9c6ff
+  TRAU frame type: EFR
+  osmo_trau2rtp() result: 32
+  TW-TS-001 TEH octet: 0xE1
+  EFR frame:
+    LPC 19 191 190 141 62
+    505 1 7 14 2 13 12 6 5 4 6 3 5
+    42 3 7 7 1 12 3 0 5 5 0 1 7
+    222 6 2 11 2 12 12 3 6 7 0 0 8
+    24 6 11 14 3 6 3 5 1 7 7 5 6
+    SID recompute: 0
+ID efr-dtx.bin frame 0x3cad1
+0000ebe4ca1b97f3b45086fffffc8000c68efffffe008046c07fffffe0008451fffcffe08004e2ff
+  TRAU frame type: EFR
+  osmo_trau2rtp() result: 32
+  TW-TS-001 TEH octet: 0xE0
+  EFR frame:
+    LPC 20 54 191 155 17
+    3 7 15 15 15 15 12 0 0 0 0 0 17
+    7 7 15 15 15 15 12 0 0 0 0 0 17
+    3 15 15 15 15 15 12 0 0 0 0 0 17
+    15 15 15 12 15 15 12 0 0 0 0 0 19
+    SID recompute: 2
+ID efr-dtx.bin frame 0x3cb71
+0000ebecca31d987973086fffffc9b0ace8effffff20804ec07fffffe12084d1ffffffe28b0ce2ff
+  TRAU frame type: EFR
+  osmo_trau2rtp() result: 32
+  TW-TS-001 TEH octet: 0xE2
+  EFR frame:
+    LPC 20 99 204 57 28
+    3 7 15 15 15 15 12 1 5 4 1 2 19
+    7 7 15 15 15 15 14 2 0 0 0 0 19
+    3 15 15 15 15 15 12 1 1 0 0 0 19
+    15 15 15 15 15 15 12 2 0 5 4 1 19
+    SID recompute: 2
+ID efr-dtx.bin frame 0x3cc11
+0000ebe8f23dea94e91ec4229aacfe968207e8d7ba6bb402ec02d8e6b00c83a0fe44dd50ae84eaff
+  TRAU frame type: EFR
+  osmo_trau2rtp() result: 32
+  TW-TS-001 TEH octet: 0xE2
+  EFR frame:
+    LPC 100 123 340 166 36
+    418 1 1 1 10 10 12 7 7 2 2 6 0
+    3 14 8 13 7 7 4 6 5 5 5 0 0
+    352 1 5 8 14 6 6 0 0 3 0 0 14
+    7 14 4 4 11 10 10 0 2 7 2 0 19
+    SID recompute: 0
+ID efr-dtx.bin frame 0x430b1
+0000ebeccf36da92c6a086fffffca494d68efffffe4ba056c07ffffff0048551fffcffe0a485a2ff
+  TRAU frame type: EFR
+  osmo_trau2rtp() result: 32
+  TW-TS-001 TEH octet: 0xE2
+  EFR frame:
+    LPC 30 109 212 148 26
+    3 7 15 15 15 15 12 2 2 2 2 4 21
+    7 7 15 15 15 15 12 4 5 5 0 0 21
+    3 15 15 15 15 15 14 0 0 1 0 0 21
+    15 15 15 12 15 15 12 0 2 2 2 0 21
+    SID recompute: 2
+ID efr-dtx.bin frame 0x43151
+0000ebe5cf36da92c6a086fffffc8000d68efffffe008056c07fffffe0008551fffcffe08005a2ff
+  TRAU frame type: EFR
+  osmo_trau2rtp() result: 32
+  TW-TS-001 TEH octet: 0xE1
+  EFR frame:
+    LPC 30 109 212 148 26
+    3 7 15 15 15 15 12 0 0 0 0 0 21
+    7 7 15 15 15 15 12 0 0 0 0 0 21
+    3 15 15 15 15 15 12 0 0 0 0 0 21
+    15 15 15 12 15 15 12 0 0 0 0 0 21
+    SID recompute: 2
+ID efr-dtx.bin frame 0x431f1
+0000ebeccf36da92c6a086fffffcc340d68efffffe04d0d6c07fffffe0818551fffdffe0d84da2ff
+  TRAU frame type: EFR
+  osmo_trau2rtp() result: 32
+  TW-TS-001 TEH octet: 0xE2
+  EFR frame:
+    LPC 30 109 212 148 26
+    3 7 15 15 15 15 12 4 1 5 0 0 21
+    7 7 15 15 15 15 12 0 2 2 4 1 21
+    3 15 15 15 15 15 12 0 4 0 2 0 21
+    15 15 15 13 15 15 12 0 5 4 1 1 21
+    SID recompute: 2
+ID efr-dtx-dtmf.bin frame 0x4d471
+0000ebecd090a131e71086fffffca494ce8efffffe4ba04ec07ffffff00484d1fffcffe0a484e2ff
+  TRAU frame type: EFR
+  osmo_trau2rtp() result: 32
+  TW-TS-001 TEH octet: 0xE2
+  EFR frame:
+    LPC 33 32 265 142 28
+    3 7 15 15 15 15 12 2 2 2 2 4 19
+    7 7 15 15 15 15 12 4 5 5 0 0 19
+    3 15 15 15 15 15 14 0 0 1 0 0 19
+    15 15 15 12 15 15 12 0 2 2 2 0 19
+    SID recompute: 2
+ID efr-dtx-dtmf.bin frame 0x4d511
+0000ebe8c7e5a131e70da61ffffca494cc79fffffe4ba04d9214fffff00484c7fffcffe0a484feff
+  TRAU frame type: EFR
+  osmo_trau2rtp() result: 32
+  TW-TS-001 TEH octet: 0xE2
+  EFR frame:
+    LPC 15 202 265 142 28
+    339 0 15 15 15 15 12 2 2 2 2 4 19
+    60 15 15 15 15 15 12 4 5 5 0 0 19
+    144 10 7 15 15 15 14 0 0 1 0 0 19
+    63 15 15 12 15 15 12 0 2 2 2 0 19
+    SID recompute: 1
+ID efr-dtx-dtmf.bin frame 0x53a51
+0000ebead10eba68ada886f7fbfca494ca8cfffffe4ba04ac07ffffff0048491fffcffe0a485c2ff
+  TRAU frame type: EFR
+  osmo_trau2rtp() result: 32
+  TW-TS-001 TEH octet: 0xE2
+  EFR frame:
+    LPC 34 28 467 66 54
+    3 7 11 15 11 15 12 2 2 2 2 4 18
+    6 7 15 15 15 15 12 4 5 5 0 0 18
+    3 15 15 15 15 15 14 0 0 1 0 0 18
+    15 15 15 12 15 15 12 0 2 2 2 0 22
+    SID recompute: 1
+ID efr-dtx-dtmf.bin frame 0x53af1
+0000ebe8cf05b311adada617fbfca494c87afffffe4ba04ac214fffff00484affffcffe0a485deff
+  TRAU frame type: EFR
+  osmo_trau2rtp() result: 32
+  TW-TS-001 TEH octet: 0xE2
+  EFR frame:
+    LPC 30 10 408 138 54
+    339 0 11 15 11 15 12 2 2 2 2 4 18
+    61 7 15 15 15 15 12 4 5 5 0 0 18
+    16 10 7 15 15 15 14 0 0 1 0 0 18
+    63 15 15 12 15 15 12 0 2 2 2 0 22
+    SID recompute: 1

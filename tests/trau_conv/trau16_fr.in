@@ -1,0 +1,57 @@
+# This file is an input to trau16_to_rtp unit test program, containing
+# TRAU-16k Abis-UL frames for TCH/FS.
+#
+# All test frames presented here have been taken from these Abis E1 captures:
+#
+# https://osmocom.org/projects/retro-gsm/wiki/InSite_UL_captures
+#
+# The extraction of hex-encoded TRAU frames from E1 timeslot *.bin captures
+# was done with trau-parse program (-r option) developed in this repository:
+#
+# https://www.freecalypso.org/hg/gsm-net-reveng/
+
+# A few BFI frames from channel start-up
+
+ID fr1-dtx.bin frame 0x6ed1
+0000880885a5a009e1b8f6aaba318cb4f67fca1ac37fc94df1fba117e9e48c1bf5cff04ad135eeff
+ID fr1-dtx.bin frame 0x6f71
+000088088499e0ade1bcf769ba318cb4f64dcc9ac37fc94df4dda117e9e48c18f5d7f04ad135eeff
+ID fr1-dtx.bin frame 0x7011
+00008808f493a0ed81d7ef67cda2d099d74f89badd7ac666d9fef3d3fe9b9c758fa591d0d14886ff
+
+# BFI frame in TAF position
+
+ID fr1-dtx.bin frame 0x71f1
+00008809c6998721f08e995ac68aeb4db9efd0eece95b7749eeedfaefadea54f9bbbd65ba0a6deff
+
+# Some good speech frames
+
+ID fr1-dtx.bin frame 0x7511
+000088b0bd72ba9a94288012a492a492a2808124c924c9248710edb69468b5b5bc12a49ca685c6ff
+ID fr1-dtx.bin frame 0x75b1
+000088b08c0fce6ee368831ba4edd833a38f82e4e46b8eb8ec68eba1d3d29c8ec50b86139d8792ff
+ID fr1-dtx.bin frame 0x7651
+000088b0cc29bedc9c46a83ce650af55cee8c234e947943caa90ea92e2cecba6ed05e663b1cfb2ff
+
+# A good example of DTXu: SID frame not in TAF position, followed by one that
+# is in TAF position, followed by half-block BFI, followed by regular BFI.
+
+ID fr1-dtx.bin frame 0x8051
+000088b4b58ee6ee92008000800080008000800080008000800080008000800080008000800082ff
+ID fr1-dtx.bin frame 0x80f1
+000088b5b50ae6e6dc008000800080008000800080008000800080008000800080008000800082ff
+ID fr1-dtx.bin frame 0x8191
+000088bcf48ae6ee9c0080009240800180028000800280008000c9008024880080008248c02082ff
+ID fr1-dtx.bin frame 0x8231
+000088b8ce61b2b2c02d88cdc752c173890ef796f49ac82fd0e0a925e874d8c59751db08b9a1faff
+
+# A good speech frame in TAF position
+
+ID fr1-dtx.bin frame 0x8ff1
+000088b19cabee19a8569052aa16b922fa9a86ab97b38d46e990a5b9e5b1fc54e904de938adceaff
+
+# A BFI-no-data frame whose buffered bit content erroneously triggers
+# SID detection, but is marked as SID=0 in out-of-band flag bits
+
+ID fr1-dtx.bin frame 0x104d1
+000088b8ee49c3b2e00691e58000800080f1889fa000800086948004c8008000821b90009000caff

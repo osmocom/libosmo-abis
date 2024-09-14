@@ -1,0 +1,68 @@
+# This file is an input to trau16_to_rtp unit test program, containing
+# TRAU-16k Abis-UL frames for TCH/EFS.
+#
+# All test frames presented here have been taken from these Abis E1 captures:
+#
+# https://osmocom.org/projects/retro-gsm/wiki/InSite_UL_captures
+#
+# The extraction of hex-encoded TRAU frames from E1 timeslot *.bin captures
+# was done with trau-parse program (-r option) developed in this repository:
+#
+# https://www.freecalypso.org/hg/gsm-net-reveng/
+
+# A few BFI frames from channel start-up, including one in TAF position
+
+ID efr-dtx.bin frame 0x8e11
+0000e808c0e1ab5dbb94ef0ee7c6967ce3b5846ec1b19ededdbab7ddd5b48e51acd6bde2aefab2ff
+ID efr-dtx.bin frame 0x8eb1
+0000e808f4d7b875e9538027a20597dc8affe571f92ba6fe986af0fe98cd97e3c138cda2fe45daff
+ID efr-dtx.bin frame 0x8f51
+0000e809c4b6d46fa0a6c763fa80fb499311b22eb576a68da81b971cd89fe22ebe4190908ee9caff
+
+# Some good speech frames
+
+ID efr-dtx.bin frame 0x9311
+0000e8c0ecc6e6d39ae5ac008013b21780ec800080008002aad6800080008036eb00800080008eff
+ID efr-dtx.bin frame 0x93b1
+0000e8c0c5959c70daf191608000800081abb8ccf580a07c873fb977a81cc410f1588c7fdd61ceff
+ID efr-dtx.bin frame 0x9451
+0000e8c0d01dc9f2f67a885ff583d73fa9daf2cca28a91babde68c43a24efc32aa69ad8af003caff
+
+# A good speech frame in TAF position
+
+ID efr-dtx.bin frame 0x9e51
+0000e8c1c9dfd7d1dfbff22fe2dceb339454b771e18ba09ddbccab2ce3dc821386be9b1d9fe9c6ff
+
+# Entry into DTXu pause
+
+ID efr-dtx.bin frame 0x3cad1
+0000ebe4ca1b97f3b45086fffffc8000c68efffffe008046c07fffffe0008451fffcffe08004e2ff
+ID efr-dtx.bin frame 0x3cb71
+0000ebecca31d987973086fffffc9b0ace8effffff20804ec07fffffe12084d1ffffffe28b0ce2ff
+ID efr-dtx.bin frame 0x3cc11
+0000ebe8f23dea94e91ec4229aacfe968207e8d7ba6bb402ec02d8e6b00c83a0fe44dd50ae84eaff
+
+# SID update in TAF position, with half-blocks before and after
+
+ID efr-dtx.bin frame 0x430b1
+0000ebeccf36da92c6a086fffffca494d68efffffe4ba056c07ffffff0048551fffcffe0a485a2ff
+ID efr-dtx.bin frame 0x43151
+0000ebe5cf36da92c6a086fffffc8000d68efffffe008056c07fffffe0008551fffcffe08005a2ff
+ID efr-dtx.bin frame 0x431f1
+0000ebeccf36da92c6a086fffffcc340d68efffffe04d0d6c07fffffe0818551fffdffe0d84da2ff
+
+# FACCH activity in the middle of DTXu pause, includes a BFI-no-data frame
+# in which buffered bit content is still (invalid) SID, but is marked as
+# SID=0 in out-of-band flag bits.
+
+ID efr-dtx-dtmf.bin frame 0x4d471
+0000ebecd090a131e71086fffffca494ce8efffffe4ba04ec07ffffff00484d1fffcffe0a484e2ff
+ID efr-dtx-dtmf.bin frame 0x4d511
+0000ebe8c7e5a131e70da61ffffca494cc79fffffe4ba04d9214fffff00484c7fffcffe0a484feff
+
+# Another similar occurrence, but this time it was SID=1 initially
+
+ID efr-dtx-dtmf.bin frame 0x53a51
+0000ebead10eba68ada886f7fbfca494ca8cfffffe4ba04ac07ffffff0048491fffcffe0a485c2ff
+ID efr-dtx-dtmf.bin frame 0x53af1
+0000ebe8cf05b311adada617fbfca494c87afffffe4ba04ac214fffff00484affffcffe0a485deff
