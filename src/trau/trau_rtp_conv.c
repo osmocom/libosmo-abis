@@ -133,6 +133,7 @@ static int trau2rtp_fr(uint8_t *out, size_t out_len, const struct osmo_trau_fram
 		return 0;
 
 	out[0] = 0xd << 4;
+	memset(out + 1, 0, GSM_FR_BYTES - 1);
 	/* reassemble d-bits */
 	i = 0; /* counts bits */
 	j = 4; /* counts output bits */
@@ -391,6 +392,7 @@ static int trau2rtp_efr(uint8_t *out, size_t out_len, const struct osmo_trau_fra
 		return 0;
 
 	out[0] = 0xc << 4;
+	memset(out + 1, 0, GSM_EFR_BYTES - 1);
 	/* reassemble d-bits */
 	for (i = 1, j = 4; i < 39; i++, j++)
 		out[j/8] |= (tf->d_bits[i] << (7-(j%8)));
