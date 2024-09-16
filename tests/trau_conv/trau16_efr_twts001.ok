@@ -173,11 +173,11 @@ ID efr-dtx-dtmf.bin frame 0x4d511
   TW-TS-001 TEH octet: 0xE2
   EFR frame:
     LPC 15 202 265 142 28
-    339 0 15 15 15 15 12 2 2 2 2 4 19
-    60 15 15 15 15 15 12 4 5 5 0 0 19
-    144 10 7 15 15 15 14 0 0 1 0 0 19
-    63 15 15 12 15 15 12 0 2 2 2 0 19
-    SID recompute: 1
+    336 0 15 15 15 15 12 2 2 2 2 4 19
+    60 12 15 15 15 15 12 4 5 5 0 0 19
+    144 8 7 15 15 15 14 0 0 1 0 0 19
+    60 12 15 12 15 15 12 0 2 2 2 0 19
+    SID recompute: 0
 ID efr-dtx-dtmf.bin frame 0x53a51
 0000ebead10eba68ada886f7fbfca494ca8cfffffe4ba04ac07ffffff0048491fffcffe0a485c2ff
   TRAU frame type: EFR
@@ -197,8 +197,8 @@ ID efr-dtx-dtmf.bin frame 0x53af1
   TW-TS-001 TEH octet: 0xE2
   EFR frame:
     LPC 30 10 408 138 54
-    339 0 11 15 11 15 12 2 2 2 2 4 18
-    61 7 15 15 15 15 12 4 5 5 0 0 18
-    16 10 7 15 15 15 14 0 0 1 0 0 18
-    63 15 15 12 15 15 12 0 2 2 2 0 22
-    SID recompute: 1
+    336 0 11 15 11 15 12 2 2 2 2 4 18
+    60 4 15 15 15 15 12 4 5 5 0 0 18
+    16 8 7 15 15 15 14 0 0 1 0 0 18
+    60 12 15 12 15 15 12 0 2 2 2 0 22
+    SID recompute: 0

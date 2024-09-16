@@ -98,6 +98,36 @@ static inline void efr_parity_bits_5(ubit_t *check_bits, const ubit_t *d_bits)
 //static const uint8_t c_bits_check_fr[] = { 0, 0, 0, 1, 0 };
 //static const uint8_t c_bits_check_efr[] = { 1, 1, 0, 1, 0 };
 
+/*
+ * This little helper function modifies a marked-bad (BFI=1) GSM-FR payload
+ * so it would no longer classify as SID by the bit counting rules
+ * of GSM 06.31 section 6.1.1.  It is needed at times when a BTS emits
+ * "BFI with no data", out-of-band SID bits (C13 & C14) are set to 0,
+ * but the stale bit pattern in the output buffer used by the BTS
+ * happens to be (usually invalid) SID.
+ *
+ * In order to reliably "break the SID", we need to set 16 bits in the
+ * SID field to values opposite of SID codeword, i.e., to 1 for GSM-FR.
+ * The SID field of GSM-FR includes the msb of every xMc pulse, and also
+ * the middle bit of most (but not all) xMc pulses.  The pulses whose
+ * middle bit is not part of the SID field are the last 9 pulses of
+ * the last subframe.  For simplicity, we produce the desired effect
+ * by setting the middle bit of pulses 0, 1, 2 and 3 in every subframe,
+ * for a total of 16 bits.
+ */
+static void make_fr_bfi_nonsid(uint8_t *fr_bytes)
+{
+	uint8_t *subf_bytes;
+	unsigned subn;
+
+	subf_bytes = fr_bytes + 5;	/* skip signature and LARc bits */
+	for (subn = 0; subn < 4; subn++) {
+		subf_bytes[2] |= 0x24;
+		subf_bytes[3] |= 0x90;
+		subf_bytes += 7;
+	}
+}
+
 /*! Generate the 33 bytes RTP payload for GSM-FR from a decoded TRAU frame.
  *  \param[out] out caller-provided output buffer
  *  \param[in] out_len length of out buffer in bytes
@@ -152,6 +182,36 @@ static int trau2rtp_fr(uint8_t *out, size_t out_len, const struct osmo_trau_fram
 		i++;
 		j++;
 	}
+
+	/*
+	 * Many BTS models will emit the previous content of their internal
+	 * buffer, perhaps corrupted in some peculiar way, when they need to
+	 * emit "BFI with no data" because they received FACCH, or because
+	 * they received nothing at all and no channel decoding attempt was
+	 * made.  When this situation occurs, the Rx DTX handler in the TRAU
+	 * needs to be told "this is a regular BFI, not an invalid SID",
+	 * and the BTS makes this indication by setting C12=1 (BFI),
+	 * C13=0 and C14=0 (SID=0).  However, the stale or corrupted frame
+	 * payload bit content in the Abis output buffer will still sometimes
+	 * indicate SID (usually invalid) by the bit counting rules of
+	 * GSM 06.31 section 6.1.1!  This situation creates a problem
+	 * in the case of TW-TS-001 output: there are no out-of-band bits
+	 * for C13 & C14, and when the remote transcoder or TFO transform
+	 * calls osmo_fr_sid_classify() or its libgsmfr2 equivalent,
+	 * it will detect an invalid SID (always invalid due to BFI=1)
+	 * instead of intended-by-BTS "regular BFI".  Solution: because
+	 * there is no need to preserve all payload bits that are known
+	 * to be bad or dummy, we can afford to corrupt some of them;
+	 * as a workaround for the unintentional-SID problem, we "break"
+	 * the SID field.
+	 *
+	 * Note that BFI=1 is a required condition for the logic below.
+	 * Because standard RFC 3551 output does not support BFI,
+	 * this logic applies only to TW-TS-001 output.
+	 */
+	if (tf->c_bits[11] && !tf->c_bits[12] && !tf->c_bits[13] &&
+	    osmo_fr_is_any_sid(out))
+		make_fr_bfi_nonsid(out);
 
 	return req_out_len;
 }
@@ -356,6 +416,38 @@ bad_frame:
 	}
 }
 
+/*
+ * This little helper function modifies a marked-bad (BFI=1) GSM-EFR payload
+ * so it would no longer classify as SID by the bit counting rules
+ * of GSM 06.81 section 6.1.1.  It is needed at times when a BTS emits
+ * "BFI with no data", out-of-band SID bits (C13 & C14) are set to 0,
+ * but the stale bit pattern in the output buffer used by the BTS
+ * happens to be (usually invalid) SID.
+ *
+ * In order to reliably "break the SID", we need to set 16 bits in the
+ * SID field to values opposite of SID codeword, i.e., to 0 for GSM-EFR.
+ * The SID field of GSM-EFR includes (in every subframe) some bits in
+ * LTP lag and LTP gain fields, and many bits in the fixed codebook
+ * excitation pulses portion.  The reference decoder from ETSI makes use
+ * of the fixed codebook portion even in marked-bad frames, hence
+ * we prefer not to corrupt this portion - but we can still reliably
+ * break the SID by clearing some bits in LTP lag and gain fields.
+ * Let's clear the two lsbs of each LTP lag and LTP gain field,
+ * giving us the needed total of 16 bits.
+ */
+static void make_efr_bfi_nonsid(uint8_t *efr_bytes)
+{
+	/* subframe 0 */
+	efr_bytes[6] &= 0x99;
+	/* subframe 1 */
+	efr_bytes[12] &= 0xE6;
+	efr_bytes[13] &= 0x7F;
+	/* subframe 2 */
+	efr_bytes[19] &= 0x33;
+	/* subframe 3 */
+	efr_bytes[25] &= 0xCC;
+}
+
 /*! Generate the 31 bytes RTP payload for GSM-EFR from a decoded TRAU frame.
  *  \param[out] out caller-provided output buffer
  *  \param[in] out_len length of out buffer in bytes
@@ -429,6 +521,36 @@ static int trau2rtp_efr(uint8_t *out, size_t out_len, const struct osmo_trau_fra
 			tf->d_bits + 257);
 	if (rc)
 		goto bad_frame;
+
+	/*
+	 * Many BTS models will emit the previous content of their internal
+	 * buffer, perhaps corrupted in some peculiar way, when they need to
+	 * emit "BFI with no data" because they received FACCH, or because
+	 * they received nothing at all and no channel decoding attempt was
+	 * made.  When this situation occurs, the Rx DTX handler in the TRAU
+	 * needs to be told "this is a regular BFI, not an invalid SID",
+	 * and the BTS makes this indication by setting C12=1 (BFI),
+	 * C13=0 and C14=0 (SID=0).  However, the stale or corrupted frame
+	 * payload bit content in the Abis output buffer will still sometimes
+	 * indicate SID (usually invalid) by the bit counting rules of
+	 * GSM 06.81 section 6.1.1!  This situation creates a problem
+	 * in the case of TW-TS-001 output: there are no out-of-band bits
+	 * for C13 & C14, and when the remote transcoder or TFO transform
+	 * calls osmo_efr_sid_classify() or its libgsmefr equivalent,
+	 * it will detect an invalid SID (always invalid due to BFI=1)
+	 * instead of intended-by-BTS "regular BFI".  Solution: because
+	 * there is no need to preserve all payload bits that are known
+	 * to be bad or dummy, we can afford to corrupt some of them;
+	 * as a workaround for the unintentional-SID problem, we "break"
+	 * the SID field.
+	 *
+	 * Note that BFI=1 is a required condition for the logic below.
+	 * Because standard RFC 3551 output does not support BFI,
+	 * this logic applies only to TW-TS-001 output.
+	 */
+	if (tf->c_bits[11] && !tf->c_bits[12] && !tf->c_bits[13] &&
+	    osmo_efr_is_any_sid(out))
+		make_efr_bfi_nonsid(out);
 
 	return req_out_len;
 
