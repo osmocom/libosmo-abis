@@ -226,3 +226,13 @@ ID perfect SID with BFI=1 SID=0
     0 12 15 15 15 15 12 0 0 0 0 0 17
     12 12 15 12 15 15 12 0 0 0 0 0 19
     SID recompute: 0
+ID all Dn bits set to 0
+0000ebe88000800080008000800080008000800080008000800080008000800080008000800082ff
+  TRAU frame type: EFR
+  osmo_trau2rtp() result: 1
+  TW-TS-001 TEH octet: 0xE6
+ID all Dn bits set to 1
+0000ebe8fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeff
+  TRAU frame type: EFR
+  osmo_trau2rtp() result: 1
+  TW-TS-001 TEH octet: 0xE6

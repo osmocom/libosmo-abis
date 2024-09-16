@@ -78,3 +78,11 @@ ID perfect SID with BFI=1
 0000ebecca1b97f3b45086fffffc8000c68efffffe008046c07fffffe0008451fffcffe08004e2ff
 ID perfect SID with BFI=1 SID=0
 0000ebe8ca1b97f3b45086fffffc8000c68efffffe008046c07fffffe0008451fffcffe08004e2ff
+
+# The following frames were also constructed by hand.  They have bad CRC
+# and thus test the handling of this case in osmo_trau2rtp().
+
+ID all Dn bits set to 0
+0000ebe88000800080008000800080008000800080008000800080008000800080008000800082ff
+ID all Dn bits set to 1
+0000ebe8fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeff

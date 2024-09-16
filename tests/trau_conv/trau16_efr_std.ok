@@ -116,3 +116,11 @@ ID perfect SID with BFI=1 SID=0
 0000ebe8ca1b97f3b45086fffffc8000c68efffffe008046c07fffffe0008451fffcffe08004e2ff
   TRAU frame type: EFR
   osmo_trau2rtp() result: 0
+ID all Dn bits set to 0
+0000ebe88000800080008000800080008000800080008000800080008000800080008000800082ff
+  TRAU frame type: EFR
+  osmo_trau2rtp() result: 0
+ID all Dn bits set to 1
+0000ebe8fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeff
+  TRAU frame type: EFR
+  osmo_trau2rtp() result: 0
