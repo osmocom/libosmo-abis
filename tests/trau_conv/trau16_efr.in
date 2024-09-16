@@ -66,3 +66,15 @@ ID efr-dtx-dtmf.bin frame 0x53a51
 0000ebead10eba68ada886f7fbfca494ca8cfffffe4ba04ac07ffffff0048491fffcffe0a485c2ff
 ID efr-dtx-dtmf.bin frame 0x53af1
 0000ebe8cf05b311adada617fbfca494c87afffffe4ba04ac214fffff00484affffcffe0a485deff
+
+# The following two frames have been constructed by hand, starting with
+# efr-dtx.bin frame 0x3cad1 and editing the hex string for desired effect.
+# The first constructed frame is a perfect SID that has BFI=1 set,
+# the second constructed frame is the same with C13 cleared.
+# The intent is to showcase the effect of the hacky logic that "breaks"
+# the SID bit pattern when the metadata bits indicate BFI=1 SID=0.
+
+ID perfect SID with BFI=1
+0000ebecca1b97f3b45086fffffc8000c68efffffe008046c07fffffe0008451fffcffe08004e2ff
+ID perfect SID with BFI=1 SID=0
+0000ebe8ca1b97f3b45086fffffc8000c68efffffe008046c07fffffe0008451fffcffe08004e2ff

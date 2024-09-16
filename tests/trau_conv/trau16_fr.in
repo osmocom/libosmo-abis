@@ -55,3 +55,15 @@ ID fr1-dtx.bin frame 0x8ff1
 
 ID fr1-dtx.bin frame 0x104d1
 000088b8ee49c3b2e00691e58000800080f1889fa000800086948004c8008000821b90009000caff
+
+# The following two frames have been constructed by hand, starting with
+# fr1-dtx.bin frame 0x8051 and editing the hex string for desired effect.
+# The first constructed frame is a perfect SID that has BFI=1 set,
+# the second constructed frame is the same with C13 cleared.
+# The intent is to showcase the effect of the hacky logic that "breaks"
+# the SID bit pattern when the metadata bits indicate BFI=1 SID=0.
+
+ID perfect SID with BFI=1
+000088bcb58ee6ee92008000800080008000800080008000800080008000800080008000800082ff
+ID perfect SID with BFI=1 SID=0
+000088b8b58ee6ee92008000800080008000800080008000800080008000800080008000800082ff

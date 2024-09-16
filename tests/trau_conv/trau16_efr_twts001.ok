@@ -202,3 +202,27 @@ ID efr-dtx-dtmf.bin frame 0x53af1
     16 8 7 15 15 15 14 0 0 1 0 0 18
     60 12 15 12 15 15 12 0 2 2 2 0 22
     SID recompute: 0
+ID perfect SID with BFI=1
+0000ebecca1b97f3b45086fffffc8000c68efffffe008046c07fffffe0008451fffcffe08004e2ff
+  TRAU frame type: EFR
+  osmo_trau2rtp() result: 32
+  TW-TS-001 TEH octet: 0xE2
+  EFR frame:
+    LPC 20 54 191 155 17
+    3 7 15 15 15 15 12 0 0 0 0 0 17
+    7 7 15 15 15 15 12 0 0 0 0 0 17
+    3 15 15 15 15 15 12 0 0 0 0 0 17
+    15 15 15 12 15 15 12 0 0 0 0 0 19
+    SID recompute: 2
+ID perfect SID with BFI=1 SID=0
+0000ebe8ca1b97f3b45086fffffc8000c68efffffe008046c07fffffe0008451fffcffe08004e2ff
+  TRAU frame type: EFR
+  osmo_trau2rtp() result: 32
+  TW-TS-001 TEH octet: 0xE2
+  EFR frame:
+    LPC 20 54 191 155 17
+    0 4 15 15 15 15 12 0 0 0 0 0 17
+    4 4 15 15 15 15 12 0 0 0 0 0 17
+    0 12 15 15 15 15 12 0 0 0 0 0 17
+    12 12 15 12 15 15 12 0 0 0 0 0 19
+    SID recompute: 0

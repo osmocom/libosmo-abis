@@ -154,3 +154,27 @@ ID fr1-dtx.bin frame 0x104d1
     64 1 1 10 2 2 2 2 1 1 1 0 0 0 0 0 0
     0 0 0 33 7 3 3 2 0 0 0 1 0 0 0 2 2
     SID recompute: 0
+ID perfect SID with BFI=1
+000088bcb58ee6ee92008000800080008000800080008000800080008000800080008000800082ff
+  TRAU frame type: FR
+  osmo_trau2rtp() result: 34
+  TW-TS-001 TEH octet: 0xE2
+  FR frame:
+    LARc 22 35 27 12 7 7 4 4
+    0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+    0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+    0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+    0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+    SID recompute: 2
+ID perfect SID with BFI=1 SID=0
+000088b8b58ee6ee92008000800080008000800080008000800080008000800080008000800082ff
+  TRAU frame type: FR
+  osmo_trau2rtp() result: 34
+  TW-TS-001 TEH octet: 0xE2
+  FR frame:
+    LARc 22 35 27 12 7 7 4 4
+    0 0 0 0 2 2 2 2 0 0 0 0 0 0 0 0 0
+    0 0 0 0 2 2 2 2 0 0 0 0 0 0 0 0 0
+    0 0 0 0 2 2 2 2 0 0 0 0 0 0 0 0 0
+    0 0 0 0 2 2 2 2 0 0 0 0 0 0 0 0 0
+    SID recompute: 0
