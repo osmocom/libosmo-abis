@@ -30,6 +30,7 @@
 
 #include <osmocom/trau/trau_frame.h>
 #include <osmocom/trau/trau_rtp.h>
+#include <osmocom/trau/csd_ra2.h>
 
 /* RFC4040 "clearmode" RTP payload length */
 #define RFC4040_RTP_PLEN 160
@@ -1093,32 +1094,20 @@ static void trau2v110_bits(ubit_t *out, const ubit_t *in)
 static void trau2v110_ir8(uint8_t *out, const ubit_t *in)
 {
 	ubit_t ra_bits[80];
-	int i;
 
 	trau2v110_bits(ra_bits, in);
-
 	/* RA2: 1 bit per output byte */
-	for (i = 0; i < 80; i++)
-		out[i] = 0x7F | (ra_bits[i] << 7);
+	osmo_csd_ra2_8k_pack(out, ra_bits, 80);
 }
 
 /* intermediate rate 16 kbit/s */
 static void trau2v110_ir16(uint8_t *out, const ubit_t *in)
 {
 	ubit_t ra_bits[80];
-	int i, o;
-	uint8_t b;
 
 	trau2v110_bits(ra_bits, in);
-
 	/* RA2: 2 bits per output byte */
-	i = 0;
-	for (o = 0; o < 40; o++) {
-		b = 0x3F;
-		b |= (ra_bits[i++] << 7);
-		b |= (ra_bits[i++] << 6);
-		out[o] = b;
-	}
+	osmo_csd_ra2_16k_pack(out, ra_bits, 40);
 }
 
 static int trau2rtp_data_fr(uint8_t *out, size_t out_len,
@@ -1241,14 +1230,12 @@ static void rtp2trau_data_ir8(struct osmo_trau_frame *tf, const uint8_t *data,
 			      size_t data_len, unsigned second_offset)
 {
 	ubit_t ra_bits[80 * 2];
-	int i;
 
 	if (data_len != RFC4040_RTP_PLEN)
 		goto idle_fill;
 
 	/* reverse RA2 first */
-	for (i = 0; i < sizeof(ra_bits); i++)
-		ra_bits[i] = (data[i] >> 7) & 1;
+	osmo_csd_ra2_8k_unpack(ra_bits, data, RFC4040_RTP_PLEN);
 
 	/* enforce two properly aligned V.110 frames */
 	if (!check_v110_align(ra_bits))
@@ -1271,17 +1258,12 @@ static void rtp2trau_data_ir16(struct osmo_trau_frame *tf, const uint8_t *data,
 			       size_t data_len)
 {
 	ubit_t ra_bits[80 * 4];
-	int i, o;
 
 	if (data_len != RFC4040_RTP_PLEN)
 		goto idle_fill;
 
 	/* reverse RA2 first */
-	o = 0;
-	for (i = 0; i < RFC4040_RTP_PLEN; i++) {
-		ra_bits[o++] = (data[i] >> 7) & 1;
-		ra_bits[o++] = (data[i] >> 6) & 1;
-	}
+	osmo_csd_ra2_16k_unpack(ra_bits, data, RFC4040_RTP_PLEN);
 
 	/* enforce 4 properly aligned V.110 frames */
 	if (!check_v110_align(ra_bits))
