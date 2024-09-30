@@ -42,6 +42,7 @@ libosmotrau_la_LDFLAGS = $(AM_LDFLAGS) \
 			 $(NULL)
 libosmotrau_la_LIBADD = $(COMMONLIBS) $(LIBOSMOCODEC_LIBS) $(ORTP_LIBS)
 libosmotrau_la_SOURCES = trau/csd_ra2.c \
+			 trau/raa_prime_decode.c \
 			 trau/raa_prime_encode.c \
 			 trau/trau_frame.c \
 			 trau/trau_pcu_ericsson.c \

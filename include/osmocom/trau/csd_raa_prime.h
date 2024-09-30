@@ -55,3 +55,31 @@ void osmo_csd144_to_atrau_bits(ubit_t *out_bits, const ubit_t *m_bits,
 void osmo_csd144_to_atrau_ra2(uint8_t *out_bytes, const ubit_t *m_bits,
 				const ubit_t *d_bits, ubit_t atrau_c4,
 				ubit_t atrau_c5);
+
+/*! Decode aligned A-TRAU frame into user form of 288 D-bits and
+ *  two M-bits; the A-TRAU frame input is given in unpacked bit form.
+ *
+ *  \param[out] m_bits caller-provided buffer for 2 M-bits
+ *  \param[out] d_bits caller-provided buffer for 288 user data bits
+ *  \param[out] atrau_c4 return of A-TRAU frame bit C4 (NULL pointer OK)
+ *  \param[out] atrau_c5 return of A-TRAU frame bit C5 (NULL pointer OK)
+ *  \param[in] atrau_bits A-TRAU frame as 320 unpacked bits
+ *  \return 0 if A-TRAU frame is good; negative if it is invalid
+ */
+int osmo_csd144_from_atrau_bits(ubit_t *m_bits, ubit_t *d_bits,
+				ubit_t *atrau_c4, ubit_t *atrau_c5,
+				const ubit_t *atrau_bits);
+
+/*! Decode aligned A-TRAU frame into user form of 288 D-bits and
+ *  two M-bits; the A-TRAU frame input is given in RA2 octet form.
+ *
+ *  \param[out] m_bits caller-provided buffer for 2 M-bits
+ *  \param[out] d_bits caller-provided buffer for 288 user data bits
+ *  \param[out] atrau_c4 return of A-TRAU frame bit C4 (NULL pointer OK)
+ *  \param[out] atrau_c5 return of A-TRAU frame bit C5 (NULL pointer OK)
+ *  \param[in] atrau_bytes A-TRAU frame as 160 RA2 octets
+ *  \return 0 if A-TRAU frame is good; negative if it is invalid
+ */
+int osmo_csd144_from_atrau_ra2(ubit_t *m_bits, ubit_t *d_bits,
+				ubit_t *atrau_c4, ubit_t *atrau_c5,
+				const uint8_t *atrau_bytes);

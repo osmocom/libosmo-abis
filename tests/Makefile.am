@@ -7,6 +7,7 @@ check_PROGRAMS = e1inp_ipa_bsc_test	\
 		  ipa_proxy_test	\
 		  subchan_demux/subchan_demux_test \
 		  ipa_recv/ipa_recv_test \
+		  raa_prime/test_dec \
 		  raa_prime/test_enc \
 		  trau_conv/trau16_to_rtp \
 		  trau_sync/trau_sync_test \
@@ -38,6 +39,10 @@ ipa_recv_ipa_recv_test_SOURCES = ipa_recv/ipa_recv_test.c
 ipa_recv_ipa_recv_test_LDADD = $(top_builddir)/src/libosmoabis.la \
 			$(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) \
 			$(LIBOSMOVTY_LIBS)
+
+raa_prime_test_dec_SOURCES = raa_prime/test_dec.c
+raa_prime_test_dec_LDADD = $(top_builddir)/src/libosmotrau.la \
+			$(LIBOSMOCORE_LIBS)
 
 raa_prime_test_enc_SOURCES = raa_prime/test_enc.c
 raa_prime_test_enc_LDADD = $(top_builddir)/src/libosmotrau.la \
