@@ -30,6 +30,12 @@ cat $abs_srcdir/rtp_test/rtp_test.ok > expout
 AT_CHECK([$abs_top_builddir/tests/rtp_test/rtp_test], [ignore], [expout])
 AT_CLEANUP
 
+AT_SETUP([raa_prime_encode])
+AT_KEYWORDS([raa_prime_encode])
+cat $abs_srcdir/raa_prime/nokia-tcsm2-atrau.hex > expout
+AT_CHECK([$abs_top_builddir/tests/raa_prime/test_enc $abs_srcdir/raa_prime/d144-ul-input.asc], [0], [expout], [ignore])
+AT_CLEANUP
+
 AT_SETUP([trau_sync])
 AT_KEYWORDS([trau_sync])
 cat $abs_srcdir/trau_sync/trau_sync_test.ok > expout

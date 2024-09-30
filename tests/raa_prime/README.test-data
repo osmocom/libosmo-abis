@@ -1,0 +1,22 @@
+The two test data files presented here for unit testing of RAA' function are:
+
+d144-ul-input.asc
+
+	This file is generated in Themyscira gsm-net-reveng Hg repository,
+	d144 subdirectory.  The original hand-crafted input is a different
+	file in the same directory (ul-input); the present *.asc file is
+	the output of some helper programs maintained in the same place,
+	reformatted to be more directly suitable as a unit test for
+	libosmotrau RAA' encoding functions.
+
+nokia-tcsm2-atrau.hex
+
+	This file is the A-interface output from a historical hardware TRAU
+	(Nokia TCSM2) whose input was the sequence of 290-bit "user" frames in
+	d144-ul-input.asc.  It is raw E1 timeslot output that has been extracted
+	in perfect alignment and converted into hexadecimal representation,
+	with 80 hex digits per line.
+
+A correct RAA' encoder implementation should produce output identical to
+nokia-tcsm2-atrau.hex when fed with d144-ul-input.asc, and vice-versa for
+a correct RAA' decoder implementation.

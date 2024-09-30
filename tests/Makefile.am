@@ -7,6 +7,7 @@ check_PROGRAMS = e1inp_ipa_bsc_test	\
 		  ipa_proxy_test	\
 		  subchan_demux/subchan_demux_test \
 		  ipa_recv/ipa_recv_test \
+		  raa_prime/test_enc \
 		  trau_conv/trau16_to_rtp \
 		  trau_sync/trau_sync_test \
 		  trau_pcu_ericsson/trau_pcu_ericsson_test
@@ -37,6 +38,10 @@ ipa_recv_ipa_recv_test_SOURCES = ipa_recv/ipa_recv_test.c
 ipa_recv_ipa_recv_test_LDADD = $(top_builddir)/src/libosmoabis.la \
 			$(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) \
 			$(LIBOSMOVTY_LIBS)
+
+raa_prime_test_enc_SOURCES = raa_prime/test_enc.c
+raa_prime_test_enc_LDADD = $(top_builddir)/src/libosmotrau.la \
+			$(LIBOSMOCORE_LIBS)
 
 rtp_test_rtp_test_SOURCES = rtp_test/rtp_test.c
 rtp_test_rtp_test_LDADD = $(top_builddir)/src/libosmotrau.la \
@@ -76,6 +81,7 @@ $(srcdir)/package.m4: $(top_srcdir)/configure.ac
 EXTRA_DIST = testsuite.at $(srcdir)/package.m4 $(TESTSUITE) \
 	subchan_demux/subchan_demux_test.ok \
 	ipa_recv/ipa_recv_test.ok \
+	raa_prime/d144-ul-input.asc raa_prime/nokia-tcsm2-atrau.hex \
 	rtp_test/rtp_test.ok \
 	trau_conv/trau16_efr.in trau_conv/trau16_efr_std.ok \
 	trau_conv/trau16_efr_twts001.ok \
