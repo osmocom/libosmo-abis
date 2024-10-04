@@ -31,6 +31,7 @@
 #include <osmocom/trau/trau_frame.h>
 #include <osmocom/trau/trau_rtp.h>
 #include <osmocom/trau/csd_ra2.h>
+#include <osmocom/trau/csd_raa_prime.h>
 
 /* RFC4040 "clearmode" RTP payload length */
 #define RFC4040_RTP_PLEN 160
@@ -1168,6 +1169,23 @@ static int trau2rtp_data_hr8(uint8_t *out, size_t out_len,
 	return RFC4040_RTP_PLEN;
 }
 
+static int trau2rtp_edata(uint8_t *out, size_t out_len,
+			  const struct osmo_trau_frame *tf)
+{
+	/* function interface preliminaries */
+	if (tf->type != OSMO_TRAU16_FT_EDATA)
+		return -EINVAL;
+	if (out_len < RFC4040_RTP_PLEN)
+		return -ENOSPC;
+
+	/* Per TS 48.020 section 11.1:
+	 * A-TRAU bit C4 is always 1 in BSS->IWF direction
+	 * A-TRAU bit C5 comes from E-TRAU bit C6 */
+	osmo_csd144_to_atrau_ra2(out, tf->m_bits, tf->d_bits, 1, tf->c_bits[5]);
+
+	return RFC4040_RTP_PLEN;
+}
+
 /*
  * CSD in the opposite direction: from clearmode RTP input
  * to TRAU frame output.
@@ -1405,6 +1423,8 @@ int osmo_trau2rtp(uint8_t *out, size_t out_len, const struct osmo_trau_frame *tf
 		return trau2rtp_data_fr(out, out_len, tf);
 	case OSMO_TRAU16_FT_DATA_HR:
 		return trau2rtp_data_hr16(out, out_len, tf);
+	case OSMO_TRAU16_FT_EDATA:
+		return trau2rtp_edata(out, out_len, tf);
 	case OSMO_TRAU8_SPEECH:
 		return trau2rtp_hr8(out, out_len, tf, check_twts002(st));
 	case OSMO_TRAU8_DATA:
