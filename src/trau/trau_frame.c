@@ -676,6 +676,10 @@ static int encode16_edata(ubit_t *trau_bits, const struct osmo_trau_frame *fr)
 	else
 		cbits5 = ft_edata_bits;
 
+	/* sync pattern */
+	memset(trau_bits, 0, 16);
+	trau_bits[16] = 1;
+
 	/* C1 .. C5 */
 	memcpy(trau_bits + 17, cbits5, 5);
 
