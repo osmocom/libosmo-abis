@@ -650,6 +650,22 @@ static int encode16_data(ubit_t *trau_bits, const struct osmo_trau_frame *fr)
 	return 40 * 8;
 }
 
+/* TS 48.060 section 5.5.3 */
+static int encode16_d145_sync(ubit_t *trau_bits, const struct osmo_trau_frame *fr)
+{
+	encode_sync16(trau_bits);
+
+	/* C1 .. C5 */
+	memcpy(trau_bits + 17, ft_d145s_bits, 5);
+	/* C6 .. C15 */
+	memcpy(trau_bits + 17 + 5, fr->c_bits + 5, 15 - 5);
+
+	/* This frame is for sync only, all data bits filled with 1s */
+	memset(trau_bits + 4 * 8, 1, (40 - 4) * 8);
+
+	return 40 * 8;
+}
+
 /* TS 08.60 3.3.2 */
 static int decode16_edata(struct osmo_trau_frame *fr, const ubit_t *trau_bits,
 			  enum osmo_trau_frame_direction dir)
@@ -1285,6 +1301,7 @@ int osmo_trau_frame_encode(ubit_t *bits, size_t n_bits, const struct osmo_trau_f
 	case OSMO_TRAU16_FT_DATA:
 		return encode16_data(bits, fr);
 	case OSMO_TRAU16_FT_D145_SYNC:
+		return encode16_d145_sync(bits, fr);
 	case OSMO_TRAU16_FT_EDATA:
 		return encode16_edata(bits, fr);
 	case OSMO_TRAU8_SPEECH:
@@ -1355,7 +1372,7 @@ int osmo_trau_frame_decode_16k(struct osmo_trau_frame *fr, const ubit_t *bits,
 		return decode16_edata(fr, bits, dir);
 	case TRAU_FT_D145_SYNC:
 		fr->type = OSMO_TRAU16_FT_D145_SYNC;
-		return decode16_edata(fr, bits, dir);
+		return decode16_data(fr, bits, dir);
 
 	default:
 		return -EINVAL;
