@@ -1393,6 +1393,53 @@ static int rtp2trau_data_hr8(struct osmo_trau_frame *tf, const uint8_t *data,
 	return 0;
 }
 
+/*
+ * For 14.4 kbit/s data, we do _not_ forward A-TRAU bit C5 to E-TRAU bit C6
+ * like TS 48.020 section 11.1 Note 1 suggests.  That spec note says:
+ * "Bit C5 corresponds to bit C6 of the E-TRAU frame as defined in 3GPP
+ * TS 48.060."  However, while the note says (effectively) that the two
+ * bits are logically equivalent, it does not prescribe specific forwarding
+ * rules for implementations.  When the BTS looks at bit C6 in TRAU-DL,
+ * it will want to know whether its TRAU-UL frames were received correctly
+ * by the TRAU, hence the TRAU-emulating Abis MGW will need to set this bit
+ * based on UL reception status - but it has nothing to do with the incoming
+ * RTP stream.  Hence we don't forward this "logically equivalent" bit.
+ */
+
+static int rtp2trau_edata(struct osmo_trau_frame *tf, const uint8_t *data,
+			  size_t data_len)
+{
+	ubit_t atrau_c4;
+
+	tf->type = OSMO_TRAU16_FT_EDATA;
+
+	/* set all C bits to 1s: covers frame type, initial C6 & C7,
+	 * and the remaining unused bits. */
+	memset(tf->c_bits, 1, 13);
+	/* set C6=0: indicate good reception of TRAU-UL frames */
+	tf->c_bits[5] = 0;
+
+	if (data_len == RFC4040_RTP_PLEN &&
+	    osmo_csd144_from_atrau_ra2(tf->m_bits, tf->d_bits, &atrau_c4, NULL,
+					data) >= 0) {
+		/* We got good A-TRAU input.  3GPP specs define the following
+		 * mapping for DL direction only:
+		 *
+		 * E-TRAU bit C7 is set if idle, inverse of A-TRAU bit C4.
+		 * Spec references: TS 48.020 section 11.1, TS 48.060
+		 * section 6.5.1. */
+		tf->c_bits[6] = !atrau_c4;
+	} else {
+		/* We did not get good A-TRAU input: generate idle fill. */
+		memset(tf->m_bits, 1, 2);
+		memset(tf->d_bits, 1, 288);
+		/* C7=1 means idle */
+		tf->c_bits[6] = 1;
+	}
+
+	return 0;
+}
+
 static inline bool check_twts001(struct osmo_trau2rtp_state *st)
 {
 	if (st->rtp_extensions & OSMO_RTP_EXT_TWTS001)
@@ -1448,6 +1495,8 @@ int osmo_rtp2trau(struct osmo_trau_frame *tf, const uint8_t *rtp, size_t rtp_len
 		return rtp2trau_data_fr(tf, rtp, rtp_len, st->interm_rate_16k);
 	case OSMO_TRAU16_FT_DATA_HR:
 		return rtp2trau_data_hr16(tf, rtp, rtp_len);
+	case OSMO_TRAU16_FT_EDATA:
+		return rtp2trau_edata(tf, rtp, rtp_len);
 	case OSMO_TRAU8_SPEECH:
 		return rtp2trau_hr8(tf, rtp, rtp_len);
 	case OSMO_TRAU8_DATA:
