@@ -1454,7 +1454,7 @@ static bool is_amr_67(const ubit_t *bits)
 /*!< check sync pattern for AMR 7.4kBit/s */
 static bool is_amr_74(const ubit_t *bits)
 {
-	if (bits[0] != 0 || bits[1] != 0 || bits[2] != 0)
+	if (bits[0] != 0 || bits[1] != 0 || bits[2] != 1)
 		return false;
 	if (bits[8] != 0)
 		return false;
