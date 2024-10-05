@@ -1484,28 +1484,37 @@ int osmo_trau_frame_decode_8k(struct osmo_trau_frame *fr, const ubit_t *bits,
 		if (dir == OSMO_TRAU_DIR_UL) {
 			switch (cbits5) {	/* Section 5.2.4.1.1 */
 			case 0x02:
+				fr->type = OSMO_TRAU8_SPEECH;
 				return decode8_hr(fr, bits, dir);
 			case 0x07:
+				fr->type = OSMO_TRAU8_DATA;
 				return decode8_data(fr, bits, dir);
 			case 0x0B:
+				fr->type = OSMO_TRAU8_OAM;
 				return decode8_oam(fr, bits, dir);
 			}
 		} else {
 			/* Downlink */
 			switch (cbits5 >> 2) {	/* Section 5.2.4.1.2 */
 			case 0:
+				fr->type = OSMO_TRAU8_SPEECH;
 				return decode8_hr(fr, bits, dir);
 			case 1:
+				fr->type = OSMO_TRAU8_DATA;
 				return decode8_data(fr, bits, dir);
 			case 2:
+				fr->type = OSMO_TRAU8_OAM;
 				return decode8_oam(fr, bits, dir);
 			}
 		}
 	} else if (is_amr_low(bits)) {
+		fr->type = OSMO_TRAU8_AMR_LOW;
 		return decode8_amr_low(fr, bits, dir);
 	} else if (is_amr_67(bits)) {
+		fr->type = OSMO_TRAU8_AMR_6k7;
 		return decode8_amr_67(fr, bits, dir);
 	} else if (is_amr_74(bits)) {
+		fr->type = OSMO_TRAU8_AMR_7k4;
 		return decode8_amr_74(fr, bits, dir);
 	}
 
