@@ -26,6 +26,10 @@
 
 #define LOGIPA(link, level, fmt, args...) LOGP(DLINP, level, "%s:%u " fmt, link->addr, link->port, ## args)
 
+/* Deprecated, use either:
+ * - libosmo-netif osmo_ipa_msg_push_header() [stores l2h as this API]
+ * - libosmocore's ipa_prepend_header() [doesn't store l2h]
+ */
 void ipa_msg_push_header(struct msgb *msg, uint8_t proto)
 {
 	struct ipaccess_head *hh;

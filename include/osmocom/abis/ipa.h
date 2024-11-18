@@ -2,6 +2,7 @@
 #define _OSMO_IPA_H_
 
 #include <stdint.h>
+#include <osmocom/core/defs.h>
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/timer.h>
 #include <osmocom/core/select.h>
@@ -114,8 +115,7 @@ size_t ipa_client_conn_clear_queue(struct ipa_client_conn *link);
 int ipaccess_bts_handle_ccm(struct ipa_client_conn *link,
 			    struct ipaccess_unit *dev, struct msgb *msg);
 
-void ipa_msg_push_header(struct msgb *msg, uint8_t proto);
-
+void ipa_msg_push_header(struct msgb *msg, uint8_t proto) OSMO_DEPRECATED("Use libosmo-netif/osmo_ipa_msg_push_header() or libosmocore/ipa_prepend_header() instead");
 
 /***********************************************************************
  * IPA Keep-Alive FSM

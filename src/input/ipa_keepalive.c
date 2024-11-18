@@ -38,7 +38,7 @@ static struct msgb *gen_ipa_ping(void)
 		return NULL;
 
 	msgb_put_u8(msg, IPAC_MSGT_PING);
-	ipa_msg_push_header(msg, IPAC_PROTO_IPACCESS);
+	ipa_prepend_header(msg, IPAC_PROTO_IPACCESS);
 
 	return msg;
 }
