@@ -864,61 +864,60 @@ int ipaccess_bts_handle_ccm(struct ipa_client_conn *link,
 			    struct ipaccess_unit *dev, struct msgb *msg)
 {
 	struct ipaccess_head *hh = (struct ipaccess_head *) msg->data;
-	struct msgb *rmsg;
-	int ret = 0;
 
 	/* special handling for IPA CCM. */
-	if (hh->proto == IPAC_PROTO_IPACCESS) {
-		uint8_t *data = msgb_l2(msg);
-		int len = msgb_l2len(msg);
-		OSMO_ASSERT(len > 0);
-		uint8_t msg_type = *data;
-		/* line might not exist if != bsc||bts */
-		struct e1inp_line *line = link->line;
+	if (hh->proto != IPAC_PROTO_IPACCESS)
+		return 0;
 
-		/* peek the pong for our keepalive fsm */
-		if (line && msg_type == IPAC_MSGT_PONG) {
-			struct osmo_fsm_inst *ka_fsm = ipaccess_line_ts(link->ofd, line)->driver.ipaccess.ka_fsm;
-			ipa_keepalive_fsm_pong_received(ka_fsm);
-		}
+	struct msgb *rmsg;
+	int ret = 0;
+	uint8_t *data = msgb_l2(msg);
+	int len = msgb_l2len(msg);
+	OSMO_ASSERT(len > 0);
+	uint8_t msg_type = *data;
+	/* line might not exist if != bsc||bts */
+	struct e1inp_line *line = link->line;
 
-		/* ping, pong and acknowledgment cases. */
-		ret = ipa_ccm_rcvmsg_bts_base(msg, link->ofd);
-		if (ret < 0)
-			goto err;
-
-		/* this is a request for identification from the BSC. */
-		if (msg_type == IPAC_MSGT_ID_GET) {
-			int trx_nr = 0;
-
-			if (link->ofd->priv_nr >= E1INP_SIGN_RSL)
-				trx_nr = link->ofd->priv_nr - E1INP_SIGN_RSL;
-
-			LOGP(DLINP, LOGL_NOTICE, "received ID_GET for unit ID %u/%u/%u\n",
-			     dev->site_id, dev->bts_id, trx_nr);
-			rmsg = ipa_bts_id_resp(dev, data + 1, len - 1, trx_nr);
-			ret = ipa_send(link->ofd->fd, rmsg->data, rmsg->len);
-			if (ret != rmsg->len) {
-				LOGP(DLINP, LOGL_ERROR, "cannot send ID_RESP message. Reason: %s\n",
-				     strerror(errno));
-				goto err_rmsg;
-			}
-			msgb_free(rmsg);
-
-			/* send ID_ACK. */
-			rmsg = ipa_bts_id_ack();
-			ret = ipa_send(link->ofd->fd, rmsg->data, rmsg->len);
-			if (ret != rmsg->len) {
-				LOGP(DLINP, LOGL_ERROR, "cannot send ID_ACK message. Reason: %s\n",
-				     strerror(errno));
-				goto err_rmsg;
-			}
-			msgb_free(rmsg);
-		}
-		return 1;
+	/* peek the pong for our keepalive fsm */
+	if (line && msg_type == IPAC_MSGT_PONG) {
+		struct osmo_fsm_inst *ka_fsm = ipaccess_line_ts(link->ofd, line)->driver.ipaccess.ka_fsm;
+		ipa_keepalive_fsm_pong_received(ka_fsm);
 	}
 
-	return 0;
+	/* ping, pong and acknowledgment cases. */
+	ret = ipa_ccm_rcvmsg_bts_base(msg, link->ofd);
+	if (ret < 0)
+		goto err;
+
+	/* this is a request for identification from the BSC. */
+	if (msg_type == IPAC_MSGT_ID_GET) {
+		int trx_nr = 0;
+
+		if (link->ofd->priv_nr >= E1INP_SIGN_RSL)
+			trx_nr = link->ofd->priv_nr - E1INP_SIGN_RSL;
+
+		LOGP(DLINP, LOGL_NOTICE, "received ID_GET for unit ID %u/%u/%u\n",
+			dev->site_id, dev->bts_id, trx_nr);
+		rmsg = ipa_bts_id_resp(dev, data + 1, len - 1, trx_nr);
+		ret = ipa_send(link->ofd->fd, rmsg->data, rmsg->len);
+		if (ret != rmsg->len) {
+			LOGP(DLINP, LOGL_ERROR, "cannot send ID_RESP message. Reason: %s\n",
+				strerror(errno));
+			goto err_rmsg;
+		}
+		msgb_free(rmsg);
+
+		/* send ID_ACK. */
+		rmsg = ipa_bts_id_ack();
+		ret = ipa_send(link->ofd->fd, rmsg->data, rmsg->len);
+		if (ret != rmsg->len) {
+			LOGP(DLINP, LOGL_ERROR, "cannot send ID_ACK message. Reason: %s\n",
+				strerror(errno));
+			goto err_rmsg;
+		}
+		msgb_free(rmsg);
+	}
+	return 1;
 
 err_rmsg:
 	msgb_free(rmsg);
