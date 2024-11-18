@@ -955,9 +955,9 @@ static int ipaccess_bts_read_cb(struct ipa_client_conn *link, struct msgb *msg)
 
 	if (ret == 1 && hh->proto == IPAC_PROTO_IPACCESS) {
 		if (msg_type == IPAC_MSGT_ID_GET) {
-			sign_link = link->line->ops->sign_link_up(msg,
-					link->line,
-					link->ofd->priv_nr);
+			sign_link = link->line->ops->sign_link_up(link->line->ops->cfg.ipa.dev,
+								  link->line,
+								  link->ofd->priv_nr);
 			if (sign_link == NULL) {
 				LOGP(DLINP, LOGL_ERROR,
 					"Unable to set signal link, "
