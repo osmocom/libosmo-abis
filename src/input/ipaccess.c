@@ -742,89 +742,6 @@ err_line:
 	return ret;
 }
 
-#define IPA_STRING_MAX 64
-
-static struct msgb *
-ipa_bts_id_resp(const struct ipaccess_unit *dev, uint8_t *data, int len, int trx_nr)
-{
-	struct msgb *nmsg;
-	char str[IPA_STRING_MAX];
-	uint8_t *tag;
-
-	memset(str, 0, sizeof(str));
-
-	nmsg = ipa_msg_alloc(0);
-	if (!nmsg)
-		return NULL;
-
-	*msgb_put(nmsg, 1) = IPAC_MSGT_ID_RESP;
-	while (len) {
-		if (len < 2) {
-			LOGP(DLINP, LOGL_NOTICE,
-				"Short read of ipaccess tag\n");
-			msgb_free(nmsg);
-			return NULL;
-		}
-		switch (data[1]) {
-		case IPAC_IDTAG_UNIT:
-			snprintf(str, sizeof(str), "%u/%u/%u",
-				dev->site_id, dev->bts_id, trx_nr);
-			break;
-		case IPAC_IDTAG_MACADDR:
-			snprintf(str, sizeof(str),
-				 "%02x:%02x:%02x:%02x:%02x:%02x",
-				 dev->mac_addr[0], dev->mac_addr[1],
-				 dev->mac_addr[2], dev->mac_addr[3],
-				 dev->mac_addr[4], dev->mac_addr[5]);
-			break;
-		case IPAC_IDTAG_LOCATION1:
-			if (dev->location1)
-				osmo_strlcpy(str, dev->location1, sizeof(str));
-			break;
-		case IPAC_IDTAG_LOCATION2:
-			if (dev->location2)
-				osmo_strlcpy(str, dev->location2, sizeof(str));
-			break;
-		case IPAC_IDTAG_EQUIPVERS:
-			if (dev->equipvers)
-				osmo_strlcpy(str, dev->equipvers, sizeof(str));
-			break;
-		case IPAC_IDTAG_SWVERSION:
-			if (dev->swversion)
-				osmo_strlcpy(str, dev->swversion, sizeof(str));
-			break;
-		case IPAC_IDTAG_UNITNAME:
-			snprintf(str, sizeof(str),
-				 "%s-%02x-%02x-%02x-%02x-%02x-%02x",
-				 dev->unit_name,
-				 dev->mac_addr[0], dev->mac_addr[1],
-				 dev->mac_addr[2], dev->mac_addr[3],
-				 dev->mac_addr[4], dev->mac_addr[5]);
-			break;
-		case IPAC_IDTAG_SERNR:
-			if (dev->serno)
-				osmo_strlcpy(str, dev->serno, sizeof(str));
-			break;
-		default:
-			LOGP(DLINP, LOGL_NOTICE,
-				"Unknown ipaccess tag 0x%02x\n", *data);
-			msgb_free(nmsg);
-			return NULL;
-		}
-
-		LOGP(DLINP, LOGL_INFO, " tag %d: %s\n", data[1], str);
-		tag = msgb_put(nmsg, 3 + strlen(str) + 1);
-		tag[0] = 0x00;
-		tag[1] = 1 + strlen(str) + 1;
-		tag[2] = data[1];
-		memcpy(tag + 3, str, strlen(str) + 1);
-		data += 2;
-		len -= 2;
-	}
-	ipa_msg_push_header(nmsg, IPAC_PROTO_IPACCESS);
-	return nmsg;
-}
-
 static void ipaccess_bts_updown_cb(struct ipa_client_conn *link, int up)
 {
 	struct e1inp_line *line = link->line;
@@ -877,14 +794,23 @@ int ipaccess_bts_handle_ccm(struct ipa_client_conn *link,
 	/* this is a request for identification from the BSC. */
 	if (msg_type == IPAC_MSGT_ID_GET) {
 		struct msgb *rmsg;
-		int trx_nr = 0;
-
+		/* The ipaccess_unit dev holds generic identity for the whole
+		 * line, hence no trx_id. Patch ipaccess_unit during call to
+		 * ipa_ccm_make_id_resp_from_req() to identify this TRX: */
+		int store_trx_nr = dev->trx_id;
 		if (link->ofd->priv_nr >= E1INP_SIGN_RSL)
-			trx_nr = link->ofd->priv_nr - E1INP_SIGN_RSL;
-
+			dev->trx_id = link->ofd->priv_nr - E1INP_SIGN_RSL;
+		else
+			dev->trx_id = 0;
 		LOGP(DLINP, LOGL_NOTICE, "received ID_GET for unit ID %u/%u/%u\n",
-			dev->site_id, dev->bts_id, trx_nr);
-		rmsg = ipa_bts_id_resp(dev, data + 1, len - 1, trx_nr);
+		     dev->site_id, dev->bts_id, dev->trx_id);
+		rmsg = ipa_ccm_make_id_resp_from_req(dev, data + 1, len - 1);
+		dev->trx_id = store_trx_nr;
+		if (!rmsg) {
+			LOGP(DLINP, LOGL_ERROR, "Failed parsing ID_GET message.\n");
+			goto err;
+		}
+
 		ret = ipa_send(link->ofd->fd, rmsg->data, rmsg->len);
 		if (ret != rmsg->len) {
 			LOGP(DLINP, LOGL_ERROR, "cannot send ID_RESP message. Reason: %s\n",
