@@ -286,7 +286,7 @@ struct osmo_fsm_inst *ipa_generic_conn_alloc_keepalive_fsm(void *ctx, void* data
 {
 	struct osmo_fsm_inst *fi;
 	struct ipa_fsm_priv *ifp;
-	
+
 	fi = __ipa_conn_alloc_keepalive_fsm(ctx, params, id);
 	if (!fi)
 		return NULL;
