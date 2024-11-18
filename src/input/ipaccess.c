@@ -967,11 +967,12 @@ static int ipaccess_bts_read_cb(struct ipa_client_conn *link, struct msgb *msg)
 		}
 		msgb_free(msg);
 		return ret;
-	} else if (link->port == IPA_TCP_PORT_OML)
+	}
+
+	if (link->port == IPA_TCP_PORT_OML)
 		e1i_ts = e1inp_line_ipa_oml_ts(link->line);
 	else if (link->port == IPA_TCP_PORT_RSL)
 		e1i_ts = e1inp_line_ipa_rsl_ts(link->line, link->ofd->priv_nr - E1INP_SIGN_RSL);
-
 	OSMO_ASSERT(e1i_ts != NULL);
 
 	if (e1i_ts->type == E1INP_TS_TYPE_NONE) {
