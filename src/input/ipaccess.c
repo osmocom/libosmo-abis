@@ -871,7 +871,10 @@ int ipaccess_bts_handle_ccm(struct ipa_client_conn *link,
 
 	/* special handling for IPA CCM. */
 	if (hh->proto == IPAC_PROTO_IPACCESS) {
-		uint8_t msg_type = *(msg->l2h);
+		uint8_t *data = msgb_l2(msg);
+		int len = msgb_l2len(msg);
+		OSMO_ASSERT(len > 0);
+		uint8_t msg_type = *data;
 
 		/* peek the pong for our keepalive fsm */
 		if (line && msg_type == IPAC_MSGT_PONG) {
@@ -886,8 +889,6 @@ int ipaccess_bts_handle_ccm(struct ipa_client_conn *link,
 
 		/* this is a request for identification from the BSC. */
 		if (msg_type == IPAC_MSGT_ID_GET) {
-			uint8_t *data = msgb_l2(msg);
-			int len = msgb_l2len(msg);
 			int trx_nr = 0;
 
 			if (link->ofd->priv_nr >= E1INP_SIGN_RSL)
