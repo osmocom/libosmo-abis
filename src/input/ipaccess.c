@@ -872,11 +872,10 @@ int ipaccess_bts_handle_ccm(struct ipa_client_conn *link,
 	/* special handling for IPA CCM. */
 	if (hh->proto == IPAC_PROTO_IPACCESS) {
 		uint8_t msg_type = *(msg->l2h);
-		struct osmo_fsm_inst* ka_fsm = NULL;
 
 		/* peek the pong for our keepalive fsm */
 		if (line && msg_type == IPAC_MSGT_PONG) {
-			ka_fsm = ipaccess_line_ts(link->ofd, line)->driver.ipaccess.ka_fsm;
+			struct osmo_fsm_inst *ka_fsm = ipaccess_line_ts(link->ofd, line)->driver.ipaccess.ka_fsm;
 			ipa_keepalive_fsm_pong_received(ka_fsm);
 		}
 
