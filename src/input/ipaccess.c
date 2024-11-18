@@ -825,20 +825,6 @@ ipa_bts_id_resp(const struct ipaccess_unit *dev, uint8_t *data, int len, int trx
 	return nmsg;
 }
 
-static struct msgb *ipa_bts_id_ack(void)
-{
-	struct msgb *nmsg2;
-
-	nmsg2 = ipa_msg_alloc(0);
-	if (!nmsg2)
-		return NULL;
-
-	*msgb_put(nmsg2, 1) = IPAC_MSGT_ID_ACK;
-	ipa_msg_push_header(nmsg2, IPAC_PROTO_IPACCESS);
-
-	return nmsg2;
-}
-
 static void ipaccess_bts_updown_cb(struct ipa_client_conn *link, int up)
 {
 	struct e1inp_line *line = link->line;
@@ -869,7 +855,6 @@ int ipaccess_bts_handle_ccm(struct ipa_client_conn *link,
 	if (hh->proto != IPAC_PROTO_IPACCESS)
 		return 0;
 
-	struct msgb *rmsg;
 	int ret = 0;
 	uint8_t *data = msgb_l2(msg);
 	int len = msgb_l2len(msg);
@@ -891,6 +876,7 @@ int ipaccess_bts_handle_ccm(struct ipa_client_conn *link,
 
 	/* this is a request for identification from the BSC. */
 	if (msg_type == IPAC_MSGT_ID_GET) {
+		struct msgb *rmsg;
 		int trx_nr = 0;
 
 		if (link->ofd->priv_nr >= E1INP_SIGN_RSL)
@@ -903,24 +889,21 @@ int ipaccess_bts_handle_ccm(struct ipa_client_conn *link,
 		if (ret != rmsg->len) {
 			LOGP(DLINP, LOGL_ERROR, "cannot send ID_RESP message. Reason: %s\n",
 				strerror(errno));
-			goto err_rmsg;
+			msgb_free(rmsg);
+			goto err;
 		}
 		msgb_free(rmsg);
 
 		/* send ID_ACK. */
-		rmsg = ipa_bts_id_ack();
-		ret = ipa_send(link->ofd->fd, rmsg->data, rmsg->len);
-		if (ret != rmsg->len) {
+		ret = ipa_ccm_send_id_ack(link->ofd->fd);
+		if (ret <= 0) {
 			LOGP(DLINP, LOGL_ERROR, "cannot send ID_ACK message. Reason: %s\n",
 				strerror(errno));
-			goto err_rmsg;
+			goto err;
 		}
-		msgb_free(rmsg);
 	}
 	return 1;
 
-err_rmsg:
-	msgb_free(rmsg);
 err:
 	ipa_client_conn_close(link);
 	return -1;
