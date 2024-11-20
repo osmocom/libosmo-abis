@@ -5,9 +5,21 @@ ABIS_LIBVERSION=14:0:1
 TRAU_LIBVERSION=10:0:0
 
 AM_CPPFLAGS = $(all_includes) -I$(top_srcdir)/include -I$(top_builddir)
-AM_CFLAGS= -Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS) $(LIBOSMOVTY_CFLAGS) $(LIBOSMOE1D_CFLAGS) $(LIBOSMOCODEC_CFLAGS) $(COVERAGE_CFLAGS)
+AM_CFLAGS= -Wall \
+	$(LIBOSMONETIF_CFLAGS) \
+	$(LIBOSMOCORE_CFLAGS) \
+	$(LIBOSMOGSM_CFLAGS) \
+	$(LIBOSMOVTY_CFLAGS) \
+	$(LIBOSMOE1D_CFLAGS) \
+	$(LIBOSMOCODEC_CFLAGS) \
+	$(COVERAGE_CFLAGS) \
+	$(NULL)
 AM_LDFLAGS = $(COVERAGE_LDFLAGS)
-COMMONLIBS = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOVTY_LIBS) $(LIBOSMOE1D_LIBS) # libosmocodec not [yet] needed here
+COMMONLIBS = \
+	$(LIBOSMOCORE_LIBS) \
+	$(LIBOSMOGSM_LIBS) \
+	$(LIBOSMOVTY_LIBS) \
+	$(LIBOSMOE1D_LIBS) # libosmocodec not [yet] needed here
 
 lib_LTLIBRARIES = libosmoabis.la libosmotrau.la
 
@@ -15,7 +27,7 @@ libosmoabis_la_LDFLAGS = $(AM_LDFLAGS) \
 			 -version-info $(ABIS_LIBVERSION) \
 			 -no-undefined \
 			 $(NULL)
-libosmoabis_la_LIBADD = $(COMMONLIBS)
+libosmoabis_la_LIBADD = $(LIBOSMONETIF_LIBS) $(COMMONLIBS)
 libosmoabis_la_SOURCES = init.c \
 			 e1_input.c \
 			 e1_input_vty.c \

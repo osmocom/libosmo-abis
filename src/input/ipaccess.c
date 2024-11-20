@@ -52,6 +52,8 @@
 #include <osmocom/gsm/ipa.h>
 #include <osmocom/core/stats_tcp.h>
 #include <osmocom/core/fsm.h>
+#include <osmocom/netif/stream.h>
+#include <osmocom/netif/ipa.h>
 
 /* global parameters of IPA input driver */
 struct ipa_pars g_e1inp_ipaccess_pars;
@@ -63,6 +65,11 @@ static void *tall_ipa_ctx;
 #define DEFAULT_TCP_KEEPALIVE_IDLE_TIMEOUT 30
 #define DEFAULT_TCP_KEEPALIVE_INTERVAL     3
 #define DEFAULT_TCP_KEEPALIVE_RETRY_COUNT  10
+
+struct ipaccess_line {
+	bool line_already_initialized;
+	struct osmo_stream_cli *ipa_cli[NUM_E1_TS]; /* 0=OML, 1+N=TRX_N */
+};
 
 static inline struct e1inp_ts *ipaccess_line_ts(struct osmo_fd *bfd, struct e1inp_line *line)
 {
@@ -171,25 +178,27 @@ static void ipaccess_bsc_keepalive_fsm_alloc(struct e1inp_ts *e1i_ts, struct osm
 }
 
 static void ipa_bts_keepalive_write_client_cb(struct osmo_fsm_inst *fi, void *conn, struct msgb *msg) {
-	struct ipa_client_conn *link = (struct ipa_client_conn *)conn;
-	int ret = 0;
-
-	ret = ipa_send(link->ofd->fd, msg->data, msg->len);
-	if (ret != msg->len) {
-		LOGP(DLINP, LOGL_ERROR, "cannot send message. Reason: %s\n", strerror(errno));
-	}
-	msgb_free(msg);
+	struct osmo_stream_cli *cli = (struct osmo_stream_cli *)conn;
+	osmo_stream_cli_send(cli, msg);
 }
 
-static void update_fd_settings(struct e1inp_line *line, int fd);
-static void ipaccess_bts_updown_cb(struct ipa_client_conn *link, int up);
+static void _ipaccess_bts_down_cb(struct osmo_stream_cli *cli)
+{
+	struct e1inp_ts *e1i_ts = osmo_stream_cli_get_data(cli);
+	struct e1inp_line *line = e1i_ts->line;
+
+	ipaccess_keepalive_fsm_cleanup(e1i_ts);
+	if (line->ops->sign_link_down)
+		line->ops->sign_link_down(line);
+}
 
 static int ipa_bts_keepalive_timeout_cb(struct osmo_fsm_inst *fi, void *conn) {
-	ipaccess_bts_updown_cb(conn, false);
+	struct osmo_stream_cli *cli = (struct osmo_stream_cli *)conn;
+	_ipaccess_bts_down_cb(cli);
 	return 1;
 }
 
-static void ipaccess_bts_keepalive_fsm_alloc(struct e1inp_ts *e1i_ts, struct ipa_client_conn *client, const char *id)
+static void ipaccess_bts_keepalive_fsm_alloc(struct e1inp_ts *e1i_ts, struct osmo_stream_cli *client, const char *id)
 {
 	struct e1inp_line *line = e1i_ts->line;
 	struct osmo_fsm_inst *ka_fsm;
@@ -198,7 +207,7 @@ static void ipaccess_bts_keepalive_fsm_alloc(struct e1inp_ts *e1i_ts, struct ipa
 	if (!line->ipa_kap)
 		return;
 
-	ka_fsm = ipa_client_conn_alloc_keepalive_fsm(client, line->ipa_kap, id);
+	ka_fsm = ipa_generic_conn_alloc_keepalive_fsm(client, client, line->ipa_kap, id);
 	e1i_ts->driver.ipaccess.ka_fsm = ka_fsm;
 	if (!ka_fsm) {
 		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Failed to allocate IPA keepalive FSM\n");
@@ -207,6 +216,38 @@ static void ipaccess_bts_keepalive_fsm_alloc(struct e1inp_ts *e1i_ts, struct ipa
 
 	ipa_keepalive_fsm_set_timeout_cb(ka_fsm, ipa_bts_keepalive_timeout_cb);
 	ipa_keepalive_fsm_set_send_cb(ka_fsm, ipa_bts_keepalive_write_client_cb);
+}
+
+/* See how ts->num is assigned in e1inp_line_create: line->ts[i].num = i+1;
+* As per e1inp_line_ipa_oml_ts(), first TS in line (ts->num=1) is OML.
+* As per e1inp_line_ipa_rsl_ts(), second TS in line (ts->num>=2) is RSL.
+*/
+static inline enum e1inp_sign_type ipaccess_e1i_ts_sign_type(const struct e1inp_ts *e1i_ts)
+{
+	OSMO_ASSERT(e1i_ts->num != 0);
+	if (e1i_ts->num == 1)
+		return E1INP_SIGN_OML;
+	return E1INP_SIGN_RSL;
+}
+
+static inline unsigned int ipaccess_e1i_ts_trx_nr(const struct e1inp_ts *e1i_ts)
+{
+	enum e1inp_sign_type sign_type = ipaccess_e1i_ts_sign_type(e1i_ts);
+	if (sign_type == E1INP_SIGN_OML)
+		return 0; /* OML uses trx_nr=0 */
+	OSMO_ASSERT(sign_type == E1INP_SIGN_RSL);
+	/* e1i_ts->num >= 2: */
+	return e1i_ts->num - 2;
+}
+
+static inline struct osmo_stream_cli *ipaccess_bts_e1i_ts_stream_cli(const struct e1inp_ts *e1i_ts)
+{
+	OSMO_ASSERT(e1i_ts);
+	struct ipaccess_line *il = e1i_ts->line->driver_data;
+	OSMO_ASSERT(il);
+	struct osmo_stream_cli *cli = il->ipa_cli[e1i_ts->num - 1];
+	OSMO_ASSERT(cli);
+	return cli;
 }
 
 /* Returns -1 on error, and 0 or 1 on success. If -1 or 1 is returned, line has
@@ -431,19 +472,13 @@ err:
 	return -EBADF;
 }
 
-static int ts_want_write(struct e1inp_ts *e1i_ts)
-{
-	osmo_fd_write_enable(&e1i_ts->driver.ipaccess.fd);
-
-	return 0;
-}
-
 static void ipaccess_close(struct e1inp_sign_link *sign_link)
 {
 	struct e1inp_ts *e1i_ts = sign_link->ts;
 	struct osmo_fd *bfd = &e1i_ts->driver.ipaccess.fd;
 	struct e1inp_line *line = e1i_ts->line;
 	struct osmo_fsm_inst *ka_fsm = e1i_ts->driver.ipaccess.ka_fsm;
+	struct osmo_stream_cli *cli;
 
 	/* depending on caller the fsm might be dead */
 	if (ka_fsm)
@@ -451,16 +486,28 @@ static void ipaccess_close(struct e1inp_sign_link *sign_link)
 
 	e1inp_int_snd_event(e1i_ts, sign_link, S_L_INP_TEI_DN);
 	/* the first e1inp_sign_link_destroy call closes the socket. */
-	if (bfd->fd != -1) {
-		osmo_fd_unregister(bfd);
-		close(bfd->fd);
-		bfd->fd = -1;
-		/* If The bfd holds a reference to e1inp_line in ->data (BSC
-		 * accepted() sockets), then release it */
-		if (bfd->data == line) {
-			bfd->data = NULL;
-			e1inp_line_put2(line, "ipa_bfd");
+
+	OSMO_ASSERT(line->ops);
+	switch (line->ops->cfg.ipa.role) {
+	case E1INP_LINE_R_BTS:
+		cli = ipaccess_bts_e1i_ts_stream_cli(e1i_ts);
+		osmo_stream_cli_close(cli);
+		bfd->fd = -1; /* Compatibility with older implementations */
+		break;
+	case E1INP_LINE_R_BSC:
+	default:
+		if (bfd->fd != -1) {
+			osmo_fd_unregister(bfd);
+			close(bfd->fd);
+			bfd->fd = -1;
+			/* If The bfd holds a reference to e1inp_line in ->data (BSC
+			* accepted() sockets), then release it */
+			if (bfd->data == line) {
+				bfd->data = NULL;
+				e1inp_line_put2(line, "ipa_bfd");
+			}
 		}
+		break;
 	}
 }
 
@@ -473,6 +520,69 @@ static bool e1i_ts_has_pending_tx_msgs(struct e1inp_ts *e1i_ts)
 		}
 	}
 	return false;
+}
+
+static int ipaccess_bts_send_msg(struct e1inp_ts *e1i_ts,
+				 struct e1inp_sign_link *sign_link,
+				 struct osmo_stream_cli *cli,
+				 struct msgb *msg)
+{
+	switch (sign_link->type) {
+	case E1INP_SIGN_OML:
+	case E1INP_SIGN_RSL:
+	case E1INP_SIGN_OSMO:
+		break;
+	default:
+		msgb_free(msg);
+		return -EINVAL;
+	}
+
+	msg->l2h = msg->data;
+	ipa_prepend_header(msg, sign_link->tei);
+
+	LOGPITS(e1i_ts, DLMI, LOGL_DEBUG, "TX: %s\n", osmo_hexdump(msg->l2h, msgb_l2len(msg)));
+	osmo_stream_cli_send(cli, msg);
+	return 0;
+}
+
+/* msg was enqueued in sign_link->tx_list.
+ * Pop it from that list, submit it to osmo_stream_cli. */
+static int ipaccess_bts_write_cb(struct e1inp_ts *e1i_ts)
+{
+	int rc = 0;
+	struct osmo_stream_cli *cli = ipaccess_bts_e1i_ts_stream_cli(e1i_ts);
+
+	/* get the next msg for this timeslot */
+	while (e1i_ts_has_pending_tx_msgs(e1i_ts)) {
+		struct e1inp_sign_link *sign_link = NULL;
+		struct msgb *msg;
+		msg = e1inp_tx_ts(e1i_ts, &sign_link);
+		rc |= ipaccess_bts_send_msg(e1i_ts, sign_link, cli, msg);
+	}
+	return rc;
+}
+
+static int ts_want_write(struct e1inp_ts *e1i_ts)
+{
+	enum e1inp_line_role role = E1INP_LINE_R_NONE;
+	/* osmo-bts handover_test crashes here because has ops = NULL (doesn't
+	 * call e1inp_line_bind_ops())... keep old behavior compatible. */
+	OSMO_ASSERT(e1i_ts->line);
+	if (e1i_ts->line->ops)
+		role = e1i_ts->line->ops->cfg.ipa.role;
+
+	switch (role) {
+	case E1INP_LINE_R_BTS:
+		/* msg was enqueued in sign_link->tx_list.
+		 * Pop it from that list, submit it to osmo_stream_cli: */
+		return ipaccess_bts_write_cb(e1i_ts);
+	case E1INP_LINE_R_NONE:
+	case E1INP_LINE_R_BSC:
+	default:
+		osmo_fd_write_enable(&e1i_ts->driver.ipaccess.fd);
+		/* ipaccess_fd_cb will be called from main loop and tx the msgb. */
+		return 0;
+	}
 }
 
 static void timeout_ts1_write(void *data)
@@ -554,12 +664,6 @@ static int handle_ts1_write(struct osmo_fd *bfd)
 	return __handle_ts1_write(bfd, line);
 }
 
-static int ipaccess_bts_write_cb(struct ipa_client_conn *link)
-{
-	struct e1inp_line *line = link->line;
-
-	return __handle_ts1_write(link->ofd, line);
-}
 
 /* callback from select.c in case one of the fd's can be read/written */
 int ipaccess_fd_cb(struct osmo_fd *bfd, unsigned int what)
@@ -742,27 +846,6 @@ err_line:
 	return ret;
 }
 
-static void ipaccess_bts_updown_cb(struct ipa_client_conn *link, int up)
-{
-	struct e1inp_line *line = link->line;
-	struct e1inp_ts *e1i_ts = ipaccess_line_ts(link->ofd, line);
-
-	if (up) {
-		struct osmo_fsm_inst *ka_fsm = e1i_ts->driver.ipaccess.ka_fsm;
-
-		update_fd_settings(line, link->ofd->fd);
-		if (ka_fsm && line->ipa_kap)
-			ipa_keepalive_fsm_start(ka_fsm);
-		return;
-	}
-
-	ipaccess_keepalive_fsm_cleanup(e1i_ts);
-	if (line->ops->sign_link_down)
-		line->ops->sign_link_down(line);
-}
-
-/* handle incoming message to BTS, check if it is an IPA CCM, and if yes,
- * handle it accordingly (PING/PONG/ID_REQ/ID_RESP/ID_ACK) */
 int ipaccess_bts_handle_ccm(struct ipa_client_conn *link,
 			    struct ipaccess_unit *dev, struct msgb *msg)
 {
@@ -835,41 +918,121 @@ err:
 	return -1;
 }
 
-static int ipaccess_bts_read_cb(struct ipa_client_conn *link, struct msgb *msg)
+static struct msgb *ipa_bts_id_ack(void)
 {
-	struct ipaccess_head *hh = (struct ipaccess_head *) msg->data;
-	struct e1inp_ts *e1i_ts = NULL;
-	struct e1inp_sign_link *sign_link;
-	uint8_t msg_type = *(msg->l2h);
+	struct msgb *nmsg2;
+	nmsg2 = ipa_msg_alloc(0);
+	if (!nmsg2)
+		return NULL;
+	msgb_v_put(nmsg2, IPAC_MSGT_ID_ACK);
+	ipa_prepend_header(nmsg2, IPAC_PROTO_IPACCESS);
+	return nmsg2;
+}
+
+/* Same as ipaccess_bts_handle_ccm(), but using an osmo_stream_cli as backend
+ * instead of ipa_client_conn.
+ * The old ipaccess_bts_handle_ccm() needs to be kept as it's a public API. */
+static int _ipaccess_bts_handle_ccm(struct osmo_stream_cli *cli,
+				    struct ipaccess_unit *dev, struct msgb *msg)
+{
+	/* special handling for IPA CCM. */
+	if (osmo_ipa_msgb_cb_proto(msg) != IPAC_PROTO_IPACCESS)
+		return 0;
+
 	int ret = 0;
+	const uint8_t *data = msgb_l2(msg);
+	int len = msgb_l2len(msg);
+	OSMO_ASSERT(len > 0);
+	uint8_t msg_type = *data;
+	struct e1inp_ts *e1i_ts = osmo_stream_cli_get_data(cli);
+	/* line might not exist if != bsc||bts */
+	struct e1inp_line *line = e1i_ts->line;
+
+	/* peek the pong for our keepalive fsm */
+	if (line && msg_type == IPAC_MSGT_PONG) {
+		struct osmo_fsm_inst *ka_fsm = e1i_ts->driver.ipaccess.ka_fsm;
+		ipa_keepalive_fsm_pong_received(ka_fsm);
+	}
+
+	/* ping, pong and acknowledgment cases. */
+	struct osmo_fd tmp_ofd = { .fd = osmo_stream_cli_get_fd(cli) };
+	ret = ipa_ccm_rcvmsg_bts_base(msg, &tmp_ofd);
+	if (ret < 0)
+		goto err;
+
+	/* this is a request for identification from the BSC. */
+	if (msg_type == IPAC_MSGT_ID_GET) {
+		struct msgb *rmsg;
+		/* The ipaccess_unit dev holds generic identity for the whole
+		 * line, hence no trx_id. Patch ipaccess_unit during call to
+		 * ipa_ccm_make_id_resp_from_req() to identify this TRX: */
+		int store_trx_nr = dev->trx_id;
+		dev->trx_id = ipaccess_e1i_ts_trx_nr(e1i_ts);
+		LOGP(DLINP, LOGL_NOTICE, "received ID_GET for unit ID %u/%u/%u\n",
+		     dev->site_id, dev->bts_id, dev->trx_id);
+		rmsg = ipa_ccm_make_id_resp_from_req(dev, data + 1, len - 1);
+		dev->trx_id = store_trx_nr;
+		if (!rmsg) {
+			LOGP(DLINP, LOGL_ERROR, "Failed parsing ID_GET message.\n");
+			goto err;
+		}
+		osmo_stream_cli_send(cli, rmsg);
+
+		/* send ID_ACK. */
+		rmsg = ipa_bts_id_ack();
+		if (!rmsg) {
+			LOGP(DLINP, LOGL_ERROR, "Failed allocating ID_ACK message.\n");
+			goto err;
+		}
+		osmo_stream_cli_send(cli, rmsg);
+	}
+	return 1;
+
+err:
+	return -1;
+}
+
+static int ipaccess_bts_read_cb(struct osmo_stream_cli *cli, int res, struct msgb *msg)
+{
+	enum ipaccess_proto ipa_proto = osmo_ipa_msgb_cb_proto(msg);
+	struct e1inp_ts *e1i_ts = osmo_stream_cli_get_data(cli);
+	struct e1inp_line *line = e1i_ts->line;
+	struct e1inp_sign_link *sign_link;
+	int ret;
+
+	if (res <= 0) {
+		LOGPITS(e1i_ts, DLINP, LOGL_NOTICE, "failed reading from socket: %d\n", res);
+		goto err;
+	}
 
 	/* special handling for IPA CCM. */
-	if (hh->proto == IPAC_PROTO_IPACCESS) {
+	if (ipa_proto == IPAC_PROTO_IPACCESS) {
+		uint8_t msg_type = *(msg->l2h);
 		/* this is a request for identification from the BSC. */
 		if (msg_type == IPAC_MSGT_ID_GET) {
-			if (!link->line->ops->sign_link_up) {
-				LOGP(DLINP, LOGL_ERROR,
-					"Unable to set signal link, "
-					"closing socket.\n");
+			if (!line->ops->sign_link_up) {
+				LOGPITS(e1i_ts, DLINP, LOGL_NOTICE,
+					"Unable to set signal link, closing socket.\n");
 				goto err;
 			}
 		}
 	}
 
 	/* core CCM handling */
-	ret = ipaccess_bts_handle_ccm(link, link->line->ops->cfg.ipa.dev, msg);
+	ret = _ipaccess_bts_handle_ccm(cli, line->ops->cfg.ipa.dev, msg);
 	if (ret < 0)
 		goto err;
 
-	if (ret == 1 && hh->proto == IPAC_PROTO_IPACCESS) {
+	if (ret == 1 && ipa_proto == IPAC_PROTO_IPACCESS) {
+		uint8_t msg_type = *(msg->l2h);
 		if (msg_type == IPAC_MSGT_ID_GET) {
-			sign_link = link->line->ops->sign_link_up(link->line->ops->cfg.ipa.dev,
-								  link->line,
-								  link->ofd->priv_nr);
+			enum e1inp_sign_type sign_type = ipaccess_e1i_ts_sign_type(e1i_ts);
+			unsigned int trx_nr = ipaccess_e1i_ts_trx_nr(e1i_ts);
+			sign_link = line->ops->sign_link_up(line->ops->cfg.ipa.dev,
+							    line, sign_type + trx_nr);
 			if (sign_link == NULL) {
-				LOGP(DLINP, LOGL_ERROR,
-					"Unable to set signal link, "
-					"closing socket.\n");
+				LOGPITS(e1i_ts, DLINP, LOGL_NOTICE,
+					"Unable to set signal link, closing socket.\n");
 				goto err;
 			}
 		}
@@ -877,45 +1040,46 @@ static int ipaccess_bts_read_cb(struct ipa_client_conn *link, struct msgb *msg)
 		return ret;
 	}
 
-	if (link->port == IPA_TCP_PORT_OML)
-		e1i_ts = e1inp_line_ipa_oml_ts(link->line);
-	else if (link->port == IPA_TCP_PORT_RSL)
-		e1i_ts = e1inp_line_ipa_rsl_ts(link->line, link->ofd->priv_nr - E1INP_SIGN_RSL);
-	OSMO_ASSERT(e1i_ts != NULL);
-
-	if (e1i_ts->type == E1INP_TS_TYPE_NONE) {
-		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Signalling link not initialized. Discarding."
-			" port=%u msg_type=%u\n", link->port, msg_type);
-		goto err;
-	}
-
 	/* look up for some existing signaling link. */
-	sign_link = e1inp_lookup_sign_link(e1i_ts, hh->proto, 0);
+	sign_link = e1inp_lookup_sign_link(e1i_ts, ipa_proto, 0);
 	if (sign_link == NULL) {
 		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "no matching signalling link for "
-			"hh->proto=0x%02x\n", hh->proto);
+			"ipa_proto=0x%02x\n", ipa_proto);
 		goto err;
 	}
 	msg->dst = sign_link;
 
 	/* XXX better use e1inp_ts_rx? */
-	if (!link->line->ops->sign_link) {
+	if (!line->ops->sign_link) {
 		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Fix your application, "
 			"no action set for signalling messages.\n");
 		goto err;
 	}
-	return link->line->ops->sign_link(msg);
+	return line->ops->sign_link(msg);
 
 err:
-	ipa_client_conn_close(link);
 	msgb_free(msg);
+	osmo_stream_cli_close(cli);
 	return -EBADF;
 }
 
-struct ipaccess_line {
-	bool line_already_initialized;
-	struct ipa_client_conn *ipa_cli[NUM_E1_TS]; /* 0=OML, 1+N=TRX_N */
-};
+static int ipaccess_bts_connect_cb(struct osmo_stream_cli *cli)
+{
+	struct e1inp_ts *e1i_ts = osmo_stream_cli_get_data(cli);
+	struct e1inp_line *line = e1i_ts->line;
+	struct osmo_fsm_inst *ka_fsm = e1i_ts->driver.ipaccess.ka_fsm;
+
+	update_fd_settings(line, osmo_stream_cli_get_fd(cli));
+	if (ka_fsm && line->ipa_kap)
+		ipa_keepalive_fsm_start(ka_fsm);
+	return 0;
+}
+
+static int ipaccess_bts_disconnect_cb(struct osmo_stream_cli *cli)
+{
+	_ipaccess_bts_down_cb(cli);
+	return 0;
+}
 
 static int ipaccess_line_update(struct e1inp_line *line)
 {
@@ -974,45 +1138,57 @@ static int ipaccess_line_update(struct e1inp_line *line)
 		break;
 	}
 	case E1INP_LINE_R_BTS: {
-		struct ipa_client_conn *link;
+		struct osmo_stream_cli *cli;
 		struct e1inp_ts *e1i_ts = e1inp_line_ipa_oml_ts(line);
+		char cli_name[128];
 
 		LOGPITS(e1i_ts, DLINP, LOGL_NOTICE, "enabling ipaccess BTS mode, "
 			"OML connecting to %s:%u\n", line->ops->cfg.ipa.addr, IPA_TCP_PORT_OML);
 
 		/* Drop previous line */
 		if (il->ipa_cli[0]) {
-			ipa_client_conn_close(il->ipa_cli[0]);
+			osmo_stream_cli_close(il->ipa_cli[0]);
 			ipaccess_keepalive_fsm_cleanup(e1i_ts);
-			ipa_client_conn_destroy(il->ipa_cli[0]);
+			e1i_ts->driver.ipaccess.fd.fd = -1;
+			osmo_stream_cli_destroy(il->ipa_cli[0]);
 			il->ipa_cli[0] = NULL;
 		}
 
-		link = ipa_client_conn_create2(tall_ipa_ctx,
-					      e1inp_line_ipa_oml_ts(line),
-					      E1INP_SIGN_OML,
-					      NULL, 0,
-					      line->ops->cfg.ipa.addr,
-					      IPA_TCP_PORT_OML,
-					      ipaccess_bts_updown_cb,
-					      ipaccess_bts_read_cb,
-					      ipaccess_bts_write_cb,
-					      line);
-		if (link == NULL) {
-			LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "cannot create OML BTS link: %s\n", strerror(errno));
-			return -ENOMEM;
-		}
-		link->dscp = g_e1inp_ipaccess_pars.oml.dscp;
-		link->priority = g_e1inp_ipaccess_pars.oml.priority;
-		if (ipa_client_conn_open2(link, line->connect_timeout) < 0) {
+		e1inp_ts_config_sign(e1i_ts, line);
+
+		cli = osmo_stream_cli_create(tall_ipa_ctx);
+		OSMO_ASSERT(cli);
+
+		snprintf(cli_name, sizeof(cli_name), "ts-%u-%u-oml", line->num, e1i_ts->num);
+		osmo_stream_cli_set_name(cli, cli_name);
+		osmo_stream_cli_set_data(cli, e1i_ts);
+		osmo_stream_cli_set_addr(cli, line->ops->cfg.ipa.addr);
+		osmo_stream_cli_set_port(cli, IPA_TCP_PORT_OML);
+		osmo_stream_cli_set_proto(cli, IPPROTO_TCP);
+		osmo_stream_cli_set_nodelay(cli, true);
+		osmo_stream_cli_set_priority(cli, g_e1inp_ipaccess_pars.oml.dscp);
+		osmo_stream_cli_set_ip_dscp(cli, g_e1inp_ipaccess_pars.oml.priority);
+
+		/* Reconnect is handled by upper layers: */
+		osmo_stream_cli_set_reconnect_timeout(cli, -1);
+
+		osmo_stream_cli_set_segmentation_cb(cli, osmo_ipa_segmentation_cb);
+		osmo_stream_cli_set_connect_cb(cli, ipaccess_bts_connect_cb);
+		osmo_stream_cli_set_disconnect_cb(cli, ipaccess_bts_disconnect_cb);
+		osmo_stream_cli_set_read_cb2(cli, ipaccess_bts_read_cb);
+
+		if (osmo_stream_cli_open(cli)) {
 			LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "cannot open OML BTS link: %s\n", strerror(errno));
-			ipa_client_conn_close(link);
-			ipa_client_conn_destroy(link);
+			osmo_stream_cli_destroy(cli);
 			return -EIO;
 		}
 
-		ipaccess_bts_keepalive_fsm_alloc(e1i_ts, link, "oml_bts_to_bsc");
-		il->ipa_cli[0] = link;
+		/* Compatibility with older ofd based implementation. osmo-bts accesses
+		 * this fd directly in get_signlink_remote_ip() and get_rsl_local_ip() */
+		e1i_ts->driver.ipaccess.fd.fd = osmo_stream_cli_get_fd(cli);
+
+		ipaccess_bts_keepalive_fsm_alloc(e1i_ts, cli, "oml_bts_to_bsc");
+		il->ipa_cli[0] = cli;
 		ret = 0;
 		break;
 	}
@@ -1035,9 +1211,10 @@ int e1inp_ipa_bts_rsl_connect_n(struct e1inp_line *line,
 				const char *rem_addr, uint16_t rem_port,
 				uint8_t trx_nr)
 {
-	struct ipa_client_conn *rsl_link;
+	struct osmo_stream_cli *cli;
 	struct e1inp_ts *e1i_ts = e1inp_line_ipa_rsl_ts(line, trx_nr);
 	struct ipaccess_line *il;
+	char cli_name[128];
 	int rc;
 
 	if (E1INP_SIGN_RSL+trx_nr-1 >= NUM_E1_TS) {
@@ -1050,40 +1227,53 @@ int e1inp_ipa_bts_rsl_connect_n(struct e1inp_line *line,
 	if ((rc = e1inp_ipa_bts_rsl_close_n(line, trx_nr)) < 0)
 		return rc;
 
+	e1inp_ts_config_sign(e1i_ts, line);
+
 	if (!line->driver_data)
 		line->driver_data = talloc_zero(line, struct ipaccess_line);
 	il = line->driver_data;
 
-	rsl_link = ipa_client_conn_create2(tall_ipa_ctx,
-					  e1inp_line_ipa_rsl_ts(line, trx_nr),
-					  E1INP_SIGN_RSL+trx_nr,
-					  NULL, 0,
-					  rem_addr, rem_port,
-					  ipaccess_bts_updown_cb,
-					  ipaccess_bts_read_cb,
-					  ipaccess_bts_write_cb,
-					  line);
-	if (rsl_link == NULL) {
-		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "cannot create RSL BTS link: %s\n", strerror(errno));
-		return -ENOMEM;
-	}
-	rsl_link->dscp = g_e1inp_ipaccess_pars.rsl.dscp;
-	rsl_link->priority = g_e1inp_ipaccess_pars.rsl.priority;
-	if (ipa_client_conn_open2(rsl_link, line->connect_timeout) < 0) {
+	cli = osmo_stream_cli_create(tall_ipa_ctx);
+	OSMO_ASSERT(cli);
+
+	snprintf(cli_name, sizeof(cli_name), "ts-%u-%u-rsl-trx%u",
+		 line->num, e1i_ts->num, trx_nr);
+	osmo_stream_cli_set_name(cli, cli_name);
+	osmo_stream_cli_set_data(cli, e1i_ts);
+	osmo_stream_cli_set_addr(cli, rem_addr);
+	osmo_stream_cli_set_port(cli, rem_port);
+	osmo_stream_cli_set_proto(cli, IPPROTO_TCP);
+	osmo_stream_cli_set_nodelay(cli, true);
+	osmo_stream_cli_set_priority(cli, g_e1inp_ipaccess_pars.rsl.dscp);
+	osmo_stream_cli_set_ip_dscp(cli, g_e1inp_ipaccess_pars.rsl.priority);
+
+	/* Reconnect is handled by upper layers: */
+	osmo_stream_cli_set_reconnect_timeout(cli, -1);
+
+	osmo_stream_cli_set_segmentation_cb(cli, osmo_ipa_segmentation_cb);
+	osmo_stream_cli_set_connect_cb(cli, ipaccess_bts_connect_cb);
+	osmo_stream_cli_set_disconnect_cb(cli, ipaccess_bts_disconnect_cb);
+	osmo_stream_cli_set_read_cb2(cli, ipaccess_bts_read_cb);
+
+	if (osmo_stream_cli_open(cli)) {
 		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "cannot open RSL BTS link: %s\n", strerror(errno));
-		ipa_client_conn_close(rsl_link);
-		ipa_client_conn_destroy(rsl_link);
+		osmo_stream_cli_destroy(cli);
 		return -EIO;
 	}
-	ipaccess_bts_keepalive_fsm_alloc(e1i_ts, rsl_link, "rsl_bts_to_bsc");
-	il->ipa_cli[1 + trx_nr] = rsl_link;
+
+	/* Compatibility with older ofd based implementation. osmo-bts accesses
+	 * this fd directly in get_signlink_remote_ip() and get_rsl_local_ip() */
+	e1i_ts->driver.ipaccess.fd.fd = osmo_stream_cli_get_fd(cli);
+
+	ipaccess_bts_keepalive_fsm_alloc(e1i_ts, cli, "rsl_bts_to_bsc");
+	il->ipa_cli[1 + trx_nr] = cli;
 	return 0;
 }
 
 /* Close the underlying IPA TCP socket of an RSL link */
 int e1inp_ipa_bts_rsl_close_n(struct e1inp_line *line, uint8_t trx_nr)
 {
-	struct ipa_client_conn *conn;
+	struct osmo_stream_cli *cli;
 	struct ipaccess_line *il;
 	struct e1inp_ts *e1i_ts;
 
@@ -1098,11 +1288,12 @@ int e1inp_ipa_bts_rsl_close_n(struct e1inp_line *line, uint8_t trx_nr)
 
 	e1i_ts = e1inp_line_ipa_rsl_ts(line, trx_nr);
 	ipaccess_keepalive_fsm_cleanup(e1i_ts);
+	/* Compatibility with older implementation: */
+	e1i_ts->driver.ipaccess.fd.fd = -1;
 
-	conn = il->ipa_cli[1 + trx_nr];
-	if (conn != NULL) {
-		ipa_client_conn_close(conn);
-		ipa_client_conn_destroy(conn);
+	cli = il->ipa_cli[1 + trx_nr];
+	if (cli != NULL) {
+		osmo_stream_cli_destroy(cli);
 		il->ipa_cli[1 + trx_nr] = NULL;
 	}
 	return 0;

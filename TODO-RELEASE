@@ -9,3 +9,5 @@
 #library	what			description / commit summary line
 libosmotrau	struct osmo_trau2rtp_state extended (ABI break)
 libosmo-netif >1.5.0  New dependency
+libosmo-netif >1.5.0  use osmo_stream_cli_set_priority(), osmo_stream_cli_set_ip_dscp()
+libosmocore   >1.10.0  bigger iofd tx_queue.max_length default value

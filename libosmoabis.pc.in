@@ -9,3 +9,4 @@ Version: @VERSION@
 Libs: -L${libdir} -losmoabis
 Cflags: -I${includedir}/
 Requires: libosmocore
+Requires.private: libosmo-netif
