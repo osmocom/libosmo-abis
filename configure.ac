@@ -71,6 +71,8 @@ PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 1.10.0)
 PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 1.10.0)
 PKG_CHECK_MODULES(LIBOSMOCODEC, libosmocodec >= 1.10.0)
 
+PKG_CHECK_MODULES(LIBOSMONETIF, libosmo-netif >= 1.5.0)
+
 AC_ARG_ENABLE([ortp], [AS_HELP_STRING([--disable-ortp], [Build without ortp support])],
     [
         ENABLE_ORTP=$enableval
@@ -198,6 +200,8 @@ AC_MSG_RESULT([CPPFLAGS="$CPPFLAGS"])
 AC_OUTPUT(
 	libosmoabis.pc
 	libosmotrau.pc
+	doc/Makefile
+	doc/examples/Makefile
 	include/Makefile
 	src/Makefile
 	tests/Makefile

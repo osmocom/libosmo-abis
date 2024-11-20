@@ -1,7 +1,12 @@
 ACLOCAL_AMFLAGS = -I m4
 
 AM_CPPFLAGS = $(all_includes) -I$(top_srcdir)/include
-SUBDIRS = include src tests
+SUBDIRS = \
+	include \
+	src \
+	tests \
+	doc \
+	$(NULL)
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = libosmoabis.pc libosmotrau.pc
