@@ -307,12 +307,12 @@ int abis_sendmsg(struct msgb *msg)
 		return -EINVAL;
 	}
 	e1i_ts = sign_link->ts;
+	msgb_enqueue(&sign_link->tx_list, msg);
 	if (!osmo_timer_pending(&e1i_ts->sign.tx_timer)) {
 		/* notify the driver we have something to write */
 		e1inp_driver = sign_link->ts->line->driver;
 		e1inp_driver->want_write(e1i_ts);
 	}
-	msgb_enqueue(&sign_link->tx_list, msg);
 
 	/* we only need to write a 'Fake LAPD' packet here, if the
 	 * underlying driver hides LAPD from us.  If we use the
