@@ -675,6 +675,10 @@ e1inp_line_clone(void *ctx, struct e1inp_line *line, const char *use)
 		OSMO_ASSERT(clone->sock_path);
 	}
 
+	/* Update TS to point to the cloned line: */
+	for (unsigned int i = 0; i < line->num_ts; i++)
+		clone->ts[i].line = clone;
+
 	/*
 	 * Rate counters and driver data are shared between clones. These are pointers
 	 * to dynamic memory so we use reference counting to avoid a double-free (see OS#3137).
