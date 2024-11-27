@@ -1,6 +1,7 @@
 /* OpenBSC Abis input driver for ip.access */
 
-/* (C) 2009-2021 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2024 by sysmocom - s.f.m.c. GmbH <info@sysmocom.de>
+ * (C) 2009-2021 by Harald Welte <laforge@gnumonks.org>
  * (C) 2010 by Holger Hans Peter Freyther
  * (C) 2010 by On-Waves
  *
@@ -60,8 +61,6 @@ struct ipa_pars g_e1inp_ipaccess_pars;
 
 static void *tall_ipa_ctx;
 
-#define TS1_ALLOC_SIZE	900
-
 #define DEFAULT_TCP_KEEPALIVE_IDLE_TIMEOUT 30
 #define DEFAULT_TCP_KEEPALIVE_INTERVAL     3
 #define DEFAULT_TCP_KEEPALIVE_RETRY_COUNT  10
@@ -90,73 +89,20 @@ static inline void ipaccess_keepalive_fsm_cleanup(struct e1inp_ts *e1i_ts)
 	}
 }
 
-static int ipaccess_drop(struct osmo_fd *bfd, struct e1inp_line *line)
-{
-	int ret = 1;
-	struct e1inp_ts *e1i_ts = ipaccess_line_ts(bfd, line);
-	e1inp_line_get2(line, __func__);
-
-	ipaccess_keepalive_fsm_cleanup(e1i_ts);
-
-	/* Error case: we did not see any ID_RESP yet for this socket. */
-	if (bfd->fd != -1) {
-		LOGPITS(e1i_ts, DLINP, LOGL_NOTICE, "Forcing socket shutdown\n");
-		osmo_fd_unregister(bfd);
-		close(bfd->fd);
-		bfd->fd = -1;
-		switch (line->ops->cfg.ipa.role) {
-		case E1INP_LINE_R_BSC:
-			/* This is BSC code, ipaccess_drop() is only called for
-			   accepted() sockets, hence the bfd holds a reference to
-			   e1inp_line in ->data that needs to be released */
-			OSMO_ASSERT(bfd->data == line);
-			bfd->data = NULL;
-			e1inp_line_put2(line, "ipa_bfd");
-			break;
-		case E1INP_LINE_R_BTS:
-			/* BTS code: bfd->data contains pointer to struct
-			 * ipa_client_conn. Leave it alive so it reconnects.
-			 */
-			break;
-		default:
-			break;
-		}
-		ret = -ENOENT;
-	} else {
-		LOGPITS(e1i_ts, DLINP, LOGL_ERROR,
-			"Forcing socket shutdown with no signal link set\n");
-	}
-
-	msgb_free(e1i_ts->pending_msg);
-	e1i_ts->pending_msg = NULL;
-
-	/* e1inp_sign_link_destroy releases the socket descriptors for us. */
-	if (line->ops->sign_link_down)
-		line->ops->sign_link_down(line);
-
-	e1inp_line_put2(line, __func__);
-	return ret;
-}
-
 static void ipa_bsc_keepalive_write_server_cb(struct osmo_fsm_inst *fi, void *conn, struct msgb *msg)
 {
-	struct osmo_fd *bfd = (struct osmo_fd *)conn;
-	write(bfd->fd, msg->data, msg->len);
-	msgb_free(msg);
+	struct osmo_stream_srv *srv = (struct osmo_stream_srv *)conn;
+	osmo_stream_srv_send(srv, msg);
 }
 
 static int ipa_bsc_keepalive_timeout_cb(struct osmo_fsm_inst *fi, void *data)
 {
-	struct osmo_fd *bfd = (struct osmo_fd *)data;
-
-	if (bfd->fd == -1)
-		return 1;
-
-	ipaccess_drop(bfd, (struct e1inp_line *)bfd->data);
+	struct osmo_stream_srv *srv = (struct osmo_stream_srv *)data;
+	osmo_stream_srv_destroy(srv);
 	return 1;
 }
 
-static void ipaccess_bsc_keepalive_fsm_alloc(struct e1inp_ts *e1i_ts, struct osmo_fd *bfd, const char *id)
+static void ipaccess_bsc_keepalive_fsm_alloc(struct e1inp_ts *e1i_ts, struct osmo_stream_srv *conn, const char *id)
 {
 	struct e1inp_line *line = e1i_ts->line;
 	struct osmo_fsm_inst *ka_fsm;
@@ -165,7 +111,7 @@ static void ipaccess_bsc_keepalive_fsm_alloc(struct e1inp_ts *e1i_ts, struct osm
 	if (!line->ipa_kap)
 		return;
 
-	ka_fsm = ipa_generic_conn_alloc_keepalive_fsm(tall_ipa_ctx, bfd, line->ipa_kap, id);
+	ka_fsm = ipa_generic_conn_alloc_keepalive_fsm(conn, conn, line->ipa_kap, id);
 	e1i_ts->driver.ipaccess.ka_fsm = ka_fsm;
 	if (!ka_fsm) {
 		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Failed to allocate IPA keepalive FSM\n");
@@ -250,22 +196,37 @@ static inline struct osmo_stream_cli *ipaccess_bts_e1i_ts_stream_cli(const struc
 	return cli;
 }
 
-/* Returns -1 on error, and 0 or 1 on success. If -1 or 1 is returned, line has
- * been released and should not be used anymore by the caller. */
-static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
-			   struct osmo_fd *bfd)
+static inline struct osmo_stream_srv *ipaccess_bts_e1i_ts_stream_srv(const struct e1inp_ts *e1i_ts)
 {
+	OSMO_ASSERT(e1i_ts);
+	struct osmo_stream_srv *conn = e1i_ts->driver.ipaccess.fd.data;
+	/* conn may be NULL here, if we are called by user during sign_link_up()
+	 * and hence before we finished to internally move the ipaccess conn under
+	 * the proper final line/ts object.
+	 */
+	return conn;
+}
+
+static int ipaccess_bsc_write_cb(struct e1inp_ts *e1i_ts);
+
+/* Returns -1 on error, and 0 or 1 on success. If -1 or 1 is returned, line has
+ * been released and should not be used anymore by the caller.
+ * msg is always freed upon return.
+ */
+static int ipaccess_bsc_rcvmsg(struct osmo_stream_srv *conn, struct msgb *msg)
+{
+	struct e1inp_ts *e1i_ts = osmo_stream_srv_get_data(conn);
+	struct e1inp_line *line = e1i_ts->line;
+	struct osmo_fd *bfd = &e1i_ts->driver.ipaccess.fd;
 	struct tlv_parsed tlvp;
 	uint8_t msg_type = *(msg->l2h);
 	struct ipaccess_unit unit_data = {};
 	struct e1inp_sign_link *sign_link;
 	char *unitid;
 	int len, ret;
-	struct e1inp_ts *e1i_ts;
 	struct osmo_fsm_inst *ka_fsm;
 
 	/* peek the pong for our keepalive fsm */
-	e1i_ts = ipaccess_line_ts(bfd, line);
 	ka_fsm = e1i_ts->driver.ipaccess.ka_fsm;
 	if (ka_fsm && msg_type == IPAC_MSGT_PONG)
 		ipa_keepalive_fsm_pong_received(ka_fsm);
@@ -278,7 +239,7 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 		goto err;
 	case 1:
 		/* this is an IPA control message, skip further processing */
-		return 0;
+		goto ret_skip;
 	case 0:
 		/* this is not an IPA control message, continue */
 		break;
@@ -329,17 +290,16 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 				goto err;
 			}
 
-			ipaccess_bsc_keepalive_fsm_alloc(e1i_ts, bfd, "oml_bsc_to_bts");
+			ipaccess_bsc_keepalive_fsm_alloc(e1i_ts, conn, "oml_bsc_to_bts");
 
 		} else if (bfd->priv_nr == E1INP_SIGN_RSL) {
-			struct e1inp_ts *ts;
+			struct e1inp_ts *new_ts;
 			struct osmo_fd *newbfd;
 			struct e1inp_line *new_line;
 			char tcp_stat_name[64];
 
 			sign_link =
-				line->ops->sign_link_up(&unit_data, line,
-							E1INP_SIGN_RSL);
+				line->ops->sign_link_up(&unit_data, line, E1INP_SIGN_RSL);
 			if (sign_link == NULL) {
 				LOGPIL(line, DLINP, LOGL_ERROR, "Unable to set signal link, closing socket.\n");
 				goto err;
@@ -352,37 +312,36 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 			if (new_line == line) {
 				LOGPIL(line, DLINP, LOGL_ERROR, "Fix your BSC, you should use the "
 					"E1 line used by the OML link for your RSL link.\n");
-				return 0;
+				goto ret_skip;
 			}
+
+			/* Attach srv_conn to new line+ts: */
 			e1inp_line_get2(new_line, "ipa_bfd");
-			ts = e1inp_line_ipa_rsl_ts(new_line, unit_data.trx_id);
-			newbfd = &ts->driver.ipaccess.fd;
+			new_ts = e1inp_line_ipa_rsl_ts(new_line, unit_data.trx_id);
+			newbfd = &new_ts->driver.ipaccess.fd;
 			OSMO_ASSERT(newbfd != bfd);
+			osmo_fd_setup(newbfd, bfd->fd, 0, NULL, conn, E1INP_SIGN_RSL + unit_data.trx_id);
+			osmo_stream_srv_set_data(conn, new_ts);
 
-			/* preserve 'newbfd->when' flags potentially set by sign_link_up() */
-			osmo_fd_setup(newbfd, bfd->fd, newbfd->when | bfd->when, bfd->cb,
-				      new_line, E1INP_SIGN_RSL + unit_data.trx_id);
-
-
-			/* now we can release the dummy RSL line (old temporary bfd). */
-			osmo_fd_unregister(bfd);
+			/* Now we can release the old temporary dummy RSL line+ts: */
+			osmo_stats_tcp_osmo_fd_unregister(bfd);
 			bfd->fd = -1;
-			/* bfd->data holds a reference to line, drop it */
-			OSMO_ASSERT(bfd->data == line);
+			/* conn holds a reference to old line, drop it */
+			OSMO_ASSERT(bfd->data == conn);
 			bfd->data = NULL;
 			e1inp_line_put2(line, "ipa_bfd");
 
-			ret = osmo_fd_register(newbfd);
-			if (ret < 0) {
-				LOGPITS(ts, DLINP, LOGL_ERROR, "could not register FD\n");
-				goto err;
-			}
 			snprintf(tcp_stat_name, sizeof(tcp_stat_name), "site.%u.bts.%u.ipa-rsl.%u",
 				unit_data.site_id, unit_data.bts_id, unit_data.trx_id);
 			osmo_stats_tcp_osmo_fd_register(newbfd, tcp_stat_name);
 
-			e1i_ts = ipaccess_line_ts(newbfd, new_line);
-			ipaccess_bsc_keepalive_fsm_alloc(e1i_ts, newbfd, "rsl_bsc_to_bts");
+			ipaccess_bsc_keepalive_fsm_alloc(new_ts, conn, "rsl_bsc_to_bts");
+
+			/* Now that we attached the srv_conn to the e1ts, transmit packets which may been enqueued
+			 * by user during sign_link_up() and which were delayed due to no srv_conn found: */
+			ipaccess_bsc_write_cb(new_ts);
+			/* Conn is not freed here, so we need to free msgb. */
+			msgb_free(msg);
 			return 1;
 		}
 		break;
@@ -390,86 +349,14 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 		LOGPIL(line, DLINP, LOGL_ERROR, "Unknown IPA message type\n");
 		goto err;
 	}
+
+ret_skip:
+	msgb_free(msg);
 	return 0;
 err:
-	if (bfd->fd != -1) {
-		osmo_fd_unregister(bfd);
-		close(bfd->fd);
-		bfd->fd = -1;
-		/* This is a BSC accepted socket, bfd->data holds a reference to line, drop it */
-		OSMO_ASSERT(bfd->data == line);
-		bfd->data = NULL;
-		e1inp_line_put2(line, "ipa_bfd");
-	}
-	return -1;
-}
-
-/* Returns -EBADF if bfd cannot be used by the caller anymore after return. */
-static int handle_ts1_read(struct osmo_fd *bfd)
-{
-	struct e1inp_line *line = bfd->data;
-	unsigned int ts_nr = bfd->priv_nr;
-	struct e1inp_ts *e1i_ts;
-	struct e1inp_sign_link *link;
-	struct ipaccess_head *hh;
-	struct msgb *msg = NULL;
-	int ret, rc;
-
-	e1i_ts = ipaccess_line_ts(bfd, line);
-	ret = ipa_msg_recv_buffered(bfd->fd, &msg, &e1i_ts->pending_msg);
-	if (ret < 0) {
-		if (ret == -EAGAIN)
-			return 0;
-		LOGPITS(e1i_ts, DLINP, LOGL_NOTICE, "Sign link problems, closing socket. Reason: %s\n",
-			strerror(-ret));
-		goto err;
-	} else if (ret == 0) {
-		LOGPITS(e1i_ts, DLINP, LOGL_NOTICE, "Sign link vanished, dead socket\n");
-		goto err;
-	}
-	LOGPITS(e1i_ts, DLMI, LOGL_DEBUG, "RX %u: %s\n", ts_nr, osmo_hexdump(msgb_l2(msg), msgb_l2len(msg)));
-
-	hh = (struct ipaccess_head *) msg->data;
-	if (hh->proto == IPAC_PROTO_IPACCESS) {
-		ret = ipaccess_rcvmsg(line, msg, bfd);
-		/* BIG FAT WARNING: bfd might no longer exist here (ret != 0),
-		 * since ipaccess_rcvmsg() might have free'd it !!! */
-		msgb_free(msg);
-		return ret != 0 ? -EBADF : 0;
-	} else if (e1i_ts->type == E1INP_TS_TYPE_NONE) {
-		/* this sign link is not know yet.. complain. */
-		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Timeslot is not configured.\n");
-		goto err_msg;
-	}
-
-	link = e1inp_lookup_sign_link(e1i_ts, hh->proto, 0);
-	if (!link) {
-		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "no matching signalling link for hh->proto=0x%02x\n", hh->proto);
-		goto err_msg;
-	}
-	msg->dst = link;
-
-	/* XXX better use e1inp_ts_rx? */
-	if (!e1i_ts->line->ops->sign_link) {
-		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Fix your application, no action set for signalling messages.\n");
-		goto err_msg;
-	}
-	rc = e1i_ts->line->ops->sign_link(msg);
-	if (rc < 0) {
-		/* Don't close the signalling link if the upper layers report
-		 * an error, that's too strict. BTW, the signalling layer is
-		 * resposible for releasing the message.
-		 */
-		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Bad signalling message, sign_link returned error: %s.\n",
-			strerror(-rc));
-	}
-
-	return rc;
-err_msg:
 	msgb_free(msg);
-err:
-	ipaccess_drop(bfd, line);
-	return -EBADF;
+	osmo_stream_srv_destroy(conn);
+	return -1;
 }
 
 static void ipaccess_close(struct e1inp_sign_link *sign_link)
@@ -479,6 +366,7 @@ static void ipaccess_close(struct e1inp_sign_link *sign_link)
 	struct e1inp_line *line = e1i_ts->line;
 	struct osmo_fsm_inst *ka_fsm = e1i_ts->driver.ipaccess.ka_fsm;
 	struct osmo_stream_cli *cli;
+	struct osmo_stream_srv *conn;
 
 	/* depending on caller the fsm might be dead */
 	if (ka_fsm)
@@ -495,18 +383,23 @@ static void ipaccess_close(struct e1inp_sign_link *sign_link)
 		bfd->fd = -1; /* Compatibility with older implementations */
 		break;
 	case E1INP_LINE_R_BSC:
-	default:
-		if (bfd->fd != -1) {
-			osmo_fd_unregister(bfd);
-			close(bfd->fd);
-			bfd->fd = -1;
-			/* If The bfd holds a reference to e1inp_line in ->data (BSC
-			* accepted() sockets), then release it */
-			if (bfd->data == line) {
-				bfd->data = NULL;
-				e1inp_line_put2(line, "ipa_bfd");
-			}
+		/* conn may be NULL here, if we are called by user during sign_link_up()
+		 * callback and hence before we finished to internally move the ipaccess conn
+		 * under the proper final line/ts object:
+		 */
+		conn = ipaccess_bts_e1i_ts_stream_srv(e1i_ts);
+		if (conn) {
+			osmo_stream_srv_destroy(conn);
+		} else {
+			LOGPITS(e1i_ts, DLINP, LOGL_DEBUG,
+				"ipaccess_close() on ts with no srv_conn, "
+				"probably called during sign_link_up() or sign_link_down() user cb.\n");
 		}
+		break;
+	default:
+		LOGPITS(e1i_ts, DLINP, LOGL_ERROR,
+			"ipaccess_close() for line with unknown role %d\n",
+			line->ops->cfg.ipa.role);
 		break;
 	}
 }
@@ -564,6 +457,57 @@ static int ipaccess_bts_write_cb(struct e1inp_ts *e1i_ts)
 	return rc;
 }
 
+static int ipaccess_bsc_send_msg(struct e1inp_ts *e1i_ts,
+				 struct e1inp_sign_link *sign_link,
+				 struct osmo_stream_srv *conn,
+				 struct msgb *msg)
+{
+	switch (sign_link->type) {
+	case E1INP_SIGN_OML:
+	case E1INP_SIGN_RSL:
+	case E1INP_SIGN_OSMO:
+		break;
+	default:
+		LOGPITS(e1i_ts, DLMI, LOGL_NOTICE, "Drop Tx msg for unknown sign_link type %d: %s\n",
+			sign_link->type, osmo_hexdump(msg->data, msgb_length(msg)));
+		msgb_free(msg);
+		return -EINVAL;
+	}
+
+	msg->l2h = msg->data;
+	ipa_prepend_header(msg, sign_link->tei);
+
+	LOGPITS(e1i_ts, DLMI, LOGL_DEBUG, "TX: %s\n", osmo_hexdump(msg->l2h, msgb_l2len(msg)));
+	osmo_stream_srv_send(conn, msg);
+	return 0;
+}
+
+/* msg was enqueued in sign_link->tx_list.
+ * Pop it from that list, submit it to osmo_stream_srv. */
+static int ipaccess_bsc_write_cb(struct e1inp_ts *e1i_ts)
+{
+	int rc = 0;
+	struct osmo_stream_srv *srv = ipaccess_bts_e1i_ts_stream_srv(e1i_ts);
+
+	/* conn may be NULL here, if we are called by user during sign_link_up()
+	 * ballback and hence before we finished to internally move the ipaccess conn
+	 * under the proper final line/ts object:
+	 */
+	if (!srv) {
+		LOGPITS(e1i_ts, DLMI, LOGL_DEBUG, "Delaying Tx on ts with no srv_conn\n");
+		return -ENODEV;
+	}
+
+	/* get the next msg for this timeslot */
+	while (e1i_ts_has_pending_tx_msgs(e1i_ts)) {
+		struct e1inp_sign_link *sign_link = NULL;
+		struct msgb *msg;
+		msg = e1inp_tx_ts(e1i_ts, &sign_link);
+		rc |= ipaccess_bsc_send_msg(e1i_ts, sign_link, srv, msg);
+	}
+	return rc;
+}
+
 static int ts_want_write(struct e1inp_ts *e1i_ts)
 {
 	enum e1inp_line_role role = E1INP_LINE_R_NONE;
@@ -578,118 +522,92 @@ static int ts_want_write(struct e1inp_ts *e1i_ts)
 		/* msg was enqueued in sign_link->tx_list.
 		 * Pop it from that list, submit it to osmo_stream_cli: */
 		return ipaccess_bts_write_cb(e1i_ts);
-	case E1INP_LINE_R_NONE:
 	case E1INP_LINE_R_BSC:
+		/* msg was enqueued in sign_link->tx_list.
+		 * Pop it from that list, submit it to osmo_stream_cli: */
+		return ipaccess_bsc_write_cb(e1i_ts);
+	case E1INP_LINE_R_NONE:
 	default:
-		osmo_fd_write_enable(&e1i_ts->driver.ipaccess.fd);
-		/* ipaccess_fd_cb will be called from main loop and tx the msgb. */
+		LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "want_write for ts with unknown role %d!\n", role);
 		return 0;
 	}
 }
 
-static void timeout_ts1_write(void *data)
+static int ipaccess_bsc_conn_read_cb(struct osmo_stream_srv *conn, int res, struct msgb *msg)
 {
-	struct e1inp_ts *e1i_ts = (struct e1inp_ts *)data;
+	enum ipaccess_proto ipa_proto = osmo_ipa_msgb_cb_proto(msg);
+	struct e1inp_ts *e1i_ts = osmo_stream_srv_get_data(conn);
+	struct e1inp_sign_link *link;
+	int ret, rc;
 
-	/* trigger write of ts1, due to tx delay timer */
-	if (e1i_ts_has_pending_tx_msgs(e1i_ts))
-		ts_want_write(e1i_ts);
-}
-
-static int __handle_ts1_write(struct osmo_fd *bfd, struct e1inp_line *line)
-{
-	unsigned int ts_nr = bfd->priv_nr;
-	struct e1inp_ts *e1i_ts;
-	struct e1inp_sign_link *sign_link;
-	struct msgb *msg;
-	int ret;
-
-	e1i_ts = ipaccess_line_ts(bfd, line);
-
-	/* get the next msg for this timeslot */
-	msg = e1inp_tx_ts(e1i_ts, &sign_link);
-	if (!msg) {
-		/* no message after tx delay timer */
-		osmo_fd_write_disable(bfd);
-		return 0;
-	}
-
-	switch (sign_link->type) {
-	case E1INP_SIGN_OML:
-	case E1INP_SIGN_RSL:
-	case E1INP_SIGN_OSMO:
-		break;
-	default:
-		/* leave WRITE flag enabled, come back for more msg */
-		ret = -EINVAL;
-		goto out;
-	}
-
-	msg->l2h = msg->data;
-	ipa_prepend_header(msg, sign_link->tei);
-
-	LOGPITS(e1i_ts, DLMI, LOGL_DEBUG, "TX %u: %s\n", ts_nr,
-		osmo_hexdump(msg->l2h, msgb_l2len(msg)));
-
-	ret = send(bfd->fd, msg->data, msg->len, 0);
-	if (ret != msg->len) {
-		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "failed to send A-bis IPA signalling "
-			"message. Reason: %s\n", strerror(errno));
+	if (res <= 0) {
+		LOGPITS(e1i_ts, DLINP, LOGL_NOTICE, "failed reading from socket: %d\n", res);
 		goto err;
 	}
 
-	/* this is some ancient code that apparently exists to slow down writes towards
-	 * some even more ancient nanoBTS 900 units. See git commit
-	 * d49fc5ae24fc9d44d2b284392ab619cc7a69a876 of openbsc.git (now osmo-bsc.git) */
-	if (e1i_ts->sign.delay) {
-		osmo_fd_write_disable(bfd);
-		/* set tx delay timer for next event */
-		osmo_timer_setup(&e1i_ts->sign.tx_timer, timeout_ts1_write, e1i_ts);
-		osmo_timer_schedule(&e1i_ts->sign.tx_timer, 0, e1i_ts->sign.delay);
-	} else {
-out:
-		if (!e1i_ts_has_pending_tx_msgs(e1i_ts))
-			osmo_fd_write_disable(bfd);
+	LOGPITS(e1i_ts, DLMI, LOGL_DEBUG, "RX: %s\n", osmo_hexdump(msgb_l2(msg), msgb_l2len(msg)));
+
+	if (ipa_proto == IPAC_PROTO_IPACCESS) {
+		ret = ipaccess_bsc_rcvmsg(conn, msg);
+		/* BIG FAT WARNING: bfd might no longer exist here (ret != 0),
+		 * since ipaccess_rcvmsg() might have free'd it !!! */
+		return ret != 0 ? -EBADF : 0;
 	}
-	msgb_free(msg);
-	return ret;
-err:
-	ipaccess_drop(bfd, line);
-	msgb_free(msg);
-	return ret;
-}
+	if (e1i_ts->type == E1INP_TS_TYPE_NONE) {
+		/* this sign link is not know yet.. complain. */
+		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Timeslot is not configured.\n");
+		goto err;
+	}
 
-static int handle_ts1_write(struct osmo_fd *bfd)
-{
-	struct e1inp_line *line = bfd->data;
+	link = e1inp_lookup_sign_link(e1i_ts, ipa_proto, 0);
+	if (!link) {
+		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "no matching signalling link for ipa_proto=0x%02x\n", ipa_proto);
+		goto err;
+	}
+	msg->dst = link;
 
-	return __handle_ts1_write(bfd, line);
-}
-
-
-/* callback from select.c in case one of the fd's can be read/written */
-int ipaccess_fd_cb(struct osmo_fd *bfd, unsigned int what)
-{
-	int rc = 0;
-
-	if (what & OSMO_FD_READ)
-		rc = handle_ts1_read(bfd);
-	if (rc != -EBADF && (what & OSMO_FD_WRITE))
-		rc = handle_ts1_write(bfd);
+	/* XXX better use e1inp_ts_rx? */
+	if (!e1i_ts->line->ops->sign_link) {
+		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Fix your application, no action set for signalling messages.\n");
+		goto err;
+	}
+	rc = e1i_ts->line->ops->sign_link(msg);
+	if (rc < 0) {
+		/* Don't close the signalling link if the upper layers report
+		 * an error, that's too strict. BTW, the signalling layer is
+		 * resposible for releasing the message.
+		 */
+		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Bad signalling message, sign_link returned error: %s.\n",
+			strerror(-rc));
+	}
 
 	return rc;
+err:
+	msgb_free(msg);
+	osmo_stream_srv_destroy(conn);
+	return 0;
 }
 
-static int ipaccess_line_update(struct e1inp_line *line);
+static int ipaccess_bsc_conn_closed_cb(struct osmo_stream_srv *conn)
+{
+	struct e1inp_ts *e1i_ts = osmo_stream_srv_get_data(conn);
+	struct e1inp_line *line = e1i_ts->line;
+	struct osmo_fd *bfd = &e1i_ts->driver.ipaccess.fd;
+	e1inp_line_get2(line, __func__);
+	e1inp_line_put2(line, "ipa_bfd");
 
-struct e1inp_driver ipaccess_driver = {
-	.name = "ipa",
-	.want_write = ts_want_write,
-	.line_update = ipaccess_line_update,
-	.close = ipaccess_close,
-	.default_delay = 0,
-	.has_keepalive = 1,
-};
+	osmo_stats_tcp_osmo_fd_unregister(bfd);
+	ipaccess_keepalive_fsm_cleanup(e1i_ts);
+
+	osmo_stream_srv_set_data(conn, NULL);
+	bfd->fd = -1;
+	bfd->data = NULL;
+
+	if (line->ops->sign_link_down)
+		line->ops->sign_link_down(line);
+	e1inp_line_put2(line, __func__);
+	return 0;
+}
 
 static void update_fd_settings(struct e1inp_line *line, int fd)
 {
@@ -743,16 +661,19 @@ static void update_fd_settings(struct e1inp_line *line, int fd)
 }
 
 /* callback of the OML listening filedescriptor */
-static int ipaccess_bsc_oml_cb(struct ipa_server_link *link, int fd)
+static int ipaccess_bsc_oml_accept_cb(struct osmo_stream_srv_link *link, int fd)
 {
 	int ret;
 	int i;
+	struct e1inp_line *srv_link_line = osmo_stream_srv_link_get_data(link);
 	struct e1inp_line *line;
+	struct osmo_stream_srv *conn;
 	struct e1inp_ts *e1i_ts;
 	struct osmo_fd *bfd;
+	char conn_name[128];
 
 	/* clone virtual E1 line for this new OML link. */
-	line = e1inp_line_clone(tall_ipa_ctx, link->line, "ipa_bfd");
+	line = e1inp_line_clone(tall_ipa_ctx, srv_link_line, "ipa_bfd");
 	if (line == NULL) {
 		LOGP(DLINP, LOGL_ERROR, "could not clone E1 line\n");
 		return -ENOMEM;
@@ -767,45 +688,47 @@ static int ipaccess_bsc_oml_cb(struct ipa_server_link *link, int fd)
 
 	e1i_ts = e1inp_line_ipa_oml_ts(line);
 
+	snprintf(conn_name, sizeof(conn_name), "ts-%u-%u-oml", line->num, e1i_ts->num);
+	conn = osmo_stream_srv_create2(link, link, fd, e1i_ts);
+	OSMO_ASSERT(conn);
+	osmo_stream_srv_set_name(conn, conn_name);
+	osmo_stream_srv_set_read_cb(conn, ipaccess_bsc_conn_read_cb);
+	osmo_stream_srv_set_closed_cb(conn, ipaccess_bsc_conn_closed_cb);
+	osmo_stream_srv_set_segmentation_cb(conn, osmo_ipa_segmentation_cb);
+
+	/* We use bfd->fd in here for osmo_stats_tcp, and bfd->data to access osmo_stream_srv from e1i_ts. */
 	bfd = &e1i_ts->driver.ipaccess.fd;
-	osmo_fd_setup(bfd, fd, OSMO_FD_READ, ipaccess_fd_cb, line, E1INP_SIGN_OML);
-	ret = osmo_fd_register(bfd);
-	if (ret < 0) {
-		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "could not register FD\n");
-		goto err_line;
-	}
+	osmo_fd_setup(bfd, fd, 0, NULL, conn, E1INP_SIGN_OML);
 	osmo_stats_tcp_osmo_fd_register(bfd, "ipa-oml");
 
-	update_fd_settings(line, bfd->fd);
+	update_fd_settings(line, fd);
 
 	/* Request ID. FIXME: request LOCATION, HW/SW VErsion, Unit Name, Serno */
-	ret = ipa_ccm_send_id_req(bfd->fd);
+	ret = ipa_ccm_send_id_req(fd);
 	if (ret < 0) {
 		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "could not send ID REQ. Reason: %s\n", strerror(errno));
 		goto err_socket;
 	}
-	return ret;
+	return 0;
 
 err_socket:
-	osmo_fd_unregister(bfd);
-err_line:
-	close(bfd->fd);
-	bfd->fd = -1;
-	bfd->data = NULL;
-	e1inp_line_put2(line, "ipa_bfd");
-	return ret;
+	osmo_stream_srv_destroy(conn);
+	return 0;
 }
 
-static int ipaccess_bsc_rsl_cb(struct ipa_server_link *link, int fd)
+static int ipaccess_bsc_rsl_accept_cb(struct osmo_stream_srv_link *link, int fd)
 {
+	struct e1inp_line *srv_link_line = osmo_stream_srv_link_get_data(link);
 	struct e1inp_line *line;
+	struct osmo_stream_srv *conn;
 	struct e1inp_ts *e1i_ts;
 	struct osmo_fd *bfd;
 	int i, ret;
+	char conn_name[128];
 
 	/* We don't know yet which OML link to associate it with. Thus, we
 	 * allocate a temporary E1 line until we have received ID. */
-	line = e1inp_line_clone(tall_ipa_ctx, link->line, "ipa_bfd");
+	line = e1inp_line_clone(tall_ipa_ctx, srv_link_line, "ipa_bfd");
 	if (line == NULL) {
 		LOGP(DLINP, LOGL_ERROR, "could not clone E1 line\n");
 		return -ENOMEM;
@@ -814,38 +737,37 @@ static int ipaccess_bsc_rsl_cb(struct ipa_server_link *link, int fd)
 	for (i = 0; i < ARRAY_SIZE(line->ts); ++i)
 		line->ts[i].driver.ipaccess.fd.fd = -1;
 
-	/* we need this to initialize this in case to avoid crashes in case
+	/* we need to initialize this in case to avoid crashes in case
 	 * that the socket is closed before we've seen an ID_RESP. */
 	e1inp_ts_config_sign(e1inp_line_ipa_oml_ts(line), line);
 
 	e1i_ts = e1inp_line_ipa_rsl_ts(line, 0);
 
+	snprintf(conn_name, sizeof(conn_name), "ts-%u-%u-rsl", line->num, e1i_ts->num);
+	conn = osmo_stream_srv_create2(link, link, fd, e1i_ts);
+	OSMO_ASSERT(conn);
+	osmo_stream_srv_set_name(conn, conn_name);
+	osmo_stream_srv_set_read_cb(conn, ipaccess_bsc_conn_read_cb);
+	osmo_stream_srv_set_closed_cb(conn, ipaccess_bsc_conn_closed_cb);
+	osmo_stream_srv_set_segmentation_cb(conn, osmo_ipa_segmentation_cb);
+
+	/* We use bfd->fd in here for osmo_stats_tcp, and bfd->data to access osmo_stream_srv from e1i_ts. */
 	bfd = &e1i_ts->driver.ipaccess.fd;
-	osmo_fd_setup(bfd, fd, OSMO_FD_READ, ipaccess_fd_cb, line, E1INP_SIGN_RSL);
-	ret = osmo_fd_register(bfd);
-	if (ret < 0) {
-		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "could not register FD\n");
-		goto err_line;
-	}
+	osmo_fd_setup(bfd, fd, 0, NULL, conn, E1INP_SIGN_RSL);
 	osmo_stats_tcp_osmo_fd_register(bfd, "ipa-rsl");
 
 	/* Request ID. FIXME: request LOCATION, HW/SW VErsion, Unit Name, Serno */
-	ret = ipa_ccm_send_id_req(bfd->fd);
+	ret = ipa_ccm_send_id_req(fd);
 	if (ret < 0) {
 		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "could not send ID REQ. Reason: %s\n", strerror(errno));
 		goto err_socket;
 	}
-	update_fd_settings(line, bfd->fd);
-	return ret;
+	update_fd_settings(line, fd);
+	return 0;
 
 err_socket:
-	osmo_fd_unregister(bfd);
-err_line:
-	close(bfd->fd);
-	bfd->fd = -1;
-	bfd->data = NULL;
-	e1inp_line_put2(line, "ipa_bfd");
-	return ret;
+	osmo_stream_srv_destroy(conn);
+	return 0;
 }
 
 int ipaccess_bts_handle_ccm(struct ipa_client_conn *link,
@@ -1103,38 +1025,43 @@ static int ipaccess_line_update(struct e1inp_line *line)
 		/* We only initialize this line once. */
 		if (il->line_already_initialized)
 			return 0;
-		struct ipa_server_link *oml_link, *rsl_link;
+		struct osmo_stream_srv_link *oml_link, *rsl_link;
 		const char *ipa = e1inp_ipa_get_bind_addr();
 
 		LOGPIL(line, DLINP, LOGL_NOTICE, "enabling ipaccess BSC mode on %s "
 		       "with OML %u and RSL %u TCP ports\n", ipa, IPA_TCP_PORT_OML, IPA_TCP_PORT_RSL);
 
-		oml_link = ipa_server_link_create(tall_ipa_ctx, line, ipa,
-						  IPA_TCP_PORT_OML,
-						  ipaccess_bsc_oml_cb, NULL);
-		if (oml_link == NULL) {
-			LOGPIL(line, DLINP, LOGL_ERROR, "cannot create OML BSC link: %s\n", strerror(errno));
-			return -ENOMEM;
-		}
-		oml_link->dscp = g_e1inp_ipaccess_pars.oml.dscp;
-		oml_link->priority = g_e1inp_ipaccess_pars.oml.priority;
-		if (ipa_server_link_open(oml_link) < 0) {
-			LOGPIL(line, DLINP, LOGL_ERROR, "cannot open OML BSC link: %s\n", strerror(errno));
-			ipa_server_link_destroy(oml_link);
+		oml_link = osmo_stream_srv_link_create(tall_ipa_ctx);
+		OSMO_ASSERT(oml_link);
+		osmo_stream_srv_link_set_proto(oml_link, IPPROTO_TCP);
+		osmo_stream_srv_link_set_addr(oml_link, ipa);
+		osmo_stream_srv_link_set_port(oml_link, IPA_TCP_PORT_OML);
+		osmo_stream_srv_link_set_data(oml_link, line);
+		osmo_stream_srv_link_set_nodelay(oml_link, true);
+		osmo_stream_srv_link_set_priority(oml_link, g_e1inp_ipaccess_pars.oml.dscp);
+		osmo_stream_srv_link_set_ip_dscp(oml_link, g_e1inp_ipaccess_pars.oml.priority);
+		osmo_stream_srv_link_set_accept_cb(oml_link, ipaccess_bsc_oml_accept_cb);
+
+		if (osmo_stream_srv_link_open(oml_link)) {
+			LOGPIL(line, DLINP, LOGL_ERROR, "cannot open OML BTS link: %s\n", strerror(errno));
+			osmo_stream_srv_link_destroy(oml_link);
 			return -EIO;
 		}
-		rsl_link = ipa_server_link_create(tall_ipa_ctx, line, ipa,
-						  IPA_TCP_PORT_RSL,
-						  ipaccess_bsc_rsl_cb, NULL);
-		if (rsl_link == NULL) {
-			LOGPIL(line, DLINP, LOGL_ERROR, "cannot create RSL BSC link: %s\n", strerror(errno));
-			return -ENOMEM;
-		}
-		rsl_link->dscp = g_e1inp_ipaccess_pars.rsl.dscp;
-		rsl_link->priority = g_e1inp_ipaccess_pars.rsl.priority;
-		if (ipa_server_link_open(rsl_link) < 0) {
-			LOGPIL(line, DLINP, LOGL_ERROR, "cannot open RSL BSC link: %s\n", strerror(errno));
-			ipa_server_link_destroy(rsl_link);
+
+		rsl_link = osmo_stream_srv_link_create(tall_ipa_ctx);
+		OSMO_ASSERT(rsl_link);
+		osmo_stream_srv_link_set_proto(rsl_link, IPPROTO_TCP);
+		osmo_stream_srv_link_set_addr(rsl_link, ipa);
+		osmo_stream_srv_link_set_port(rsl_link, IPA_TCP_PORT_RSL);
+		osmo_stream_srv_link_set_data(rsl_link, line);
+		osmo_stream_srv_link_set_nodelay(rsl_link, true);
+		osmo_stream_srv_link_set_priority(rsl_link, g_e1inp_ipaccess_pars.rsl.dscp);
+		osmo_stream_srv_link_set_ip_dscp(rsl_link, g_e1inp_ipaccess_pars.rsl.priority);
+		osmo_stream_srv_link_set_accept_cb(rsl_link, ipaccess_bsc_rsl_accept_cb);
+
+		if (osmo_stream_srv_link_open(rsl_link)) {
+			LOGPIL(line, DLINP, LOGL_ERROR, "cannot open RSL BTS link: %s\n", strerror(errno));
+			osmo_stream_srv_link_destroy(rsl_link);
 			return -EIO;
 		}
 		ret = 0;
@@ -1301,6 +1228,15 @@ int e1inp_ipa_bts_rsl_close_n(struct e1inp_line *line, uint8_t trx_nr)
 	}
 	return 0;
 }
+
+static struct e1inp_driver ipaccess_driver = {
+	.name = "ipa",
+	.want_write = ts_want_write,
+	.line_update = ipaccess_line_update,
+	.close = ipaccess_close,
+	.default_delay = 0,
+	.has_keepalive = 1,
+};
 
 void e1inp_ipaccess_init(void)
 {

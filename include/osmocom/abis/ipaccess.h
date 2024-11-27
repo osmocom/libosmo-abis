@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <osmocom/gsm/protocol/ipaccess.h>
 
-/* quick solution to get openBSC's ipaccess tools working. */
-extern int ipaccess_fd_cb(struct osmo_fd *bfd, unsigned int what);
+/* Kept for backward compatibility */
+#pragma message("include osmocom/abis/ipaccess.h is deprecated, please include osmocom/gsm/protocol/ipaccess.h directly instead")
 
 #endif /* _OSMO_ABIS_IPACCESS_H */
