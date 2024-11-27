@@ -810,7 +810,17 @@ void e1inp_sign_link_destroy(struct e1inp_sign_link *link)
 {
 	struct msgb *msg;
 
-	llist_del(&link->list);
+	/* Catch upper layers behaving wrongly, calling e1inp_sign_link_destroy()
+	 * and then during the driver->close() callback below ending up calling
+	 * this function again deeper in the call stack in the same code path. */
+	if (llist_empty(&link->list)) {
+		LOGP(DLINP, LOGL_ERROR, "Fix your application, "
+		     "caught reentrant e1inp_sign_link_destroy(%p)!\n", link);
+		return;
+	}
+	/* Use llist_del_init() to catch double destroy above: */
+	llist_del_init(&link->list);
+
 	while (!llist_empty(&link->tx_list)) {
 		msg = msgb_dequeue(&link->tx_list);
 		msgb_free(msg);
