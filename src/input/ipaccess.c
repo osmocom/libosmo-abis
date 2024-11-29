@@ -39,21 +39,21 @@
 #include <arpa/inet.h>
 
 #include <osmocom/core/select.h>
-#include <osmocom/gsm/tlv.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/macaddr.h>
 #include <osmocom/core/logging.h>
 #include <osmocom/core/talloc.h>
-#include <osmocom/abis/e1_input.h>
-#include <osmocom/abis/ipaccess.h>
 #include <osmocom/core/socket.h>
-#include <osmocom/abis/ipa.h>
 #include <osmocom/core/backtrace.h>
-#include <osmocom/gsm/ipa.h>
 #include <osmocom/core/stats_tcp.h>
 #include <osmocom/core/fsm.h>
+#include <osmocom/gsm/tlv.h>
+#include <osmocom/gsm/protocol/ipaccess.h>
+#include <osmocom/gsm/ipa.h>
 #include <osmocom/netif/stream.h>
 #include <osmocom/netif/ipa.h>
+#include <osmocom/abis/e1_input.h>
+#include <osmocom/abis/ipa.h>
 
 /* global parameters of IPA input driver */
 struct ipa_pars g_e1inp_ipaccess_pars;

@@ -13,15 +13,14 @@
 
 #include <osmocom/core/select.h>
 #include <osmocom/core/timer.h>
-#include <osmocom/gsm/tlv.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/logging.h>
 #include <osmocom/core/talloc.h>
-#include <osmocom/abis/e1_input.h>
-#include <osmocom/abis/ipaccess.h>
 #include <osmocom/core/socket.h>
 #include <osmocom/core/backtrace.h>
-
+#include <osmocom/gsm/tlv.h>
+#include <osmocom/gsm/protocol/ipaccess.h>
+#include <osmocom/abis/e1_input.h>
 #include <osmocom/abis/ipa.h>
 
 #define LOGIPA(link, level, fmt, args...) LOGP(DLINP, level, "%s:%u " fmt, link->addr, link->port, ## args)

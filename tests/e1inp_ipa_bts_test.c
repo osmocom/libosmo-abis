@@ -1,15 +1,15 @@
 #include <stdio.h>
 #include <signal.h>
-#include <osmocom/core/talloc.h>
 #include <string.h>
 #include <unistd.h>
-#include <osmocom/abis/abis.h>
-#include <osmocom/abis/e1_input.h>
+#include <osmocom/core/talloc.h>
 #include <osmocom/core/logging.h>
 #include <osmocom/core/application.h>
-#include <osmocom/abis/ipaccess.h>
 #include <osmocom/gsm/protocol/gsm_12_21.h>
+#include <osmocom/gsm/protocol/ipaccess.h>
 #include <osmocom/gsm/ipa.h>
+#include <osmocom/abis/abis.h>
+#include <osmocom/abis/e1_input.h>
 
 static void *tall_test;
 static struct e1inp_sign_link *oml_sign_link, *rsl_sign_link;
