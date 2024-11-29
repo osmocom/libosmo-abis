@@ -2,6 +2,8 @@ Source: libosmo-abis
 Maintainer: Osmocom team <openbsc@lists.osmocom.org>
 Section: libs
 Priority: optional
+# NOTE: libosmo-netif-dev is also in Depends of libosmo-abis-dev below,
+# as libosmoabis.pc.in has "Requires.private: libosmo-netif"
 Build-Depends: debhelper (>= 10),
                autotools-dev,
                autoconf,
@@ -61,7 +63,8 @@ Multi-Arch: same
 Section: libdevel
 Depends: ${misc:Depends},
          libosmotrau10 (= ${binary:Version}),
-         libosmoabis13 (= ${binary:Version})
+         libosmoabis13 (= ${binary:Version}),
+         libosmo-netif-dev (>= 1.5.0),
 Description: Development headers for A-bis interface
  The libosmo-abis library contains common/shared code regarding the A-bis
  interface between GSM BTS and BSC. This package in particular contains the
