@@ -958,6 +958,7 @@ static int _ipaccess_bts_handle_ccm(struct osmo_stream_cli *cli,
 
 	/* ping, pong and acknowledgment cases. */
 	struct osmo_fd tmp_ofd = { .fd = osmo_stream_cli_get_fd(cli) };
+	OSMO_ASSERT(tmp_ofd.fd >= 0);
 	ret = ipa_ccm_rcvmsg_bts_base(msg, &tmp_ofd);
 	if (ret < 0)
 		goto err;
