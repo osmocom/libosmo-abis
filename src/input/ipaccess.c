@@ -503,6 +503,8 @@ static int ipaccess_bsc_write_cb(struct e1inp_ts *e1i_ts)
 		struct e1inp_sign_link *sign_link = NULL;
 		struct msgb *msg;
 		msg = e1inp_tx_ts(e1i_ts, &sign_link);
+		OSMO_ASSERT(msg);
+		OSMO_ASSERT(sign_link);
 		rc |= ipaccess_bsc_send_msg(e1i_ts, sign_link, srv, msg);
 	}
 	return rc;
