@@ -9,6 +9,7 @@
 #include <osmocom/core/timer.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/select.h>
+#include <osmocom/netif/ipa.h>
 #include <osmocom/gsm/i460_mux.h>
 #include <osmocom/abis/subchan_demux.h>
 #include <osmocom/abis/lapd.h>
@@ -130,7 +131,7 @@ struct e1inp_ts {
 			/* ip.access driver has one fd for each ts */
 			struct osmo_fd fd;
 			/* ipa keep-alive */
-			struct osmo_fsm_inst *ka_fsm;
+			struct osmo_ipa_ka_fsm_inst *ka_fsm;
 		} ipaccess;
 		struct {
 			/* DAHDI driver has one fd for each ts */
