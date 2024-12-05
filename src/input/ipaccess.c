@@ -80,52 +80,58 @@ static inline struct e1inp_ts *ipaccess_line_ts(struct osmo_fd *bfd, struct e1in
 
 static inline void ipaccess_keepalive_fsm_cleanup(struct e1inp_ts *e1i_ts)
 {
-	struct osmo_fsm_inst *ka_fsm;
+	struct osmo_ipa_ka_fsm_inst *ka_fsm;
 
 	ka_fsm = e1i_ts->driver.ipaccess.ka_fsm;
 	if (ka_fsm) {
-		osmo_fsm_inst_term(ka_fsm, OSMO_FSM_TERM_REQUEST, NULL);
 		e1i_ts->driver.ipaccess.ka_fsm = NULL;
+		osmo_ipa_ka_fsm_stop(ka_fsm);
+		osmo_ipa_ka_fsm_free(ka_fsm);
 	}
 }
 
-static void ipa_bsc_keepalive_write_server_cb(struct osmo_fsm_inst *fi, void *conn, struct msgb *msg)
+static int ipa_bsc_keepalive_send_cb(struct osmo_ipa_ka_fsm_inst *ka_fi, struct msgb *msg, void *data)
 {
-	struct osmo_stream_srv *srv = (struct osmo_stream_srv *)conn;
+	struct osmo_stream_srv *srv = data;
 	osmo_stream_srv_send(srv, msg);
+	return 0;
 }
 
-static int ipa_bsc_keepalive_timeout_cb(struct osmo_fsm_inst *fi, void *data)
+static int ipa_bsc_keepalive_timeout_cb(struct osmo_ipa_ka_fsm_inst *ka_fi, void *data)
 {
-	struct osmo_stream_srv *srv = (struct osmo_stream_srv *)data;
+	struct osmo_stream_srv *srv = data;
 	osmo_stream_srv_destroy(srv);
-	return 1;
+	return 0;
 }
 
 static void ipaccess_bsc_keepalive_fsm_alloc(struct e1inp_ts *e1i_ts, struct osmo_stream_srv *conn, const char *id)
 {
 	struct e1inp_line *line = e1i_ts->line;
-	struct osmo_fsm_inst *ka_fsm;
+	struct osmo_ipa_ka_fsm_inst *ka_fsm;
 
 	ipaccess_keepalive_fsm_cleanup(e1i_ts);
 	if (!line->ipa_kap)
 		return;
 
-	ka_fsm = ipa_generic_conn_alloc_keepalive_fsm(conn, conn, line->ipa_kap, id);
+	ka_fsm = osmo_ipa_ka_fsm_alloc(conn, id);
 	e1i_ts->driver.ipaccess.ka_fsm = ka_fsm;
 	if (!ka_fsm) {
 		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Failed to allocate IPA keepalive FSM\n");
 		return;
 	}
-
-	ipa_keepalive_fsm_set_timeout_cb(ka_fsm, ipa_bsc_keepalive_timeout_cb);
-	ipa_keepalive_fsm_set_send_cb(ka_fsm, ipa_bsc_keepalive_write_server_cb);
-	ipa_keepalive_fsm_start(ka_fsm);
+	osmo_ipa_ka_fsm_set_ping_interval(ka_fsm, line->ipa_kap->interval);
+	osmo_ipa_ka_fsm_set_pong_timeout(ka_fsm, line->ipa_kap->wait_for_resp);
+	osmo_ipa_ka_fsm_set_data(ka_fsm, conn);
+	osmo_ipa_ka_fsm_set_send_cb(ka_fsm, ipa_bsc_keepalive_send_cb);
+	osmo_ipa_ka_fsm_set_timeout_cb(ka_fsm, ipa_bsc_keepalive_timeout_cb);
+	osmo_ipa_ka_fsm_start(ka_fsm);
 }
 
-static void ipa_bts_keepalive_write_client_cb(struct osmo_fsm_inst *fi, void *conn, struct msgb *msg) {
-	struct osmo_stream_cli *cli = (struct osmo_stream_cli *)conn;
+static int ipa_bts_keepalive_send_cb(struct osmo_ipa_ka_fsm_inst *ka_fi, struct msgb *msg, void *data)
+{
+	struct osmo_stream_cli *cli = data;
 	osmo_stream_cli_send(cli, msg);
+	return 0;
 }
 
 static void _ipaccess_bts_down_cb(struct osmo_stream_cli *cli)
@@ -138,30 +144,33 @@ static void _ipaccess_bts_down_cb(struct osmo_stream_cli *cli)
 		line->ops->sign_link_down(line);
 }
 
-static int ipa_bts_keepalive_timeout_cb(struct osmo_fsm_inst *fi, void *conn) {
-	struct osmo_stream_cli *cli = (struct osmo_stream_cli *)conn;
+static int ipa_bts_keepalive_timeout_cb(struct osmo_ipa_ka_fsm_inst *ka_fi, void *data)
+{
+	struct osmo_stream_cli *cli = data;
 	_ipaccess_bts_down_cb(cli);
-	return 1;
+	return 0;
 }
 
 static void ipaccess_bts_keepalive_fsm_alloc(struct e1inp_ts *e1i_ts, struct osmo_stream_cli *client, const char *id)
 {
 	struct e1inp_line *line = e1i_ts->line;
-	struct osmo_fsm_inst *ka_fsm;
+	struct osmo_ipa_ka_fsm_inst *ka_fsm;
 
 	OSMO_ASSERT(e1i_ts->driver.ipaccess.ka_fsm == NULL);
 	if (!line->ipa_kap)
 		return;
 
-	ka_fsm = ipa_generic_conn_alloc_keepalive_fsm(client, client, line->ipa_kap, id);
+	ka_fsm = osmo_ipa_ka_fsm_alloc(client, id);
 	e1i_ts->driver.ipaccess.ka_fsm = ka_fsm;
 	if (!ka_fsm) {
 		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Failed to allocate IPA keepalive FSM\n");
 		return;
 	}
-
-	ipa_keepalive_fsm_set_timeout_cb(ka_fsm, ipa_bts_keepalive_timeout_cb);
-	ipa_keepalive_fsm_set_send_cb(ka_fsm, ipa_bts_keepalive_write_client_cb);
+	osmo_ipa_ka_fsm_set_ping_interval(ka_fsm, line->ipa_kap->interval);
+	osmo_ipa_ka_fsm_set_pong_timeout(ka_fsm, line->ipa_kap->wait_for_resp);
+	osmo_ipa_ka_fsm_set_data(ka_fsm, client);
+	osmo_ipa_ka_fsm_set_send_cb(ka_fsm, ipa_bts_keepalive_send_cb);
+	osmo_ipa_ka_fsm_set_timeout_cb(ka_fsm, ipa_bts_keepalive_timeout_cb);
 }
 
 /* See how ts->num is assigned in e1inp_line_create: line->ts[i].num = i+1;
@@ -224,12 +233,12 @@ static int ipaccess_bsc_rcvmsg(struct osmo_stream_srv *conn, struct msgb *msg)
 	struct e1inp_sign_link *sign_link;
 	char *unitid;
 	int len, ret;
-	struct osmo_fsm_inst *ka_fsm;
+	struct osmo_ipa_ka_fsm_inst *ka_fsm;
 
 	/* peek the pong for our keepalive fsm */
 	ka_fsm = e1i_ts->driver.ipaccess.ka_fsm;
 	if (ka_fsm && msg_type == IPAC_MSGT_PONG)
-		ipa_keepalive_fsm_pong_received(ka_fsm);
+		osmo_ipa_ka_fsm_pong_received(ka_fsm);
 
 	/* Handle IPA PING, PONG and ID_ACK messages. */
 	ret = ipa_ccm_rcvmsg_base(msg, bfd);
@@ -364,13 +373,13 @@ static void ipaccess_close(struct e1inp_sign_link *sign_link)
 	struct e1inp_ts *e1i_ts = sign_link->ts;
 	struct osmo_fd *bfd = &e1i_ts->driver.ipaccess.fd;
 	struct e1inp_line *line = e1i_ts->line;
-	struct osmo_fsm_inst *ka_fsm = e1i_ts->driver.ipaccess.ka_fsm;
+	struct osmo_ipa_ka_fsm_inst *ka_fsm = e1i_ts->driver.ipaccess.ka_fsm;
 	struct osmo_stream_cli *cli;
 	struct osmo_stream_srv *conn;
 
 	/* depending on caller the fsm might be dead */
 	if (ka_fsm)
-		ipa_keepalive_fsm_stop(ka_fsm);
+		osmo_ipa_ka_fsm_stop(ka_fsm);
 
 	e1inp_int_snd_event(e1i_ts, sign_link, S_L_INP_TEI_DN);
 	/* the first e1inp_sign_link_destroy call closes the socket. */
@@ -804,8 +813,8 @@ static int _ipaccess_bts_handle_ccm(struct osmo_stream_cli *cli,
 
 	/* peek the pong for our keepalive fsm */
 	if (line && msg_type == IPAC_MSGT_PONG) {
-		struct osmo_fsm_inst *ka_fsm = e1i_ts->driver.ipaccess.ka_fsm;
-		ipa_keepalive_fsm_pong_received(ka_fsm);
+		struct osmo_ipa_ka_fsm_inst *ka_fsm = e1i_ts->driver.ipaccess.ka_fsm;
+		osmo_ipa_ka_fsm_pong_received(ka_fsm);
 	}
 
 	/* ping, pong and acknowledgment cases. */
@@ -922,11 +931,11 @@ static int ipaccess_bts_connect_cb(struct osmo_stream_cli *cli)
 {
 	struct e1inp_ts *e1i_ts = osmo_stream_cli_get_data(cli);
 	struct e1inp_line *line = e1i_ts->line;
-	struct osmo_fsm_inst *ka_fsm = e1i_ts->driver.ipaccess.ka_fsm;
+	struct osmo_ipa_ka_fsm_inst *ka_fsm = e1i_ts->driver.ipaccess.ka_fsm;
 
 	update_fd_settings(line, osmo_stream_cli_get_fd(cli));
 	if (ka_fsm && line->ipa_kap)
-		ipa_keepalive_fsm_start(ka_fsm);
+		osmo_ipa_ka_fsm_start(ka_fsm);
 	return 0;
 }
 
