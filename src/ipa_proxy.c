@@ -1,5 +1,3 @@
-#include "internal.h"
-
 #include <stdio.h>
 #include <stdbool.h>
 #include <unistd.h>
@@ -26,6 +24,8 @@
 #include <osmocom/abis/ipa.h>
 
 static void *tall_ipa_proxy_ctx;
+
+extern void *libosmo_abis_ctx;
 
 /*
  * data structures used by the IPA VTY commands

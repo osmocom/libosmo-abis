@@ -54,7 +54,6 @@
 #include <osmocom/netif/stream.h>
 #include <osmocom/netif/ipa.h>
 #include <osmocom/abis/e1_input.h>
-#include <osmocom/abis/ipa.h>
 
 /* global parameters of IPA input driver */
 struct ipa_pars g_e1inp_ipaccess_pars;
