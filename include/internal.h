@@ -10,6 +10,14 @@ struct osmo_fd;
 struct e1inp_sign_link;
 struct e1inp_ts;
 
+/*! parameters describing the keep-alive FSM (timeouts). */
+struct ipa_keepalive_params {
+	/*! interval (seconds) in which to send IPA CCM PING requests to the peer. */
+	unsigned int interval;
+	/*! time (seconds) to wait for an IPA CCM PONG in response to a IPA CCM PING before giving up. */
+	unsigned int wait_for_resp;
+};
+
 struct ipa_proto_pars {
 	uint8_t dscp;
 	uint8_t priority;

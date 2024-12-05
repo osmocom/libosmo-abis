@@ -41,7 +41,6 @@
 #include <osmocom/vty/telnet_interface.h>
 
 #include <osmocom/abis/e1_input.h>
-#include <osmocom/abis/ipa.h>
 
 #define X(x) (1 << x)
 

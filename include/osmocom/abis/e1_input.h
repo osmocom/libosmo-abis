@@ -40,6 +40,7 @@ enum e1inp_ctr {
 	E1I_CTR_REMOVED,
 };
 
+struct ipa_keepalive_params;
 struct e1inp_ts;
 struct vty;
 
