@@ -31,7 +31,6 @@ libosmoabis_la_LIBADD = $(LIBOSMONETIF_LIBS) $(COMMONLIBS)
 libosmoabis_la_SOURCES = init.c \
 			 e1_input.c \
 			 e1_input_vty.c \
-			 ipa_proxy.c \
 			 subchan_demux.c \
 			 trau_frame.c \
 			 input/e1d.c \

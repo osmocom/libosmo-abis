@@ -4,7 +4,6 @@ AM_LDFLAGS = $(COVERAGE_LDFLAGS) -no-install
 
 check_PROGRAMS = e1inp_ipa_bsc_test	\
 		  e1inp_ipa_bts_test	\
-		  ipa_proxy_test	\
 		  subchan_demux/subchan_demux_test \
 		  ipa_recv/ipa_recv_test \
 		  raa_prime/test_dec \
@@ -36,9 +35,6 @@ e1inp_ipa_bsc_test_LDADD = $(ABIS_LA_LIBS)
 
 e1inp_ipa_bts_test_SOURCES = e1inp_ipa_bts_test.c
 e1inp_ipa_bts_test_LDADD = $(ABIS_LA_LIBS)
-
-ipa_proxy_test_SOURCES = ipa_proxy_test.c
-ipa_proxy_test_LDADD = $(ABIS_LA_LIBS)
 
 subchan_demux_subchan_demux_test_SOURCES = subchan_demux/subchan_demux_test.c
 subchan_demux_subchan_demux_test_LDADD = $(ABIS_LA_LIBS)

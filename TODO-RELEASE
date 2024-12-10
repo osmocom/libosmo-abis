@@ -13,3 +13,4 @@ libosmo-netif >1.5.0  use osmo_stream_cli_set_priority(), osmo_stream_cli_set_ip
 libosmocore   >1.10.0  bigger iofd tx_queue.max_length default value
 libosmo-abis API break Remove ipaccess_fd_cb()
 libosmo-netif >1.5.1  osmo_ipa_ka_fsm_inst APIs
+libosmo-abis  Remove API ipa_proxy_vty_init()
