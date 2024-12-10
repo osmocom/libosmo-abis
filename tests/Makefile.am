@@ -1,5 +1,5 @@
 AM_CPPFLAGS = $(all_includes) -I$(top_srcdir)/include
-AM_CFLAGS=-Wall -g $(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS) $(COVERAGE_CFLAGS)
+AM_CFLAGS=-Wall -g $(LIBOSMONETIF_CFLAGS) $(LIBOSMOGSM_CFLAGS) $(LIBOSMOCORE_CFLAGS) $(COVERAGE_CFLAGS)
 AM_LDFLAGS = $(COVERAGE_LDFLAGS) -no-install
 
 check_PROGRAMS = e1inp_ipa_bsc_test	\
@@ -17,52 +17,52 @@ if ENABLE_ORTP
 check_PROGRAMS += rtp_test/rtp_test
 endif
 
+ABIS_LA_LIBS = \
+	$(top_builddir)/src/libosmoabis.la \
+	$(LIBOSMONETIF_LIBS) \
+	$(LIBOSMOGSM_LIBS) \
+	$(LIBOSMOVTY_LIBS) \
+	$(LIBOSMOCORE_LIBS) \
+	$(NULL)
+
+TRAU_LA_LIBS = \
+	$(top_builddir)/src/libosmotrau.la \
+	$(LIBOSMOCODEC_LIBS) \
+	$(LIBOSMOCORE_LIBS) \
+	$(NULL)
+
 e1inp_ipa_bsc_test_SOURCES = e1inp_ipa_bsc_test.c
-e1inp_ipa_bsc_test_LDADD = $(top_builddir)/src/libosmoabis.la \
-			$(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS)
+e1inp_ipa_bsc_test_LDADD = $(ABIS_LA_LIBS)
 
 e1inp_ipa_bts_test_SOURCES = e1inp_ipa_bts_test.c
-e1inp_ipa_bts_test_LDADD = $(top_builddir)/src/libosmoabis.la \
-			$(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS)
+e1inp_ipa_bts_test_LDADD = $(ABIS_LA_LIBS)
 
 ipa_proxy_test_SOURCES = ipa_proxy_test.c
-ipa_proxy_test_LDADD = $(top_builddir)/src/libosmoabis.la \
-			$(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) \
-			$(LIBOSMOVTY_LIBS)
+ipa_proxy_test_LDADD = $(ABIS_LA_LIBS)
 
 subchan_demux_subchan_demux_test_SOURCES = subchan_demux/subchan_demux_test.c
-subchan_demux_subchan_demux_test_LDADD = $(top_builddir)/src/libosmoabis.la \
-			$(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) \
-			$(LIBOSMOVTY_LIBS)
+subchan_demux_subchan_demux_test_LDADD = $(ABIS_LA_LIBS)
 
 ipa_recv_ipa_recv_test_SOURCES = ipa_recv/ipa_recv_test.c
-ipa_recv_ipa_recv_test_LDADD = $(top_builddir)/src/libosmoabis.la \
-			$(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) \
-			$(LIBOSMOVTY_LIBS)
+ipa_recv_ipa_recv_test_LDADD = $(ABIS_LA_LIBS)
 
 raa_prime_test_dec_SOURCES = raa_prime/test_dec.c
-raa_prime_test_dec_LDADD = $(top_builddir)/src/libosmotrau.la \
-			$(LIBOSMOCORE_LIBS)
+raa_prime_test_dec_LDADD = $(TRAU_LA_LIBS)
 
 raa_prime_test_enc_SOURCES = raa_prime/test_enc.c
-raa_prime_test_enc_LDADD = $(top_builddir)/src/libosmotrau.la \
-			$(LIBOSMOCORE_LIBS)
+raa_prime_test_enc_LDADD = $(TRAU_LA_LIBS)
 
 rtp_test_rtp_test_SOURCES = rtp_test/rtp_test.c
-rtp_test_rtp_test_LDADD = $(top_builddir)/src/libosmotrau.la \
-			$(LIBOSMOCORE_LIBS)
+rtp_test_rtp_test_LDADD = $(TRAU_LA_LIBS)
 
 trau_conv_trau16_to_rtp_SOURCES = trau_conv/trau16_to_rtp.c
-trau_conv_trau16_to_rtp_LDADD = $(top_builddir)/src/libosmotrau.la \
-			$(LIBOSMOCORE_LIBS) $(LIBOSMOCODEC_LIBS)
+trau_conv_trau16_to_rtp_LDADD = $(TRAU_LA_LIBS)
 
 trau_sync_trau_sync_test_SOURCES = trau_sync/trau_sync_test.c
-trau_sync_trau_sync_test_LDADD = $(top_builddir)/src/libosmotrau.la \
-			$(LIBOSMOCORE_LIBS)
+trau_sync_trau_sync_test_LDADD = $(TRAU_LA_LIBS)
 
 trau_pcu_ericsson_trau_pcu_ericsson_test_SOURCES = trau_pcu_ericsson/trau_pcu_ericsson_test.c
-trau_pcu_ericsson_trau_pcu_ericsson_test_LDADD = $(top_builddir)/src/libosmotrau.la \
-			$(LIBOSMOCORE_LIBS)
+trau_pcu_ericsson_trau_pcu_ericsson_test_LDADD = $(TRAU_LA_LIBS)
 
 # boilerplate for the tests
 # The `:;' works around a Bash 3.2 bug when the output is not writeable.
