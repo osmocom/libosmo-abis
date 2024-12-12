@@ -981,7 +981,8 @@ static int ipaccess_line_update(struct e1inp_line *line)
 		osmo_stream_srv_link_set_accept_cb(oml_link, ipaccess_bsc_oml_accept_cb);
 
 		if (osmo_stream_srv_link_open(oml_link)) {
-			LOGPIL(line, DLINP, LOGL_ERROR, "cannot open OML BTS link: %s\n", strerror(errno));
+			LOGPIL(line, DLINP, LOGL_ERROR, "cannot open OML BTS link %s:%u (%s)\n",
+			       ipa, IPA_TCP_PORT_OML, strerror(errno));
 			osmo_stream_srv_link_destroy(oml_link);
 			return -EIO;
 		}
@@ -998,7 +999,8 @@ static int ipaccess_line_update(struct e1inp_line *line)
 		osmo_stream_srv_link_set_accept_cb(rsl_link, ipaccess_bsc_rsl_accept_cb);
 
 		if (osmo_stream_srv_link_open(rsl_link)) {
-			LOGPIL(line, DLINP, LOGL_ERROR, "cannot open RSL BTS link: %s\n", strerror(errno));
+			LOGPIL(line, DLINP, LOGL_ERROR, "cannot open RSL BTS link %s:%u (%s)\n",
+			       ipa, IPA_TCP_PORT_RSL, strerror(errno));
 			osmo_stream_srv_link_destroy(rsl_link);
 			return -EIO;
 		}
