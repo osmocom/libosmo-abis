@@ -948,6 +948,7 @@ static int ipaccess_line_update(struct e1inp_line *line)
 {
 	int ret = -ENOENT;
 	struct ipaccess_line *il;
+	char conn_name[128];
 
 	if (!line->driver_data)
 		line->driver_data = talloc_zero(line, struct ipaccess_line);
@@ -971,6 +972,8 @@ static int ipaccess_line_update(struct e1inp_line *line)
 
 		oml_link = osmo_stream_srv_link_create(tall_ipa_ctx);
 		OSMO_ASSERT(oml_link);
+		snprintf(conn_name, sizeof(conn_name), "ts-%u-oml", line->num);
+		osmo_stream_srv_link_set_name(oml_link, conn_name);
 		osmo_stream_srv_link_set_proto(oml_link, IPPROTO_TCP);
 		osmo_stream_srv_link_set_addr(oml_link, ipa);
 		osmo_stream_srv_link_set_port(oml_link, IPA_TCP_PORT_OML);
@@ -989,6 +992,8 @@ static int ipaccess_line_update(struct e1inp_line *line)
 
 		rsl_link = osmo_stream_srv_link_create(tall_ipa_ctx);
 		OSMO_ASSERT(rsl_link);
+		snprintf(conn_name, sizeof(conn_name), "ts-%u-rsl", line->num);
+		osmo_stream_srv_link_set_name(rsl_link, conn_name);
 		osmo_stream_srv_link_set_proto(rsl_link, IPPROTO_TCP);
 		osmo_stream_srv_link_set_addr(rsl_link, ipa);
 		osmo_stream_srv_link_set_port(rsl_link, IPA_TCP_PORT_RSL);
