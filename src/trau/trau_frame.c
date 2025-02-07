@@ -1379,6 +1379,49 @@ int osmo_trau_frame_decode_16k(struct osmo_trau_frame *fr, const ubit_t *bits,
 	}
 }
 
+/*! Decode/parse a 16k TFO frame from unpacked bits to decoded format.
+ *  \param[out] fr caller-allocated output data structure
+ *  \param[in] bits unpacked bits containing raw TFO frame; must be aligned
+ *  \returns 0 in case of success; negative on error
+ *
+ * TFO applications that need to decode TFO frames of TS 28.062 section 5.2.1
+ * (FR/EFR) or section 5.2.2.1 (AMR_TFO_16k) should use this function instead
+ * of regular osmo_trau_frame_decode_16k() in order to get appropriately
+ * modified handling of C1..C5 frame type bits:
+ *
+ * - C5 needs to be ignored because it is EMBED bit in TFO frames;
+ * - For interoperability with other potential TFO-AMR implementations
+ *   out in the world that aren't GSM AMR-FR, we need to recognize additional
+ *   C1..C4 bit patterns as being AMR equivalents: see Table 5.2.2.1-2 in
+ *   3GPP TS 28.062.
+ */
+int osmo_trau_frame_decode_tfo_16k(struct osmo_trau_frame *fr, const ubit_t *bits)
+{
+	uint8_t cbits4 = get_bits(bits, 17, 4);
+	/* We don't look at bit C5 because it is EMBED bit in TFO frames */
+
+	fr->type = OSMO_TRAU_FT_NONE;
+	fr->dir = OSMO_TRAU_DIR_UL;	/* TFO frames are modified TRAU-UL */
+	fr->dl_ta_usec = 0;
+
+	switch (cbits4) {
+	case TRAU_FT_FR_UP >> 1:
+		fr->type = OSMO_TRAU16_FT_FR;
+		return decode16_fr(fr, bits, fr->dir);
+	case TRAU_FT_EFR >> 1:
+		fr->type = OSMO_TRAU16_FT_EFR;
+		return decode16_fr(fr, bits, fr->dir);
+	case TRAU_FT_AMR >> 1:
+	case 0x4:	/* HR_AMR */
+	case 0x6:	/* UMTS_AMR_2 */
+	case 0xB:	/* OHR_AMR */
+		fr->type = OSMO_TRAU16_FT_AMR;
+		return decode16_amr(fr, bits, fr->dir);
+	default:
+		return -EINVAL;
+	}
+}
+
 #define TRAU8_FT_AMR_NO_SPEECH_CMI	0x10	/* 1, 0, 0, 0, 0 */
 #define TRAU8_FT_AMR_NO_SPEECH_CMR	0x14	/* 1, 0, 1, 0, 0 */
 #define TRAU8_FT_AMR_475_515_590	0..7
@@ -1516,6 +1559,72 @@ int osmo_trau_frame_decode_8k(struct osmo_trau_frame *fr, const ubit_t *bits,
 	} else if (is_amr_74(bits)) {
 		fr->type = OSMO_TRAU8_AMR_7k4;
 		return decode8_amr_74(fr, bits, dir);
+	}
+
+	return -EINVAL;
+}
+
+/*! Decode/parse an HRv1 TFO frame from unpacked bits to decoded format.
+ *  \param[out] fr caller-allocated output data structure
+ *  \param[in] bits 160 bits containing the lsb extracted from PCM samples;
+ *  must be aligned
+ *  \returns 0 in case of success; negative on error
+ *
+ * TFO applications that need to decode TFO frames of TS 28.062 section 5.3.1
+ * (GSM_HR codec) should use this function instead of regular
+ * osmo_trau_frame_decode_8k() in order to get these two behavior
+ * modifications:
+ *
+ * - The sync pattern check needs to be skipped because the sync pattern
+ *   may be partially overwritten by embedded TFO messages;
+ * - C5 needs to be ignored because it is EMBED bit in TFO frames.
+ *
+ * In the case of TFO, unlike regular TRAU-UL frames on Abis/Ater, there is
+ * no need to distinguish between HRv1 and AMR-8k frames by their respective
+ * sync patterns: per TS 28.062, these two TFO frame types never occur
+ * in the same bit position in TFO-superimposed PCM speech octets.
+ * Because HRv1 is the only TFO frame type that can occur in the configuration
+ * of TS 28.062 section 5.3 (only the one lsb in each PCM speech octet is
+ * overwritten), this function skips all attempts at frame type classification:
+ * the TFO application is responsible for detecting the presence of valid
+ * TFO frames for the negotiated codec type.
+ */
+int osmo_trau_frame_decode_tfo_hr1(struct osmo_trau_frame *fr, const ubit_t *bits)
+{
+	fr->type = OSMO_TRAU8_SPEECH;
+	fr->dir = OSMO_TRAU_DIR_UL;	/* TFO frames are modified TRAU-UL */
+	fr->dl_ta_usec = 0;
+	return decode8_hr(fr, bits, fr->dir);
+}
+
+/*! Decode/parse an AMR_TFO_8+8k frame from unpacked bits to decoded format.
+ *  \param[out] fr caller-allocated output data structure
+ *  \param[in] bits 160 bits containing the second lsb extracted from
+ *  PCM samples; must be aligned
+ *  \returns 0 in case of success; negative on error
+ *
+ * This function is provided for TFO applications that need to decode
+ * TFO frames of TS 28.062 section 5.2.2.2, format named AMR_TFO_8+8k.
+ * The second lsb extracted from PCM samples is the entity being decoded here.
+ * Compared to osmo_trau_frame_decode_8k(), the present function requires
+ * the direction to be TRAU-UL (as always the case in TFO) and accepts
+ * only AMR-8k frame types.
+ */
+int osmo_trau_frame_decode_tfo_amr_8k(struct osmo_trau_frame *fr, const ubit_t *bits)
+{
+	fr->type = OSMO_TRAU_FT_NONE;
+	fr->dir = OSMO_TRAU_DIR_UL;	/* TFO frames are modified TRAU-UL */
+	fr->dl_ta_usec = 0;
+
+	if (is_amr_low(bits)) {
+		fr->type = OSMO_TRAU8_AMR_LOW;
+		return decode8_amr_low(fr, bits, fr->dir);
+	} else if (is_amr_67(bits)) {
+		fr->type = OSMO_TRAU8_AMR_6k7;
+		return decode8_amr_67(fr, bits, fr->dir);
+	} else if (is_amr_74(bits)) {
+		fr->type = OSMO_TRAU8_AMR_7k4;
+		return decode8_amr_74(fr, bits, fr->dir);
 	}
 
 	return -EINVAL;

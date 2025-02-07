@@ -148,4 +148,11 @@ int osmo_trau_frame_encode(ubit_t *bits, size_t n_bits, const struct osmo_trau_f
 /*! Determine the time alignment in us requested by CCU in a UL frame */
 int osmo_trau_frame_dl_ta_us(const struct osmo_trau_frame *fr);
 
+/* TFO frames are slightly modified TRAU-UL frames, and thus require slightly
+ * modified encoding and decoding functions. */
+
+int osmo_trau_frame_decode_tfo_16k(struct osmo_trau_frame *fr, const ubit_t *bits);
+int osmo_trau_frame_decode_tfo_hr1(struct osmo_trau_frame *fr, const ubit_t *bits);
+int osmo_trau_frame_decode_tfo_amr_8k(struct osmo_trau_frame *fr, const ubit_t *bits);
+
 /* }@ */
