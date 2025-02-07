@@ -238,30 +238,34 @@ static int encode8_handle_ta(ubit_t *trau_bits, const struct osmo_trau_frame *fr
 }
 
 /* TS 08.60 Section 3.1.1 */
-static int encode16_fr(ubit_t *trau_bits, const struct osmo_trau_frame *fr)
+static int encode16_fr(ubit_t *trau_bits, const struct osmo_trau_frame *fr, bool is_tfo)
 {
 	const ubit_t *cbits5;
 	int i;
 	int d_idx = 0;
 
-	switch (fr->type) {
-	case OSMO_TRAU16_FT_IDLE:
-		if (fr->dir == OSMO_TRAU_DIR_UL)
-			cbits5 = ft_idle_up_bits;
-		else
-			cbits5 = ft_idle_down_bits;
-		break;
-	case OSMO_TRAU16_FT_FR:
-		if (fr->dir == OSMO_TRAU_DIR_UL)
-			cbits5 = ft_fr_up_bits;
-		else
-			cbits5 = ft_fr_down_bits;
-		break;
-	case OSMO_TRAU16_FT_EFR:
-		cbits5 = ft_efr_bits;
-		break;
-	default:
-		return -EINVAL;
+	if (is_tfo) {
+		cbits5 = fr->c_bits;
+	} else {
+		switch (fr->type) {
+		case OSMO_TRAU16_FT_IDLE:
+			if (fr->dir == OSMO_TRAU_DIR_UL)
+				cbits5 = ft_idle_up_bits;
+			else
+				cbits5 = ft_idle_down_bits;
+			break;
+		case OSMO_TRAU16_FT_FR:
+			if (fr->dir == OSMO_TRAU_DIR_UL)
+				cbits5 = ft_fr_up_bits;
+			else
+				cbits5 = ft_fr_down_bits;
+			break;
+		case OSMO_TRAU16_FT_EFR:
+			cbits5 = ft_efr_bits;
+			break;
+		default:
+			return -EINVAL;
+		}
 	}
 
 	encode_sync16(trau_bits);
@@ -314,17 +318,21 @@ static int decode16_fr(struct osmo_trau_frame *fr, const ubit_t *trau_bits,
 }
 
 /* TS 08.60 Section 3.1.2 */
-static int encode16_amr(ubit_t *trau_bits, const struct osmo_trau_frame *fr)
+static int encode16_amr(ubit_t *trau_bits, const struct osmo_trau_frame *fr, bool is_tfo)
 {
-	const ubit_t *cbits5 = ft_amr_bits;
 	int i, d_idx;
 
 	encode_sync16(trau_bits);
 
-	/* C1 .. C5 */
-	memcpy(trau_bits + 17, cbits5 + 0, 5);
-	/* C6 .. C15 */
-	memcpy(trau_bits + 17 + 5, fr->c_bits + 5, 15 - 5);
+	if (is_tfo) {
+		/* C1 .. C15 */
+		memcpy(trau_bits + 17, fr->c_bits, 15);
+	} else {
+		/* C1 .. C5 */
+		memcpy(trau_bits + 17, ft_amr_bits, 5);
+		/* C6 .. C15 */
+		memcpy(trau_bits + 17 + 5, fr->c_bits + 5, 15 - 5);
+	}
 
 	trau_bits[32] = 1;
 	/* C16 .. C25 */
@@ -549,7 +557,7 @@ static ubit_t *trau_idle_frame(void)
 		fr_idle_frame.c_bits[11] = 1; /* C12 (UFE), good frame */
 		fr_idle_frame.c_bits[15] = 1; /* C16 (SP), no DTX */
 
-		encode16_fr(encoded_idle_frame, &fr_idle_frame);
+		encode16_fr(encoded_idle_frame, &fr_idle_frame, false);
 		dbits_initted = 1; /* set it to 1 to not call it again */
 	}
 	return encoded_idle_frame;
@@ -843,7 +851,7 @@ static ubit_t compute_odd_parity(const ubit_t *in, unsigned int num_bits)
 }
 
 /* TS 08.61 Section 5.2.1.1 */
-static int encode8_hr(ubit_t *trau_bits, const struct osmo_trau_frame *fr)
+static int encode8_hr(ubit_t *trau_bits, const struct osmo_trau_frame *fr, bool is_tfo)
 {
 	int i, d_idx = 0;
 
@@ -858,11 +866,15 @@ static int encode8_hr(ubit_t *trau_bits, const struct osmo_trau_frame *fr)
 	/* C1 .. C5 */
 	ubit_t *cbits_out = trau_bits + 1 * 8 + 1;
 	if (fr->dir == OSMO_TRAU_DIR_UL) {
-		cbits_out[0] = 0;
-		cbits_out[1] = 0;
-		cbits_out[2] = 0;
-		cbits_out[3] = 1;
-		cbits_out[4] = 0;
+		if (is_tfo) {
+			memcpy(cbits_out, fr->c_bits, 5);
+		} else {
+			cbits_out[0] = 0;
+			cbits_out[1] = 0;
+			cbits_out[2] = 0;
+			cbits_out[3] = 1;
+			cbits_out[4] = 0;
+		}
 	} else {
 		cbits_out[0] = 0;
 		cbits_out[1] = 0;
@@ -1241,9 +1253,21 @@ static int encode8_oam(ubit_t *trau_bits, const struct osmo_trau_frame *fr)
 
 /*! Encode a TRAU frame from its decoded representation to a sequence of unpacked bits.
  *  \param[out] bits caller-allocated buffer for unpacked outpud bits
- *  \param[in] n_bits size of 'bits' oputput buffer in number of unpacked bits
+ *  \param[in] n_bits size of 'bits' output buffer in number of unpacked bits
  *  \param[in] fr decoded representation of TRAU frame to be encoded
- *  \return 0 number of unpacked output bits generated; negative in case of error */
+ *  \return 0 number of unpacked output bits generated; negative in case of error
+ *
+ * This function exhibits a behavioral quirk which users need to be aware of:
+ * for many frame types, the first 5 bits out of user-provided fr->c_bits[]
+ * (corresponding to C1..C5) are ignored and replaced with internally supplied
+ * constant values, where the function "knows" what the correct frame type code
+ * should be.  This behavioral quirk is arguably a design defect, but it cannot
+ * be changed without breaking some existing applications that rely on this
+ * behavior and skip setting those bits themselves.  For TFO applications
+ * where C1..C5 may need to be modified (especially TFO-AMR where this C1..C5
+ * modification must be done before CRC computation), please use
+ * osmo_trau_frame_encode_tfo().
+ */
 int osmo_trau_frame_encode(ubit_t *bits, size_t n_bits, const struct osmo_trau_frame *fr)
 {
 	/* check for sufficient space provided by caller in output buffer */
@@ -1287,11 +1311,11 @@ int osmo_trau_frame_encode(ubit_t *bits, size_t n_bits, const struct osmo_trau_f
 	switch (fr->type) {
 	case OSMO_TRAU16_FT_FR:
 	case OSMO_TRAU16_FT_EFR:
-		return encode16_fr(bits, fr);
+		return encode16_fr(bits, fr, false);
 	case OSMO_TRAU16_FT_HR:
 		return encode16_hr(bits, fr);
 	case OSMO_TRAU16_FT_AMR:
-		return encode16_amr(bits, fr);
+		return encode16_amr(bits, fr, false);
 	case OSMO_TRAU16_FT_OAM:
 		return encode16_oam(bits, fr);
 	case OSMO_TRAU16_FT_IDLE:
@@ -1305,7 +1329,7 @@ int osmo_trau_frame_encode(ubit_t *bits, size_t n_bits, const struct osmo_trau_f
 	case OSMO_TRAU16_FT_EDATA:
 		return encode16_edata(bits, fr);
 	case OSMO_TRAU8_SPEECH:
-		return encode8_hr(bits, fr);
+		return encode8_hr(bits, fr, false);
 	case OSMO_TRAU8_DATA:
 		return encode8_data(bits, fr);
 	case OSMO_TRAU8_OAM:
@@ -1317,6 +1341,63 @@ int osmo_trau_frame_encode(ubit_t *bits, size_t n_bits, const struct osmo_trau_f
 	case OSMO_TRAU8_AMR_7k4:
 		return encode8_amr_74(bits, fr);
 	case OSMO_TRAU_FT_NONE:
+	default:
+		return -EINVAL;
+	}
+}
+
+/*! Encode a TFO frame from its decoded representation to a sequence of unpacked bits.
+ *  \param[out] bits caller-allocated buffer for unpacked outpud bits
+ *  \param[in] n_bits size of 'bits' output buffer in number of unpacked bits
+ *  \param[in] fr decoded representation of TRAU frame to be encoded
+ *  \return 0 number of unpacked output bits generated; negative in case of error
+ *
+ * Compared to regular osmo_trau_frame_encode(), this TFO-specific TRAU frame
+ * encoding function restricts the set of possible frame types to those that
+ * are valid for TFO, restricts the direction to TRAU-UL, reduces the output
+ * space requirement (there is no timing alignment extension) and always uses
+ * all fr->c_bits provided by the application.
+ */
+int osmo_trau_frame_encode_tfo(ubit_t *bits, size_t n_bits, const struct osmo_trau_frame *fr)
+{
+	/* TFO frames are TRAU-UL only */
+	if (fr->dir != OSMO_TRAU_DIR_UL)
+		return -EINVAL;
+
+	/* check for sufficient space provided by caller in output buffer */
+	/* there is no timing alignment in TRAU-UL direction! */
+	switch (fr->type) {
+	case OSMO_TRAU16_FT_FR:
+	case OSMO_TRAU16_FT_EFR:
+	case OSMO_TRAU16_FT_AMR:
+		if (n_bits < 1 * 40 * 8)
+			return -ENOSPC;
+		break;
+	case OSMO_TRAU8_SPEECH:
+	case OSMO_TRAU8_AMR_LOW:
+	case OSMO_TRAU8_AMR_6k7:
+	case OSMO_TRAU8_AMR_7k4:
+		if (n_bits < 1 * 20 * 8)
+			return -ENOSPC;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	switch (fr->type) {
+	case OSMO_TRAU16_FT_FR:
+	case OSMO_TRAU16_FT_EFR:
+		return encode16_fr(bits, fr, true);
+	case OSMO_TRAU16_FT_AMR:
+		return encode16_amr(bits, fr, true);
+	case OSMO_TRAU8_SPEECH:
+		return encode8_hr(bits, fr, true);
+	case OSMO_TRAU8_AMR_LOW:
+		return encode8_amr_low(bits, fr);
+	case OSMO_TRAU8_AMR_6k7:
+		return encode8_amr_67(bits, fr);
+	case OSMO_TRAU8_AMR_7k4:
+		return encode8_amr_74(bits, fr);
 	default:
 		return -EINVAL;
 	}
