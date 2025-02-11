@@ -9,6 +9,7 @@ check_PROGRAMS = e1inp_ipa_bsc_test	\
 		  raa_prime/test_dec \
 		  raa_prime/test_enc \
 		  trau_conv/trau16_to_rtp \
+		  trau_conv/trau2rtp_gen \
 		  trau_sync/trau_sync_test \
 		  trau_pcu_ericsson/trau_pcu_ericsson_test
 
@@ -53,6 +54,9 @@ rtp_test_rtp_test_LDADD = $(TRAU_LA_LIBS)
 
 trau_conv_trau16_to_rtp_SOURCES = trau_conv/trau16_to_rtp.c
 trau_conv_trau16_to_rtp_LDADD = $(TRAU_LA_LIBS)
+
+trau_conv_trau2rtp_gen_SOURCES = trau_conv/trau2rtp_gen.c
+trau_conv_trau2rtp_gen_LDADD = $(TRAU_LA_LIBS)
 
 trau_sync_trau_sync_test_SOURCES = trau_sync/trau_sync_test.c
 trau_sync_trau_sync_test_LDADD = $(TRAU_LA_LIBS)
