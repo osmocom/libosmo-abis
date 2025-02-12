@@ -1,3 +1,65 @@
+libosmo-abis (2.0.0) unstable; urgency=medium
+
+  [ Mychaela N. Falconia ]
+  * trau_frame: fix de/encoding of HR-data-8k frames
+  * osmo_trau_frame_decode_8k: check all sync bits
+  * osmo_trau_frame_decode_8k: fix recognition of O&M UL
+  * trau2rtp: add CSD support
+  * rtp2trau: add CSD support
+  * tests: fix for --disable-ortp
+  * trau2rtp FR & EFR: fix uninitialized memory bug
+  * tests: add unit tests for trau2rtp conversion, FR & EFR
+  * trau2rtp TW-TS-001: handle corner case of BFI with stale SID bits
+  * trau2rtp unit test: add patterns that showcase BFI=1 SID=0
+  * trau2rtp EFR unit test: add patterns with bad CRC
+  * libosmotrau: add CSD RA2 functions
+  * trau_rtp_conv: use new RA2 functions for CSD
+  * libosmotrau: implement RAA' encoder function
+  * libosmotrau: implement RAA' decoder function
+  * TRAU frame output EDATA: set sync pattern bits
+  * trau_frame: D145_SYNC does not follow EDATA format
+  * trau2rtp: add support for EDATA
+  * rtp2trau: add support for EDATA
+  * trau: detect 8k AMR 7.40k frames correctly for decoding
+  * trau 8k decode: set fr->type correctly
+  * trau: implement TFO frame decoding functions
+  * trau: implement TFO frame encoding function
+
+  [ Pau Espin Pedrol ]
+  * ipaccess: Fix wrong pointer passed in sign_link_up user callback
+  * ipaccess: Simplify code after early return if block
+  * ipaccess: reduce scope of ka_fsm variable
+  * ipaccess: Clarify access to msgb ipa payload in code path
+  * ipaccess: Reduce scope of line local variable
+  * ipaccess: Get rid of extra indentation level in long code block
+  * cosmetic: ipa_keepalive.c: Fix trailing whitespace
+  * ipaccess: Use libosmocore API ipa_ccm_send_id_ack()
+  * ipaccess: Replace ipa_bts_id_resp() with libosmocore ipa_ccm_make_id_resp_from_req()
+  * ipaccess: Deprecate ipa_msg_push_header() API
+  * libosmo-abis depends on libosmo-netif
+  * e1_input: Store new msg in llist before calling driver->want_write()
+  * ipaccess: Convert BTS OML & RSL link to use stream_cli
+  * e1_input: Fix e1i_ts pointing to old line after line_clone
+  * e1_input: Guard against crash by users calling reentrant e1inp_sign_link_destroy()
+  * Drop internal use of osmocom/abis/ipaccess.h
+  * ipaccess: Assert explicitly about non-null ptr
+  * ipaccess: Assert fd is positive
+  * ipaccess: Convert BSC OML & RSL link to use stream_srv
+  * ipaccess: Assert explicitly about non-null ptr
+  * input: Move ipaccess_bts_handle_ccm() ipaccess.c -> ipa.c
+  * tests/Makefile.am: Fix missing LIBOSMONETIF_LIBS/CFLAGS
+  * ipaccess: Use new osmo_ipa_ka_fsm_inst APIs from libosmo-netif
+  * input: Get rid of abis/ipa.h dependency in e1_input and ipaccess.c
+  * Drop ipa_proxy
+  * ipaccess: Log ip_addr+port of srv_link failing to start
+  * ipaccess: Set name on oml and rsl stream listen socket
+
+  [ Oliver Smith ]
+  * debian: libosmo-abis-dev dep on libosmo-netif-dev
+  * debian/control: libosmo-abis-dev: add missing dep
+
+ -- Oliver Smith <osmith@sysmocom.de>  Wed, 12 Feb 2025 11:15:07 +0100
+
 libosmo-abis (1.6.0) unstable; urgency=medium
 
   [ Andreas Eversberg ]

@@ -7,10 +7,3 @@
 # If any interfaces have been added since the last public release: c:r:a + 1.
 # If any interfaces have been removed or changed since the last public release: c:r:0.
 #library	what			description / commit summary line
-libosmotrau	struct osmo_trau2rtp_state extended (ABI break)
-libosmo-netif >1.5.0  New dependency
-libosmo-netif >1.5.0  use osmo_stream_cli_set_priority(), osmo_stream_cli_set_ip_dscp()
-libosmocore   >1.10.0  bigger iofd tx_queue.max_length default value
-libosmo-abis API break Remove ipaccess_fd_cb()
-libosmo-netif >1.5.1  osmo_ipa_ka_fsm_inst APIs
-libosmo-abis  Remove API ipa_proxy_vty_init()
