@@ -1,0 +1,61 @@
+# This file is an input to trau2rtp_gen unit test program, containing
+# TRAU-8k Abis-UL frames for TCH/HS.
+#
+# Most test frames in this set (all except a few hand-crafted ones) were
+# taken from an E1-Abis UL capture from Nokia InSite BTS, specifically
+# from hr-test2.bin E1 timeslot capture file posted here:
+#
+# https://osmocom.org/projects/retro-gsm/wiki/InSite_UL_captures
+#
+# The extraction of hex-encoded TRAU frames from the E1 timeslot octet stream
+# capture was done with trau-hr-dump program (-r option) developed in this
+# repository:
+#
+# https://www.freecalypso.org/hg/gsm-net-reveng/
+
+# 2 good speech frames from the beginning of the call
+
+# Frame at 0xcf5e:
+008846a6afdaf9a197a79d82b1efc4c9b8b0e4bb
+# Frame at 0xcffe:
+008844b78bdef8a8bd8da681abd6a2aabdf3e8fb
+
+# a pair of frames stolen for FACCH, the first of which falls on a TAF position
+
+# Frame at 0xd31e:
+008970e480e5808081f180a180fc809881d084fb
+# Frame at 0xd3be:
+008964e48681808081f182eb80e78099eb9d89fb
+
+# some voiced speech frames
+
+# Frame at 0xdb3e:
+00884694caaa89dc8083b89cc881e99a86adbebb
+# Frame at 0xdbde:
+008846e9e692c49bd1d3afac8aeec9f7a9d1efbb
+# Frame at 0xdc7e:
+00884789ff91c1bc93c7efca9f92c6f5a4b1f5fb
+# Frame at 0xdd1e:
+00884799ff82e09febd8aec895f4c2f1e1cfe8bb
+
+# a valid SID frame
+
+# Frame at 0x12c7e:
+00885084dfddccdfffaffffffffffffffffffffb
+
+# an invalid SID frame
+
+# Frame at 0x133fe:
+0089408799deb8ffffdffffffffffef5fffafffb
+
+# hand-crafted test frames follow
+
+# test handling of CRC: frames that begin like good speech,
+# but the 115 bits of payload+CRC are either all-0 or all-1
+00884480808080808080808080808080808080bb
+008847fffffffffffffffffffffffffffffffffb
+
+# good speech frame (copy of 0xdd1e) with XC6 flipped (parity error)
+00884399ff82e09febd8aec895f4c2f1e1cfe8bb
+# flip XC1 too: parity becomes good again, but the code is now undefined
+008a4399ff82e09febd8aec895f4c2f1e1cfe8bb

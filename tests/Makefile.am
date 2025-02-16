@@ -92,6 +92,8 @@ EXTRA_DIST = testsuite.at $(srcdir)/package.m4 $(TESTSUITE) \
 	trau_conv/trau16_efr_twts001.ok \
 	trau_conv/trau16_fr.in trau_conv/trau16_fr_std.ok \
 	trau_conv/trau16_fr_twts001.ok \
+	trau_conv/trau2rtp_hr.in trau_conv/trau2rtp_hr_std.ok \
+	trau_conv/trau2rtp_hr_twts002.ok \
 	trau_sync/trau_sync_test.ok trau_sync/trau_sync_test.err \
 	trau_pcu_ericsson/trau_pcu_ericsson_test.ok
 
