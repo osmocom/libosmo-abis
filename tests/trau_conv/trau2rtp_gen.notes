@@ -1,0 +1,129 @@
+trau2rtp_gen is a generic exerciser for libosmotrau functions
+osmo_trau_frame_decode_16k() or osmo_trau_frame_decode_8k(), followed by
+osmo_trau2rtp().  Specifically, it reads input in the form of hex lines,
+with each line representing a TRAU-16k frame as a string of 80 hex digits
+or a TRAU-8k frame as a string of 40 hex digits, passes each TRAU frame
+thus read into libosmotrau functions under test, and emits the resulting
+RTP payload in another hex format defined in TW-TS-005.  IOW, this program
+is a hex-to-hex converter where input hex lines represent TRAU frames
+and output hex lines represent RTP payloads.
+
+Usage synopsis:
+
+trau2rtp_gen [-8] [-d] [-x] input-file [output-file]
+
+Option flags:
+
+-8	Without this flag, trau2rtp_gen operates on 16 kbit/s TRAU frames,
+	expects every input hex line to be 80 hex digits long, and exercises
+	osmo_trau_frame_decode_16k() function.  With -8 flag, trau2rtp_gen
+	operates on 8 kbit/s TRAU frames, expects every input hex line to be
+	40 hex digits long, and exercises osmo_trau_frame_decode_8k() function.
+
+-d	Per GSM 08.60 and 08.61 specs, TRAU frames have different semantics and
+	sometimes different metadata flags included in the frame in uplink and
+	downlink directions.  By default, trau2rtp_gen operates with uplink
+	semantics and treats all frames it processes as TRAU-UL frames.  With
+	-d option, each processed frame is to be treated as a TRAU-DL frame
+	instead.  Please note, however, that osmo_trau2rtp() function currently
+	implements only TRAU-UL semantics - thus the present -d option won't do
+	anything useful - but it was implemented for the sake of completeness.
+
+-x	Without this flag, FR/EFR output will be in RFC 3551 format and HR
+	output will be in RFC 5993 format, as prescribed by 3GPP from Rel8
+	onward for AoIP.  With -x flag, FR/EFR output will be in TW-TS-001
+	format and HR output will be in TW-TS-002 format - extended RTP payload
+	formats that preserve the full semantics of TRAU frames from earlier
+	GSM and 3GPP releases.
+
+The following GSM speech codecs and TRAU frame formats are supported:
+
+Codec	Frame format	Spec reference
+--------------------------------------
+FRv1	TRAU-16k	TS 48.060 sections 5.1.1 and 5.5.1.1
+EFR	TRAU-16k	TS 48.060 sections 5.1.1 and 5.5.1.1
+HRv1	TRAU-16k	TS 48.061 sections 5.1.1.1 and 5.1.4.1.1
+HRv1	TRAU-8k		TS 48.061 sections 5.2.1.1 and 5.2.4.1
+
+Input format and examples
+=========================
+
+The input hex format to trau2rtp_gen is completely ad hoc, not defined in any
+spec.  In TRAU-16k mode (no -8 option), each non-blank, non-comment input line
+is expected to consist of exactly 80 hex digits, carrying a TRAU-16k frame of
+320 bits.  In TRAU-8k mode (with -8 option), each non-empty input line is
+similarly expected to consist of exactly 40 hex digits, carrying a TRAU-8k frame
+of 160 bits.  Such hex-represented TRAU frames can be hand-crafted for testing,
+but there are also tools that extract TRAU frames from E1 timeslot octet stream
+recordings and emit those extracted frames in the present hex format:
+
+https://www.freecalypso.org/hg/gsm-net-reveng/file/tip/trau-decode
+
+Example input for FRv1:
+
+000088b0bd72ba9a94288012a492a492a2808124c924c9248710edb69468b5b5bc12a49ca685c6ff
+000088b08c0fce6ee368831ba4edd833a38f82e4e46b8eb8ec68eba1d3d29c8ec50b86139d8792ff
+000088b0cc29bedc9c46a83ce650af55cee8c234e947943caa90ea92e2cecba6ed05e663b1cfb2ff
+
+Example input for EFR:
+
+0000e8c0ecc6e6d39ae5ac008013b21780ec800080008002aad6800080008036eb00800080008eff
+0000e8c0c5959c70daf191608000800081abb8ccf580a07c873fb977a81cc410f1588c7fdd61ceff
+0000e8c0d01dc9f2f67a885ff583d73fa9daf2cca28a91babde68c43a24efc32aa69ad8af003caff
+
+Example input for HRv1 in TRAU-8k format:
+
+008846a6afdaf9a197a79d82b1efc4c9b8b0e4bb
+008844b78bdef8a8bd8da681abd6a2aabdf3e8fb
+00885084dfddccdfffaffffffffffffffffffffb
+
+Output hex format and tools
+===========================
+
+TW-TS-005 is a hex file format for sequences of RTP payloads for GSM speech
+codecs; trau2rtp_gen emits its generated RTP payloads in this hex format.
+Spec document:
+
+https://www.freecalypso.org/specs/tw-ts-005-v010003.txt
+
+What can one do with a TW-TS-005 hex file?  Some possibilities:
+
+* All header/metadata fields defined in RFC 5993, TW-TS-001 and TW-TS-002 specs
+  are simple enough for easy mental decoding just by looking at the generated
+  RTP payload in hex;
+
+* Deeper decoding into individual FR/HR/EFR codec parameters can be done with
+  tw5a-dump (FR/EFR) and tw5b-dump (HR) utilities from Themyscira Wireless GSM
+  codec libraries and utilities package;
+
+* Other utilities in the same just-referenced package can be used to transcode
+  FR/HR/EFR speech recordings in TW-TS-005 hex format (which in the present case
+  can be captured Abis-UL output from an E1 BTS, converted with trau2rtp_gen)
+  into playable audio.
+
+No AMR or CSD
+=============
+
+One limitation of the present trau2rtp_gen utility that should be noted is the
+lack of support for AMR or CSD.  The reasons for this limitation are:
+
+* AMR is currently not supported by osmo_trau2rtp() or osmo_rtp2trau()
+  functions, and it is not entirely clear if this API would be a good match for
+  the much more complex processing that will be needed in a software TRAU or
+  TRAU-emulating MGW for AMR.
+
+* CSD is supported by the chain of libosmotrau functions exercised by
+  trau2rtp_gen, but the resulting bloated RTP payloads cannot be represented in
+  TW-TS-005: spec section 4.1 limits each hex line to 80 characters, effectively
+  limiting the domain of application for this hex file format to RTP payloads
+  that are no larger than 40 bytes.
+
+When and if a need arises to represent CSD frame streams in hex, there does not
+seem to be one single solution that would be best for all use cases - instead
+the problem might need to be approached on a case-by-case basis.  For the
+specific use case of unit tests, verifying correct operation of osmo_trau2rtp()
+and osmo_rtp2trau() functions in data modes, one possible approach would be to
+copy what is currently done in raa_prime unit tests: break each 160-byte CSD RTP
+payload into 4 hex lines of 80 digits each.  In any case, whichever hex format
+is to be chosen for CSD, it will be its own separate test program, independent
+of trau2rtp_gen.
