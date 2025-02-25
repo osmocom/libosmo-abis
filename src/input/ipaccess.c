@@ -1168,8 +1168,8 @@ int e1inp_ipa_bts_rsl_close_n(struct e1inp_line *line, uint8_t trx_nr)
 
 	cli = il->ipa_cli[1 + trx_nr];
 	if (cli != NULL) {
-		osmo_stream_cli_destroy(cli);
 		il->ipa_cli[1 + trx_nr] = NULL;
+		osmo_stream_cli_destroy(cli);
 	}
 	return 0;
 }
