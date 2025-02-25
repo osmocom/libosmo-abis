@@ -90,3 +90,75 @@ AT_KEYWORDS([trau2rtp_hr_twts002])
 cat $abs_srcdir/trau_conv/trau2rtp_hr_twts002.ok > expout
 AT_CHECK([$abs_top_builddir/tests/trau_conv/trau2rtp_gen -8 -x $abs_srcdir/trau_conv/trau2rtp_hr.in], [0], [expout], [ignore])
 AT_CLEANUP
+
+AT_SETUP([rtp2trau_fr_dl1])
+AT_KEYWORDS([rtp2trau_fr_dl1])
+cat $abs_srcdir/trau_conv/rtp2trau_fr_dl1.ok > expout
+AT_CHECK([$abs_top_builddir/tests/trau_conv/rtp2trau_gen $abs_srcdir/trau_conv/fr_speech_basic.hex fr dl], [0], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([rtp2trau_fr_dl2])
+AT_KEYWORDS([rtp2trau_fr_dl2])
+cat $abs_srcdir/trau_conv/rtp2trau_fr_dl2.ok > expout
+AT_CHECK([$abs_top_builddir/tests/trau_conv/rtp2trau_gen $abs_srcdir/trau_conv/fr_speech_twts001_good.hex fr dl], [0], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([rtp2trau_fr_ul1])
+AT_KEYWORDS([rtp2trau_fr_ul1])
+cat $abs_srcdir/trau_conv/rtp2trau_fr_ul1.ok > expout
+AT_CHECK([$abs_top_builddir/tests/trau_conv/rtp2trau_gen $abs_srcdir/trau_conv/fr_speech_basic.hex fr ul], [0], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([rtp2trau_fr_ul2])
+AT_KEYWORDS([rtp2trau_fr_ul2])
+cat $abs_srcdir/trau_conv/rtp2trau_fr_ul2.ok > expout
+AT_CHECK([$abs_top_builddir/tests/trau_conv/rtp2trau_gen $abs_srcdir/trau_conv/fr_speech_twts001_good.hex fr ul], [0], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([rtp2trau_fr_ul3])
+AT_KEYWORDS([rtp2trau_fr_ul3])
+cat $abs_srcdir/trau_conv/rtp2trau_fr_ul3.ok > expout
+AT_CHECK([$abs_top_builddir/tests/trau_conv/rtp2trau_gen $abs_srcdir/trau_conv/fr_speech_twts001_mix.hex fr ul], [0], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([rtp2trau_efr_dl1])
+AT_KEYWORDS([rtp2trau_efr_dl1])
+cat $abs_srcdir/trau_conv/rtp2trau_efr_dl1.ok > expout
+AT_CHECK([$abs_top_builddir/tests/trau_conv/rtp2trau_gen $abs_srcdir/trau_conv/efr_speech_basic.hex efr dl], [0], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([rtp2trau_efr_dl2])
+AT_KEYWORDS([rtp2trau_efr_dl2])
+cat $abs_srcdir/trau_conv/rtp2trau_efr_dl2.ok > expout
+AT_CHECK([$abs_top_builddir/tests/trau_conv/rtp2trau_gen $abs_srcdir/trau_conv/efr_speech_twts001_good.hex efr dl], [0], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([rtp2trau_efr_ul1])
+AT_KEYWORDS([rtp2trau_efr_ul1])
+cat $abs_srcdir/trau_conv/rtp2trau_efr_ul1.ok > expout
+AT_CHECK([$abs_top_builddir/tests/trau_conv/rtp2trau_gen $abs_srcdir/trau_conv/efr_speech_basic.hex efr ul], [0], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([rtp2trau_efr_ul2])
+AT_KEYWORDS([rtp2trau_efr_ul2])
+cat $abs_srcdir/trau_conv/rtp2trau_efr_ul2.ok > expout
+AT_CHECK([$abs_top_builddir/tests/trau_conv/rtp2trau_gen $abs_srcdir/trau_conv/efr_speech_twts001_good.hex efr ul], [0], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([rtp2trau_efr_ul3])
+AT_KEYWORDS([rtp2trau_efr_ul3])
+cat $abs_srcdir/trau_conv/rtp2trau_efr_ul3.ok > expout
+AT_CHECK([$abs_top_builddir/tests/trau_conv/rtp2trau_gen $abs_srcdir/trau_conv/efr_speech_twts001_mix.hex efr ul], [0], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([rtp2trau_hr_dl1])
+AT_KEYWORDS([rtp2trau_hr_dl1])
+cat $abs_srcdir/trau_conv/rtp2trau_hr_dl.ok > expout
+AT_CHECK([$abs_top_builddir/tests/trau_conv/rtp2trau_gen $abs_srcdir/trau_conv/hr_speech_ts101318.hex hr dl], [0], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([rtp2trau_hr_dl2])
+AT_KEYWORDS([rtp2trau_hr_dl2])
+cat $abs_srcdir/trau_conv/rtp2trau_hr_dl.ok > expout
+AT_CHECK([$abs_top_builddir/tests/trau_conv/rtp2trau_gen $abs_srcdir/trau_conv/hr_speech_rfc5993.hex hr dl], [0], [expout], [ignore])
+AT_CLEANUP

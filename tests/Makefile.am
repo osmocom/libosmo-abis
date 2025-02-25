@@ -8,6 +8,7 @@ check_PROGRAMS = e1inp_ipa_bsc_test	\
 		  ipa_recv/ipa_recv_test \
 		  raa_prime/test_dec \
 		  raa_prime/test_enc \
+		  trau_conv/rtp2trau_gen \
 		  trau_conv/trau16_to_rtp \
 		  trau_conv/trau2rtp_gen \
 		  trau_sync/trau_sync_test \
@@ -52,6 +53,9 @@ raa_prime_test_enc_LDADD = $(TRAU_LA_LIBS)
 rtp_test_rtp_test_SOURCES = rtp_test/rtp_test.c
 rtp_test_rtp_test_LDADD = $(TRAU_LA_LIBS)
 
+trau_conv_rtp2trau_gen_SOURCES = trau_conv/rtp2trau_gen.c trau_conv/tw5reader.c
+trau_conv_rtp2trau_gen_LDADD = $(TRAU_LA_LIBS)
+
 trau_conv_trau16_to_rtp_SOURCES = trau_conv/trau16_to_rtp.c
 trau_conv_trau16_to_rtp_LDADD = $(TRAU_LA_LIBS)
 
@@ -63,6 +67,8 @@ trau_sync_trau_sync_test_LDADD = $(TRAU_LA_LIBS)
 
 trau_pcu_ericsson_trau_pcu_ericsson_test_SOURCES = trau_pcu_ericsson/trau_pcu_ericsson_test.c
 trau_pcu_ericsson_trau_pcu_ericsson_test_LDADD = $(TRAU_LA_LIBS)
+
+noinst_HEADERS = trau_conv/tw5reader.h
 
 # boilerplate for the tests
 # The `:;' works around a Bash 3.2 bug when the output is not writeable.
@@ -88,6 +94,18 @@ EXTRA_DIST = testsuite.at $(srcdir)/package.m4 $(TESTSUITE) \
 	ipa_recv/ipa_recv_test.ok \
 	raa_prime/d144-ul-input.asc raa_prime/nokia-tcsm2-atrau.hex \
 	rtp_test/rtp_test.ok \
+	trau_conv/efr_speech_basic.hex trau_conv/efr_speech_twts001_good.hex \
+	trau_conv/efr_speech_twts001_mix.hex \
+	trau_conv/fr_speech_basic.hex trau_conv/fr_speech_twts001_good.hex \
+	trau_conv/fr_speech_twts001_mix.hex \
+	trau_conv/hr_speech_rfc5993.hex trau_conv/hr_speech_ts101318.hex \
+	trau_conv/rtp2trau_efr_dl1.ok trau_conv/rtp2trau_efr_dl2.ok \
+	trau_conv/rtp2trau_efr_ul1.ok trau_conv/rtp2trau_efr_ul2.ok \
+	trau_conv/rtp2trau_efr_ul3.ok \
+	trau_conv/rtp2trau_fr_dl1.ok trau_conv/rtp2trau_fr_dl2.ok \
+	trau_conv/rtp2trau_fr_ul1.ok trau_conv/rtp2trau_fr_ul2.ok \
+	trau_conv/rtp2trau_fr_ul3.ok \
+	trau_conv/rtp2trau_hr_dl.ok \
 	trau_conv/trau16_efr.in trau_conv/trau16_efr_std.ok \
 	trau_conv/trau16_efr_twts001.ok \
 	trau_conv/trau16_fr.in trau_conv/trau16_fr_std.ok \
