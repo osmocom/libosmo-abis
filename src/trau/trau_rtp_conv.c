@@ -1456,6 +1456,38 @@ static inline bool check_twts002(struct osmo_trau2rtp_state *st)
 		return false;
 }
 
+/*! convert received TRAU-UL frame to RTP payload
+ *  \param[out] out Buffer for the output RTP payload
+ *  \param[in] out_len Size of buffer pointed to by \ref out
+ *  \param[in] tf Osmo-decoded TRAU frame
+ *  \param[in] st State/config structure
+ *  \returns length of converted RTP payload if successful; negative on error
+ *
+ * This function is intended to operate on TRAU-UL or TFO frames, either
+ * received from an E1 BTS or extracted from lsbs of PCM samples in TFO.
+ * Supported TRAU frame types are FR & EFR speech, HRv1 speech in both
+ * 16k and 8k formats, and all defined CSD frame types up to 14.4 kbit/s
+ * extended data frames.
+ *
+ * In the case of FR/EFR speech, the output format is either RFC 3551 or
+ * TW-TS-001; in the case of HRv1 speech, the output format is either RFC 5993
+ * or TW-TS-002.  st->rtp_extensions field selects the use or non-use of
+ * Themyscira RTP extensions; the structure passed in \ref st currently
+ * has no other uses in the TRAU->RTP direction.
+ *
+ * The following TRAU frame types are _not_ supported:
+ *
+ * - TRAU-DL frames: the direction field of the parsed frame structure is
+ *   ignored and all frames are processed as if they were TRAU-UL.  In the
+ *   case of FR, EFR, HR-16k and extended data (E-TRAU) frames some control
+ *   bits are different between TRAU-UL and TRAU-DL, such that this
+ *   misinterpretation will produce invalid results.
+ *
+ * - D144 sync frames: these special frames are not convertible to RTP;
+ *   their synchronization function needs to be handled by the application.
+ *
+ * - AMR speech frames: not currently implemented.
+ */
 int osmo_trau2rtp(uint8_t *out, size_t out_len, const struct osmo_trau_frame *tf,
 		  struct osmo_trau2rtp_state *st)
 {
@@ -1481,6 +1513,73 @@ int osmo_trau2rtp(uint8_t *out, size_t out_len, const struct osmo_trau_frame *tf
 	}
 }
 
+/*! convert RTP payload to TRAU-UL or TRAU-DL frame
+ *  \param[out] tf Osmocom-defined structure for TRAU frame bits
+ *  \param[in] rtp Payload to be converted
+ *  \param[in] rtp_len Length of payload in \ref rtp
+ *  \param[in] st State/config structure
+ *  \returns 0 in case of success; negative on error
+ *
+ * This function can be used to generate both TRAU-UL and TRAU-DL frames.
+ * TRAU-DL output is needed when feeding traffic to an E1 BTS; TRAU-UL output
+ * is needed in more specialized applications that emulate an E1 BTS or
+ * implement in-band TFO.
+ *
+ * The set of supported codecs and frame types is the same as osmo_trau2rtp();
+ * st->type selects the TRAU frame type to be emitted.  Additionally, if the
+ * TRAU frame type to be generated is OSMO_TRAU16_FT_DATA, st->interm_rate_16k
+ * needs to be set to true for 16 kbit/s IR or false for 8 kbit/s IR.
+ *
+ * In the output structure pointed to by \ref tf, the caller MUST set dir
+ * member prior to calling the present function; additionally, dl_ta_usec
+ * member MUST be set (usually to 0) prior to calling osmo_trau_frame_encode().
+ * All other required bits are filled correctly by the present function.
+ *
+ * With FR/HR/EFR speech codecs, semantically appropriate RTP payloads are
+ * different between UL and DL output applications.  Considerations for
+ * TRAU-DL output:
+ *
+ * - RTP payload formats of RFC 5993, TW-TS-001 and TW-TS-002 are accepted
+ *   by the function - however, all metadata flags carried by the header octet
+ *   of these extended formats are ignored/dropped in the DL direction.
+ *
+ * - The most native RTP input formats for conversion to TRAU-DL are those
+ *   defined in ETSI TS 101 318 for FR, HR and EFR; the ones for FR and EFR
+ *   are also duplicated in RFC 3551.  In the case of HR codec, RFC 5993 input
+ *   is also appropriate as specified in 3GPP TS 48.103 - as long as the user
+ *   remembers that the extra header octet is ignored.
+ *
+ * - The only correct way to implement TrFO for GSM, accepting FR/HR/EFR from
+ *   call leg A uplink in TW-TS-001 or TW-TS-002 format and generating TRAU-DL
+ *   frames for call leg B, is to apply the TFO transform of TS 28.062 section
+ *   C.3.2.1.1, then feed the output of that transform to the present function.
+ *
+ * - The provision whereby a zero-length RTP payload is not treated as an error
+ *   like other invalid RTP inputs, but is converted to an idle speech frame
+ *   in TRAU-DL output should be considered a bogon.  This condition never
+ *   occurs when the just-mentioned TFO transform is applied immediately prior
+ *   to TRAU-DL output, nor does it ever occur in the original GSM architecture
+ *   where the TRAU either free-runs a speech encoder or applies the same TFO
+ *   transform - hence it is unlikely to be handled well by real E1 BTSes.
+ *   Furthermore, this code path in libosmotrau is currently broken (the
+ *   intended idle speech frame gets turned into a "regular" but invalid FR/EFR
+ *   speech frame) and should be considered for removal.
+ *
+ * Considerations for TRAU-UL output:
+ *
+ * - For FR and EFR codecs, the only correct RTP format for conversion to
+ *   TRAU-UL (TFO) is TW-TS-001 - the basic RTP format of TS 101 318 or
+ *   RFC 3551 lacks the necessary metadata flags.
+ *
+ * - TRAU-UL output for HR codec is not currently implemented; when we do
+ *   implement it in the future, TW-TS-002 will be required in this path
+ *   for the same reason as above.
+ *
+ * - TRAU-UL output for CSD 14.4 kbit/s mode is not currently implemented
+ *   (C-bits are always set according to the rules for TRAU-DL) - but the
+ *   primary application for TRAU-UL frame output via libosmotrau is TFO,
+ *   which does not include CSD.
+ */
 int osmo_rtp2trau(struct osmo_trau_frame *tf, const uint8_t *rtp, size_t rtp_len,
 		  struct osmo_trau2rtp_state *st)
 {
