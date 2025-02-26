@@ -99,13 +99,15 @@ EXTRA_DIST = testsuite.at $(srcdir)/package.m4 $(TESTSUITE) \
 	trau_conv/fr_speech_basic.hex trau_conv/fr_speech_twts001_good.hex \
 	trau_conv/fr_speech_twts001_mix.hex \
 	trau_conv/hr_speech_rfc5993.hex trau_conv/hr_speech_ts101318.hex \
+	trau_conv/hr_speech_twts002.hex trau_conv/hr_speech_invsid_bits.hex \
 	trau_conv/rtp2trau_efr_dl1.ok trau_conv/rtp2trau_efr_dl2.ok \
 	trau_conv/rtp2trau_efr_ul1.ok trau_conv/rtp2trau_efr_ul2.ok \
 	trau_conv/rtp2trau_efr_ul3.ok \
 	trau_conv/rtp2trau_fr_dl1.ok trau_conv/rtp2trau_fr_dl2.ok \
 	trau_conv/rtp2trau_fr_ul1.ok trau_conv/rtp2trau_fr_ul2.ok \
 	trau_conv/rtp2trau_fr_ul3.ok \
-	trau_conv/rtp2trau_hr_dl.ok \
+	trau_conv/rtp2trau_hr_dl.ok trau_conv/rtp2trau_hr_ul1.ok \
+	trau_conv/rtp2trau_hr_ul2.ok trau_conv/rtp2trau_hr_ul3.ok \
 	trau_conv/trau16_efr.in trau_conv/trau16_efr_std.ok \
 	trau_conv/trau16_efr_twts001.ok \
 	trau_conv/trau16_fr.in trau_conv/trau16_fr_std.ok \

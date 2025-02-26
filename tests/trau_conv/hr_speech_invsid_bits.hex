@@ -1,0 +1,14 @@
+# This TW-TS-005 hex file contains an input to osmo_rtp2trau() for GSM-HR
+# codec that is *not* a valid RTP payload per TW-TS-002: an invalid SID
+# frame for conversion to TRAU-UL that begins as defined in TW-TS-002
+# (FT=1 to signify invalid SID), but then contrary to the spec, does
+# include the payload data bits.  Such concoction is not valid in RTP
+# flight between network elements, but osmo_rtp2trau() supports such
+# extended usage in order to allow TFO applications to set the fill bit
+# pattern in the TRAU-UL frame to something other than all zeros.
+#
+# In the present example, this fill bit pattern consists of R0+LPC
+# parameters (33 bits) from a valid SID frame, followed by alternating
+# 1s and 0s in the 79-bit SID field.
+
+1000D9EA65D5555555555555555555

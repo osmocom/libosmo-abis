@@ -756,7 +756,7 @@ static int rtp2trau_hr16(struct osmo_trau_frame *tf, const uint8_t *data, size_t
 	return 0;
 }
 
-static int rtp2trau_hr8(struct osmo_trau_frame *tf, const uint8_t *data, size_t data_len)
+static int rtp2trau_hr8_dl(struct osmo_trau_frame *tf, const uint8_t *data, size_t data_len)
 {
 	/* accept both TS 101 318 and RFC 5993 payloads */
 	switch (data_len) {
@@ -772,12 +772,6 @@ static int rtp2trau_hr8(struct osmo_trau_frame *tf, const uint8_t *data, size_t 
 	default:
 		return -EINVAL;
 	}
-
-	/* FIXME: implement TRAU-UL frame generation if and when
-	 * someone actually needs it in a program that uses
-	 * this library. */
-	if (tf->dir != OSMO_TRAU_DIR_DL)
-		return -ENOTSUP;
 
 	tf->type = OSMO_TRAU8_SPEECH;
 
@@ -817,6 +811,130 @@ static int rtp2trau_hr8(struct osmo_trau_frame *tf, const uint8_t *data, size_t 
 	osmo_crc8gen_set_bits(&gsm0860_efr_crc3, tf->d_bits, 44, tf->crc_bits);
 
 	return 0;
+}
+
+/* compute the odd parity bit of the given input bit sequence */
+static ubit_t compute_odd_parity(const ubit_t *in, unsigned int num_bits)
+{
+	int i;
+	unsigned int sum = 0;
+
+	for (i = 0; i < num_bits; i++) {
+		if (in[i])
+			sum++;
+	}
+	return !(sum & 1);
+}
+
+static int rtp2trau_hr8_ul(struct osmo_trau_frame *tf, const uint8_t *data, size_t data_len)
+{
+	uint8_t ft, xc1_4;
+	bool data_bits_req, have_taf;
+
+	/* In TRAU-UL direction we require/expect TW-TS-002 RTP payload format;
+	 * RFC 5993 is also accepted because it is a subset of TW-TS-002.
+	 * TS 101 318 input is not supported for TRAU-UL output! */
+	if (data_len < 1)
+		return -EINVAL;
+	ft = data[0] >> 4;
+	switch (ft) {
+	case FT_GOOD_SPEECH:
+		xc1_4 = 0;
+		data_bits_req = true;
+		have_taf = false;
+		break;
+	case FT_INVALID_SID:
+		xc1_4 = 4;
+		data_bits_req = false;
+		have_taf = true;
+		break;
+	case FT_GOOD_SID:
+		xc1_4 = 1;
+		data_bits_req = true;
+		have_taf = false;
+		break;
+	case FT_BFI_WITH_DATA:
+		xc1_4 = 6;
+		data_bits_req = true;
+		have_taf = true;
+		break;
+	case FT_NO_DATA:
+		xc1_4 = 6;
+		data_bits_req = false;
+		have_taf = true;
+		break;
+	default:
+		return -EINVAL;
+	}
+	/* If the frame type is one that includes data bits, the payload length
+	 * per RFC 5993 and TW-TS-002 is 15 bytes.  If the frame type is one
+	 * that does not include data bits, then the payload length per the
+	 * same specs is only 1 byte - but we also accept 15-byte payloads
+	 * in this case to make life easier for applications that pass the
+	 * content of a buffer.
+	 *
+	 * When we make a TRAU-UL frame from FT=1 or FT=7, we fill all Dn bits
+	 * with zeros if we got a short (1 byte) payload.  However, if the
+	 * application passed us a long (15 byte) payload despite FT being
+	 * 1 or 7, we fill Dn bits with application-provided payload.
+	 */
+	switch (data_len) {
+	case GSM_HR_BYTES_RTP_RFC5993:
+		break;
+	case 1:
+		if (data_bits_req)
+			return -EINVAL;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	tf->type = OSMO_TRAU8_SPEECH;
+
+	/* C1..C5 */
+	tf->c_bits[0] = 0;
+	tf->c_bits[1] = 0;
+	tf->c_bits[2] = 0;
+	tf->c_bits[3] = 1;
+	tf->c_bits[4] = 0;
+	/* C6..C8: spare bits */
+	memset(tf->c_bits + 5, 1, 3);
+	/* C9 is DTXd */
+	tf->c_bits[8] = (data[0] & 0x08) >> 3;
+
+	/* XC1..XC6 */
+	tf->xc_bits[0] = (xc1_4 >> 3) & 1;
+	tf->xc_bits[1] = (xc1_4 >> 2) & 1;
+	tf->xc_bits[2] = (xc1_4 >> 1) & 1;
+	if (have_taf)
+		tf->xc_bits[3] = (data[0] & 0x01) >> 0;
+	else
+		tf->xc_bits[3] = (xc1_4 >> 0) & 1;
+	tf->xc_bits[4] = (data[0] & 0x02) >> 1;		/* UFI */
+	tf->xc_bits[5] = compute_odd_parity(tf->xc_bits, 5);
+
+	memset(&tf->t_bits[0], 1, 2);
+
+	if (data_len > 1)
+		osmo_pbit2ubit(tf->d_bits, data + 1, GSM_HR_BYTES * 8);
+	else
+		memset(tf->d_bits, 0, GSM_HR_BYTES * 8);
+	/* CRC is *not* computed by TRAU frame encoder - we have to do it */
+	osmo_crc8gen_set_bits(&gsm0860_efr_crc3, tf->d_bits, 44, tf->crc_bits);
+
+	return 0;
+}
+
+static int rtp2trau_hr8(struct osmo_trau_frame *tf, const uint8_t *data, size_t data_len)
+{
+	switch (tf->dir) {
+	case OSMO_TRAU_DIR_DL:
+		return rtp2trau_hr8_dl(tf, data, data_len);
+	case OSMO_TRAU_DIR_UL:
+		return rtp2trau_hr8_ul(tf, data, data_len);
+	default:
+		return -EINVAL;
+	}
 }
 
 /* TS 48.060 Section 5.5.1.1.2 */
@@ -1571,9 +1689,9 @@ int osmo_trau2rtp(uint8_t *out, size_t out_len, const struct osmo_trau_frame *tf
  *   TRAU-UL (TFO) is TW-TS-001 - the basic RTP format of TS 101 318 or
  *   RFC 3551 lacks the necessary metadata flags.
  *
- * - TRAU-UL output for HR codec is not currently implemented; when we do
- *   implement it in the future, TW-TS-002 will be required in this path
- *   for the same reason as above.
+ * - For HRv1 codec, for the same reason as above, the only correct RTP
+ *   format for conversion to TRAU-UL is TW-TS-002.  RFC 5993 payloads are
+ *   also accepted (because it is a subset of TW-TS-002), but not TS 101 318.
  *
  * - TRAU-UL output for CSD 14.4 kbit/s mode is not currently implemented
  *   (C-bits are always set according to the rules for TRAU-DL) - but the

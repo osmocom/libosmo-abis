@@ -162,3 +162,21 @@ AT_KEYWORDS([rtp2trau_hr_dl2])
 cat $abs_srcdir/trau_conv/rtp2trau_hr_dl.ok > expout
 AT_CHECK([$abs_top_builddir/tests/trau_conv/rtp2trau_gen $abs_srcdir/trau_conv/hr_speech_rfc5993.hex hr dl], [0], [expout], [ignore])
 AT_CLEANUP
+
+AT_SETUP([rtp2trau_hr_ul1])
+AT_KEYWORDS([rtp2trau_hr_ul1])
+cat $abs_srcdir/trau_conv/rtp2trau_hr_ul1.ok > expout
+AT_CHECK([$abs_top_builddir/tests/trau_conv/rtp2trau_gen $abs_srcdir/trau_conv/hr_speech_rfc5993.hex hr ul], [0], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([rtp2trau_hr_ul2])
+AT_KEYWORDS([rtp2trau_hr_ul2])
+cat $abs_srcdir/trau_conv/rtp2trau_hr_ul2.ok > expout
+AT_CHECK([$abs_top_builddir/tests/trau_conv/rtp2trau_gen $abs_srcdir/trau_conv/hr_speech_twts002.hex hr ul], [0], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([rtp2trau_hr_ul3])
+AT_KEYWORDS([rtp2trau_hr_ul3])
+cat $abs_srcdir/trau_conv/rtp2trau_hr_ul3.ok > expout
+AT_CHECK([$abs_top_builddir/tests/trau_conv/rtp2trau_gen $abs_srcdir/trau_conv/hr_speech_invsid_bits.hex hr ul], [0], [expout], [ignore])
+AT_CLEANUP

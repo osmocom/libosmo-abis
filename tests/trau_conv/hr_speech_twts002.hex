@@ -1,0 +1,43 @@
+# This hex file (TW-TS-005 Annex B format) contains some RTP payloads for
+# GSM-HR codec, using the super-5993 RTP payload format of TW-TS-002,
+# semantically corresponding to the uplink direction of a GSM call leg.
+#
+# The present example contains a mix of good and bad frames, the same kind
+# of mix that can be represented in a TRAU-UL frame stream.  This example
+# has been constructed by hand: some frames were taken from GSM 06.07 test
+# sequences and then tweaked, other are outright concoctions.  The setting
+# of DTXd bit is also exercised.
+
+# good speech frame (DHF)
+000371AF61C8F2802531C000000000
+
+# good speech frame (regular)
+00B77916FC7D902F9372B569F5D17F
+# same with TAF
+01B77916FC7D902F9372B569F5D17F
+# same with UFI
+02B77916FC7D902F9372B569F5D17F
+
+# valid SID frame (first SID from dtx06.cod)
+2000D9EA65FFFFFFFFFFFFFFFFFFFF
+# same with TAF
+2100D9EA65FFFFFFFFFFFFFFFFFFFF
+# same with UFI
+2200D9EA65FFFFFFFFFFFFFFFFFFFF
+
+# BFI with data
+608FE9B77000000000000000000000
+# same with TAF
+618FE9B77000000000000000000000
+
+# short TW-TS-002 payloads (ToC octet only)
+10	# invalid SID frame
+11	# same with TAF
+13	# TAF+UFI
+70	# BFI-no-data
+71	# same with TAF
+
+# some of these same frames with DTXd=1
+08B77916FC7D902F9372B569F5D17F
+2800D9EA65FFFFFFFFFFFFFFFFFFFF
+688FE9B77000000000000000000000
