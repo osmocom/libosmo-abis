@@ -660,6 +660,27 @@ static int rtp2trau_hr16_dl(struct osmo_trau_frame *tf, const uint8_t *data, siz
 	case GSM_HR_BYTES:
 		break;
 	case GSM_HR_BYTES_RTP_RFC5993:
+		/* Require RFC 5993 valid frame, i.e., no BFIs etc.
+		 * The ToC octet which we need to check has this format:
+		 *
+		 * +----+----+----+----+----+----+----+----+
+		 * |0x80|     0x70     |0x08|0x04|0x02|0x01| hex mask
+		 * +----+----+----+----+----+----+----+----+
+		 * | F  |      FT      | R  | R  | R  | R  | meaning
+		 * +----+----+----+----+----+----+----+----+
+		 * (RFC 5993 Figure 3, converted from big-endian bit numbers
+		 *  to hex masks)
+		 *
+		 * We would like to enforce this condition:
+		 *
+		 * (F==0 && (FT==0 || FT==2))
+		 *
+		 * Masking with 0xD0 is the most efficient way to perform
+		 * the desired check: we accept either 0x00 or 0x20 in the
+		 * upper nibble, and anything in the lower nibble.
+		 */
+		if (data[0] & 0xD0)
+			return -EINVAL;
 		data++;
 		data_len--;
 		break;
@@ -815,6 +836,10 @@ static int rtp2trau_hr8_dl(struct osmo_trau_frame *tf, const uint8_t *data, size
 	case GSM_HR_BYTES:
 		break;
 	case GSM_HR_BYTES_RTP_RFC5993:
+		/* Require RFC 5993 valid frame, i.e., no BFIs etc.
+		 * See rtp2trau_hr16() above for explanation. */
+		if (data[0] & 0xD0)
+			return -EINVAL;
 		data++;
 		data_len--;
 		break;
@@ -1688,7 +1713,7 @@ int osmo_trau2rtp(uint8_t *out, size_t out_len, const struct osmo_trau_frame *tf
  *   defined in ETSI TS 101 318 for FR, HR and EFR; the ones for FR and EFR
  *   are also duplicated in RFC 3551.  In the case of HR codec, RFC 5993 input
  *   is also appropriate as specified in 3GPP TS 48.103 - as long as the user
- *   remembers that the extra header octet is ignored.
+ *   remembers that the extra header octet is ignored beyond validation check.
  *
  * - The only correct way to implement TrFO for GSM, accepting FR/HR/EFR from
  *   call leg A uplink in TW-TS-001 or TW-TS-002 format and generating TRAU-DL
