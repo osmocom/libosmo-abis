@@ -586,6 +586,10 @@ static int rtp2trau_fr(struct osmo_trau_frame *tf, const uint8_t *data, size_t d
 	if ((data[0] & 0xF0) != 0xD0)
 		return -EINVAL;
 
+	/* bad frames are only allowed in UL */
+	if (bfi && tf->dir != OSMO_TRAU_DIR_UL)
+		return -EINVAL;
+
 	tf->type = OSMO_TRAU16_FT_FR;
 
 	/* FR Data Bits according to TS 48.060 Section 5.5.1.1.2 */
@@ -1000,6 +1004,10 @@ static int rtp2trau_efr(struct osmo_trau_frame *tf, const uint8_t *data, size_t 
 	if (data_len != GSM_EFR_BYTES)
 		return -EINVAL;
 	if ((data[0] & 0xF0) != 0xC0)
+		return -EINVAL;
+
+	/* bad frames are only allowed in UL */
+	if (bfi && tf->dir != OSMO_TRAU_DIR_UL)
 		return -EINVAL;
 
 	tf->type = OSMO_TRAU16_FT_EFR;
@@ -1674,6 +1682,7 @@ int osmo_trau2rtp(uint8_t *out, size_t out_len, const struct osmo_trau_frame *tf
  * - RTP payload formats of RFC 5993, TW-TS-001 and TW-TS-002 are accepted
  *   by the function - however, all metadata flags carried by the header octet
  *   of these extended formats are ignored/dropped in the DL direction.
+ *   BFI frames are not allowed in DL.
  *
  * - The most native RTP input formats for conversion to TRAU-DL are those
  *   defined in ETSI TS 101 318 for FR, HR and EFR; the ones for FR and EFR
