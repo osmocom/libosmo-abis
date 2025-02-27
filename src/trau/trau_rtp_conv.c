@@ -580,18 +580,11 @@ static int rtp2trau_fr(struct osmo_trau_frame *tf, const uint8_t *data, size_t d
 		data_len--;
 	}
 
-	/* now we must have either standard FR or no-data input */
-	switch (data_len) {
-	case GSM_FR_BYTES:
-		if ((data[0] & 0xF0) != 0xD0)
-			return -EINVAL;
-		break;
-	case 0:
-		bfi = true;
-		break;
-	default:
+	/* with or without TW-TS-001 TEH, we require 260-bit GSM-FR payload */
+	if (data_len != GSM_FR_BYTES)
 		return -EINVAL;
-	}
+	if ((data[0] & 0xF0) != 0xD0)
+		return -EINVAL;
 
 	tf->type = OSMO_TRAU16_FT_FR;
 
@@ -606,34 +599,20 @@ static int rtp2trau_fr(struct osmo_trau_frame *tf, const uint8_t *data, size_t d
 		tf->c_bits[3] = 1;
 		tf->c_bits[4] = 0;
 	} else {			/* DL */
-		if (data_len == 0) {
-			/* C1 .. C5: idle speech */
-			tf->c_bits[0] = 0;
-			tf->c_bits[1] = 1;
-			tf->c_bits[2] = 1;
-			tf->c_bits[3] = 1;
-			tf->c_bits[4] = 0;
-		} else {
-			/* C1 .. C5: FR DL */
-			tf->c_bits[0] = 1;
-			tf->c_bits[1] = 1;
-			tf->c_bits[2] = 1;
-			tf->c_bits[3] = 0;
-			tf->c_bits[4] = 0;
-		}
+		/* C1 .. C5: FR DL */
+		tf->c_bits[0] = 1;
+		tf->c_bits[1] = 1;
+		tf->c_bits[2] = 1;
+		tf->c_bits[3] = 0;
+		tf->c_bits[4] = 0;
 	}
 	memset(&tf->c_bits[5], 0, 6);	/* C6 .. C11: Time Alignment */
 	if (tf->dir == OSMO_TRAU_DIR_UL) {
 		tf->c_bits[11] = bfi;		/* C12: BFI */
-		if (data_len == 0) {
-			tf->c_bits[12] = 0;	/* C13: SID=0 */
-			tf->c_bits[13] = 0;	/* C14: SID=0 */
-		} else {
-			/* SID classification per GSM 06.31 section 6.1.1 */
-			sidc = osmo_fr_sid_classify(data);
-			tf->c_bits[12] = (sidc >> 1) & 1; /* C13: msb */
-			tf->c_bits[13] = (sidc >> 0) & 1; /* C14: lsb */
-		}
+		/* SID classification per GSM 06.31 section 6.1.1 */
+		sidc = osmo_fr_sid_classify(data);
+		tf->c_bits[12] = (sidc >> 1) & 1; /* C13: msb */
+		tf->c_bits[13] = (sidc >> 0) & 1; /* C14: lsb */
 		tf->c_bits[14] = taf;  /* C15: TAF (SACCH or not) */
 		tf->c_bits[15] = 1;    /* C16: spare */
 		tf->c_bits[16] = dtxd; /* C17: DTXd applied or not */
@@ -647,12 +626,6 @@ static int rtp2trau_fr(struct osmo_trau_frame *tf, const uint8_t *data, size_t d
 	}
 	memset(&tf->c_bits[17], 1, 4); /* C18 .. C21: spare */
 	memset(&tf->t_bits[0], 1, 4);
-
-	if (!data_len) {
-		/* idle speech frame if DL, BFI speech frame if UL */
-		memset(&tf->d_bits[0], 1, 260);
-		return 0;
-	}
 
 	/* reassemble d-bits */
 	i = 0; /* counts bits */
@@ -686,9 +659,6 @@ static int rtp2trau_hr16_dl(struct osmo_trau_frame *tf, const uint8_t *data, siz
 		data++;
 		data_len--;
 		break;
-	case 0:
-		/* accept no-data input */
-		break;
 	default:
 		return -EINVAL;
 	}
@@ -715,10 +685,7 @@ static int rtp2trau_hr16_dl(struct osmo_trau_frame *tf, const uint8_t *data, siz
 	memset(tf->c_bits+17, 1, 4); /* C18..C21: spare */
 	memset(&tf->t_bits[0], 1, 4);
 	tf->ufi = 1;	/* spare bit in TRAU-DL */
-	if (data_len)
-		osmo_pbit2ubit(tf->d_bits, data, GSM_HR_BYTES * 8);
-	else
-		memset(tf->d_bits, 0, GSM_HR_BYTES * 8);
+	osmo_pbit2ubit(tf->d_bits, data, GSM_HR_BYTES * 8);
 	/* CRC is *not* computed by TRAU frame encoder - we have to do it */
 	osmo_crc8gen_set_bits(&gsm0860_efr_crc3, tf->d_bits, 44, tf->crc_bits);
 
@@ -847,9 +814,6 @@ static int rtp2trau_hr8_dl(struct osmo_trau_frame *tf, const uint8_t *data, size
 		data++;
 		data_len--;
 		break;
-	case 0:
-		/* accept no-data input */
-		break;
 	default:
 		return -EINVAL;
 	}
@@ -884,10 +848,7 @@ static int rtp2trau_hr8_dl(struct osmo_trau_frame *tf, const uint8_t *data, size
 
 	memset(&tf->t_bits[0], 1, 2);
 
-	if (data_len)
-		osmo_pbit2ubit(tf->d_bits, data, GSM_HR_BYTES * 8);
-	else
-		memset(tf->d_bits, 0, GSM_HR_BYTES * 8);
+	osmo_pbit2ubit(tf->d_bits, data, GSM_HR_BYTES * 8);
 	/* CRC is *not* computed by TRAU frame encoder - we have to do it */
 	osmo_crc8gen_set_bits(&gsm0860_efr_crc3, tf->d_bits, 44, tf->crc_bits);
 
@@ -1035,52 +996,30 @@ static int rtp2trau_efr(struct osmo_trau_frame *tf, const uint8_t *data, size_t 
 		data_len--;
 	}
 
-	/* now we must have either standard EFR or no-data input */
-	switch (data_len) {
-	case GSM_EFR_BYTES:
-		if ((data[0] & 0xF0) != 0xC0)
-			return -EINVAL;
-		break;
-	case 0:
-		bfi = true;
-		break;
-	default:
+	/* with or without TW-TS-001 TEH, we require 244-bit GSM-EFR payload */
+	if (data_len != GSM_EFR_BYTES)
 		return -EINVAL;
-	}
+	if ((data[0] & 0xF0) != 0xC0)
+		return -EINVAL;
 
 	tf->type = OSMO_TRAU16_FT_EFR;
 
 	/* FR Data Bits according to TS 48.060 Section 5.5.1.1.2 */
 
 	/* set c-bits and t-bits */
-	if (data_len == 0 && tf->dir == OSMO_TRAU_DIR_DL) {
-		/* C1 .. C5: idle speech */
-		tf->c_bits[0] = 0;
-		tf->c_bits[1] = 1;
-		tf->c_bits[2] = 1;
-		tf->c_bits[3] = 1;
-		tf->c_bits[4] = 0;
-	} else {
-		/* C1 .. C5: EFR */
-		tf->c_bits[0] = 1;
-		tf->c_bits[1] = 1;
-		tf->c_bits[2] = 0;
-		tf->c_bits[3] = 1;
-		tf->c_bits[4] = 0;
-	}
-
+	/* C1 .. C5: EFR */
+	tf->c_bits[0] = 1;
+	tf->c_bits[1] = 1;
+	tf->c_bits[2] = 0;
+	tf->c_bits[3] = 1;
+	tf->c_bits[4] = 0;
 	memset(&tf->c_bits[5], 0, 6); /* C6 .. C11: Time Alignment */
 	if (tf->dir == OSMO_TRAU_DIR_UL) {
 		tf->c_bits[11] = bfi;		/* C12: BFI */
-		if (data_len == 0) {
-			tf->c_bits[12] = 0;	/* C13: SID=0 */
-			tf->c_bits[13] = 0;	/* C14: SID=0 */
-		} else {
-			/* SID classification per GSM 06.81 section 6.1.1 */
-			sidc = osmo_efr_sid_classify(data);
-			tf->c_bits[12] = (sidc >> 1) & 1; /* C13: msb */
-			tf->c_bits[13] = (sidc >> 0) & 1; /* C14: lsb */
-		}
+		/* SID classification per GSM 06.81 section 6.1.1 */
+		sidc = osmo_efr_sid_classify(data);
+		tf->c_bits[12] = (sidc >> 1) & 1; /* C13: msb */
+		tf->c_bits[13] = (sidc >> 0) & 1; /* C14: lsb */
 		tf->c_bits[14] = taf;  /* C15: TAF (SACCH or not) */
 		tf->c_bits[15] = 1;    /* C16: spare */
 		tf->c_bits[16] = dtxd; /* C17: DTXd applied or not */
@@ -1095,12 +1034,6 @@ static int rtp2trau_efr(struct osmo_trau_frame *tf, const uint8_t *data, size_t 
 	}
 	memset(&tf->c_bits[17], 1, 4);	/* C18 .. C21: spare */
 	memset(&tf->t_bits[0], 1, 4);
-
-	if (data_len == 0) {
-		/* idle speech frame if DL, BFI speech frame if UL */
-		memset(&tf->d_bits[0], 1, 260);
-		return 0;
-	}
 
 	/* reassemble d-bits */
 	tf->d_bits[0] = 1;
@@ -1752,17 +1685,6 @@ int osmo_trau2rtp(uint8_t *out, size_t out_len, const struct osmo_trau_frame *tf
  *   call leg A uplink in TW-TS-001 or TW-TS-002 format and generating TRAU-DL
  *   frames for call leg B, is to apply the TFO transform of TS 28.062 section
  *   C.3.2.1.1, then feed the output of that transform to the present function.
- *
- * - The provision whereby a zero-length RTP payload is not treated as an error
- *   like other invalid RTP inputs, but is converted to an idle speech frame
- *   in TRAU-DL output should be considered a bogon.  This condition never
- *   occurs when the just-mentioned TFO transform is applied immediately prior
- *   to TRAU-DL output, nor does it ever occur in the original GSM architecture
- *   where the TRAU either free-runs a speech encoder or applies the same TFO
- *   transform - hence it is unlikely to be handled well by real E1 BTSes.
- *   Furthermore, this code path in libosmotrau is currently broken (the
- *   intended idle speech frame gets turned into a "regular" but invalid FR/EFR
- *   speech frame) and should be considered for removal.
  *
  * Considerations for TRAU-UL output:
  *
