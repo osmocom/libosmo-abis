@@ -676,7 +676,7 @@ static int rtp2trau_fr(struct osmo_trau_frame *tf, const uint8_t *data, size_t d
 	return 0;
 }
 
-static int rtp2trau_hr16(struct osmo_trau_frame *tf, const uint8_t *data, size_t data_len)
+static int rtp2trau_hr16_dl(struct osmo_trau_frame *tf, const uint8_t *data, size_t data_len)
 {
 	/* accept both TS 101 318 and RFC 5993 payloads */
 	switch (data_len) {
@@ -695,57 +695,26 @@ static int rtp2trau_hr16(struct osmo_trau_frame *tf, const uint8_t *data, size_t
 
 	tf->type = OSMO_TRAU16_FT_HR;
 
-	if (tf->dir == OSMO_TRAU_DIR_UL) {
-		/* C1 .. C5 */
-		tf->c_bits[0] = 0;
-		tf->c_bits[1] = 0;
-		tf->c_bits[2] = 0;
-		tf->c_bits[3] = 1;
-		tf->c_bits[4] = 1;
-	} else {
-		/* C1 .. C5 */
-		tf->c_bits[0] = 1;
-		tf->c_bits[1] = 1;
-		tf->c_bits[2] = 1;
-		tf->c_bits[3] = 0;
-		tf->c_bits[4] = 1;
-	}
+	/* C1 .. C5 */
+	tf->c_bits[0] = 1;
+	tf->c_bits[1] = 1;
+	tf->c_bits[2] = 1;
+	tf->c_bits[3] = 0;
+	tf->c_bits[4] = 1;
 	/* C6.. C11: Time Alignment */
 	memset(tf->c_bits + 5, 0, 6);
-	if (tf->dir == OSMO_TRAU_DIR_UL) {
-		/* BFI */
-		if (data_len == 0)
-			tf->c_bits[11] = 1;
-		else
-			tf->c_bits[11] = 0;
-		if (osmo_hr_check_sid(data, data_len)) {
-			/* SID=2 is a valid SID frame */
-			tf->c_bits[12] = 1;
-			tf->c_bits[13] = 0;
-		} else {
-			tf->c_bits[12] = 0;
-			tf->c_bits[13] = 0;
-		}
-		/* FIXME: C15: TAF */
+	tf->c_bits[11] = 1; /* C12: UFE */
+	tf->c_bits[12] = 1; /* C13: spare */
+	tf->c_bits[13] = 1; /* C14: spare */
+	tf->c_bits[14] = 1; /* C15: spare */
+	if (osmo_hr_check_sid(data, data_len))
 		tf->c_bits[15] = 0; /* C16: SP */
-		tf->c_bits[16] = 0; /* C17: DTXd shall not be applied */
-	} else {
-		tf->c_bits[11] = 1; /* C12: UFE */
-		tf->c_bits[12] = 1; /* C13: spare */
-		tf->c_bits[13] = 1; /* C14: spare */
-		tf->c_bits[14] = 1; /* C15: spare */
-		if (osmo_hr_check_sid(data, data_len))
-			tf->c_bits[15] = 0; /* C16: SP */
-		else
-			tf->c_bits[15] = 1; /* C16: SP */
-		tf->c_bits[16] = 1; /* C17: spare */
-	}
+	else
+		tf->c_bits[15] = 1; /* C16: SP */
+	tf->c_bits[16] = 1; /* C17: spare */
 	memset(tf->c_bits+17, 1, 4); /* C18..C21: spare */
 	memset(&tf->t_bits[0], 1, 4);
-	if (tf->dir == OSMO_TRAU_DIR_UL)
-		tf->ufi = 0;
-	else
-		tf->ufi = 1;
+	tf->ufi = 1;	/* spare bit in TRAU-DL */
 	if (data_len)
 		osmo_pbit2ubit(tf->d_bits, data, GSM_HR_BYTES * 8);
 	else
@@ -754,6 +723,118 @@ static int rtp2trau_hr16(struct osmo_trau_frame *tf, const uint8_t *data, size_t
 	osmo_crc8gen_set_bits(&gsm0860_efr_crc3, tf->d_bits, 44, tf->crc_bits);
 
 	return 0;
+}
+
+static int rtp2trau_hr16_ul(struct osmo_trau_frame *tf, const uint8_t *data, size_t data_len)
+{
+	uint8_t ft;
+	enum osmo_gsm631_sid_class sidc;
+	bool data_bits_req, bfi;
+
+	/* In TRAU-UL direction we require/expect TW-TS-002 RTP payload format;
+	 * RFC 5993 is also accepted because it is a subset of TW-TS-002.
+	 * TS 101 318 input is not supported for TRAU-UL output! */
+	if (data_len < 1)
+		return -EINVAL;
+	ft = data[0] >> 4;
+	switch (ft) {
+	case FT_GOOD_SPEECH:
+		bfi = false;
+		sidc = OSMO_GSM631_SID_CLASS_SPEECH;
+		data_bits_req = true;
+		break;
+	case FT_INVALID_SID:
+		/* There are 3 possible BFI/SID combinations in TRAU-16k-UL
+		 * format for GSM-HR that all collapse to the same
+		 * "invalid SID" code in TRAU-8k-UL and TW-TS-002 formats.
+		 * Here we arbitrarily choose BFI=1 SID=1: compared to the
+		 * other two options, this one has the greatest Hamming
+		 * distance (in C-bits) to good speech or valid SID codes.
+		 */
+		bfi = true;
+		sidc = OSMO_GSM631_SID_CLASS_INVALID;
+		data_bits_req = false;
+		break;
+	case FT_GOOD_SID:
+		bfi = false;
+		sidc = OSMO_GSM631_SID_CLASS_VALID;
+		data_bits_req = true;
+		break;
+	case FT_BFI_WITH_DATA:
+		bfi = true;
+		sidc = OSMO_GSM631_SID_CLASS_SPEECH;
+		data_bits_req = true;
+		break;
+	case FT_NO_DATA:
+		bfi = true;
+		sidc = OSMO_GSM631_SID_CLASS_SPEECH;
+		data_bits_req = false;
+		break;
+	default:
+		return -EINVAL;
+	}
+	/* If the frame type is one that includes data bits, the payload length
+	 * per RFC 5993 and TW-TS-002 is 15 bytes.  If the frame type is one
+	 * that does not include data bits, then the payload length per the
+	 * same specs is only 1 byte - but we also accept 15-byte payloads
+	 * in this case to make life easier for applications that pass the
+	 * content of a buffer.
+	 *
+	 * When we make a TRAU-UL frame from FT=1 or FT=7, we fill all Dn bits
+	 * with zeros if we got a short (1 byte) payload.  However, if the
+	 * application passed us a long (15 byte) payload despite FT being
+	 * 1 or 7, we fill Dn bits with application-provided payload.
+	 */
+	switch (data_len) {
+	case GSM_HR_BYTES_RTP_RFC5993:
+		break;
+	case 1:
+		if (data_bits_req)
+			return -EINVAL;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	tf->type = OSMO_TRAU16_FT_HR;
+
+	/* C1 .. C5 */
+	tf->c_bits[0] = 0;
+	tf->c_bits[1] = 0;
+	tf->c_bits[2] = 0;
+	tf->c_bits[3] = 1;
+	tf->c_bits[4] = 1;
+	/* C6.. C11: Time Alignment */
+	memset(tf->c_bits + 5, 0, 6);
+	tf->c_bits[11] = bfi;		  /* C12: BFI */
+	tf->c_bits[12] = (sidc >> 1) & 1; /* C13: SID msb */
+	tf->c_bits[13] = (sidc >> 0) & 1; /* C14: SID lsb */
+	tf->c_bits[14] = data[0] & 0x01;  /* C15: TAF */
+	tf->c_bits[15] = 1;		  /* C16: spare */
+	tf->c_bits[16] = (data[0] & 0x08) >> 3; /* C17: DTXd */
+	memset(tf->c_bits+17, 1, 4); /* C18..C21: spare */
+	memset(&tf->t_bits[0], 1, 4);
+	tf->ufi = (data[0] & 0x02) >> 1;
+	if (data_len > 1)
+		osmo_pbit2ubit(tf->d_bits, data + 1, GSM_HR_BYTES * 8);
+	else
+		memset(tf->d_bits, 0, GSM_HR_BYTES * 8);
+	/* CRC is *not* computed by TRAU frame encoder - we have to do it */
+	osmo_crc8gen_set_bits(&gsm0860_efr_crc3, tf->d_bits, 44, tf->crc_bits);
+
+	return 0;
+}
+
+static int rtp2trau_hr16(struct osmo_trau_frame *tf, const uint8_t *data, size_t data_len)
+{
+	switch (tf->dir) {
+	case OSMO_TRAU_DIR_DL:
+		return rtp2trau_hr16_dl(tf, data, data_len);
+	case OSMO_TRAU_DIR_UL:
+		return rtp2trau_hr16_ul(tf, data, data_len);
+	default:
+		return -EINVAL;
+	}
 }
 
 static int rtp2trau_hr8_dl(struct osmo_trau_frame *tf, const uint8_t *data, size_t data_len)
