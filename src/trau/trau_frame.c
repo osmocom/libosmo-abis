@@ -522,52 +522,31 @@ static int decode16_hr(struct osmo_trau_frame *fr, const ubit_t *trau_bits,
 	return 0;
 }
 
-static struct osmo_trau_frame fr_idle_frame = {
-	.type = OSMO_TRAU16_FT_IDLE,
-	.dir = OSMO_TRAU_DIR_DL,
-	.t_bits = { 1, 1, 1, 1 },
-};
-#define TRAU_FRAME_BITS (40*8)
-static ubit_t encoded_idle_frame[TRAU_FRAME_BITS];
-static int dbits_initted = 0;
-
-/*! \brief return pointer to global buffer containing a TRAU idle frame */
-static ubit_t *trau_idle_frame(void)
-{
-	/* only initialize during the first call */
-	if (!dbits_initted) {
-		/* set all D-bits to 1 */
-		memset(&fr_idle_frame.d_bits, 0x01, 260);
-
-		memset(&fr_idle_frame.c_bits, 0x01, 25); /* spare are set to 1 */
-		/* set Downlink Idle Speech Frame pattern */
-		fr_idle_frame.c_bits[0] = 0; /* C1 */
-		fr_idle_frame.c_bits[1] = 1; /* C2 */
-		fr_idle_frame.c_bits[2] = 1; /* C3 */
-		fr_idle_frame.c_bits[3] = 1; /* C4 */
-		fr_idle_frame.c_bits[4] = 0; /* C5 */
-		/* set no Time Alignment pattern */
-		fr_idle_frame.c_bits[5] = 0; /* C6 */
-		fr_idle_frame.c_bits[6] = 0; /* C7 */
-		fr_idle_frame.c_bits[7] = 0; /* C8 */
-		fr_idle_frame.c_bits[8] = 0; /* C9 */
-		fr_idle_frame.c_bits[9] = 0; /* C10 */
-		fr_idle_frame.c_bits[10] = 0; /* C11 */
-		/* already set to 1, but maybe we need to modify it in the future */
-		fr_idle_frame.c_bits[11] = 1; /* C12 (UFE), good frame */
-		fr_idle_frame.c_bits[15] = 1; /* C16 (SP), no DTX */
-
-		encode16_fr(encoded_idle_frame, &fr_idle_frame, false);
-		dbits_initted = 1; /* set it to 1 to not call it again */
-	}
-	return encoded_idle_frame;
-}
-
 /* TS 08.60 Section 3.4 */
 static int encode16_idle(ubit_t *trau_bits, const struct osmo_trau_frame *fr)
 {
-	memcpy(trau_bits, trau_idle_frame(), 40*8);
-	return 40 * 8;
+	const ubit_t *cbits5;
+
+	if (fr->dir == OSMO_TRAU_DIR_UL)
+		cbits5 = ft_idle_up_bits;
+	else
+		cbits5 = ft_idle_down_bits;
+
+	encode_sync16(trau_bits);
+
+	/* C1 .. C5 */
+	memcpy(trau_bits + 17, cbits5 + 0, 5);
+	/* C6 .. C15 */
+	memcpy(trau_bits + 17 + 5, fr->c_bits + 5, 15 - 5);
+	/* all 1s in the place of D-bits */
+	memset(trau_bits + 32, 1, 310 - 32);
+	/* C16 .. C21 */
+	memcpy(trau_bits + 310, fr->c_bits + 15, 6);
+	/* T1 .. T4 */
+	memcpy(trau_bits + 316, fr->t_bits, 4);
+
+	/* handle timing adjustment */
+	return encode16_handle_ta(trau_bits, fr);
 }
 
 /* TS 08.60 Section 3.3.1 */
@@ -1276,12 +1255,12 @@ int osmo_trau_frame_encode(ubit_t *bits, size_t n_bits, const struct osmo_trau_f
 	case OSMO_TRAU16_FT_EFR:
 	case OSMO_TRAU16_FT_HR:
 	case OSMO_TRAU16_FT_AMR:
+	case OSMO_TRAU16_FT_IDLE:
 		/* timing alignment may happen: increased space requirement */
 		if (n_bits < 2 * 40 * 8 - 1)
 			return -ENOSPC;
 		break;
 	case OSMO_TRAU16_FT_OAM:
-	case OSMO_TRAU16_FT_IDLE:
 	case OSMO_TRAU16_FT_DATA_HR:
 	case OSMO_TRAU16_FT_DATA:
 	case OSMO_TRAU16_FT_D145_SYNC:
