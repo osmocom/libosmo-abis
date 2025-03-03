@@ -1246,6 +1246,25 @@ static int encode8_oam(ubit_t *trau_bits, const struct osmo_trau_frame *fr)
  * where C1..C5 may need to be modified (especially TFO-AMR where this C1..C5
  * modification must be done before CRC computation), please use
  * osmo_trau_frame_encode_tfo().
+ *
+ * The following list summarizes the behavior of the present function with
+ * regard to C1..C5 bits for different frame types:
+ *
+ * - For all TRAU-16k frame types in both UL and DL directions, and for
+ *   OSMO_TRAU8_SPEECH (TRAU-8k for HRv1 speech) in UL direction, the first 5
+ *   bits of fr->c_bits[] are ignored and replaced with internally supplied
+ *   constant values.
+ *
+ * - For OSMO_TRAU8_SPEECH in DL direction, only fr->c_bits[3] is used to set
+ *   C4; constant values for C1..C3 and odd parity value for C5 are fixed
+ *   by the function.
+ *
+ * - For OSMO_TRAU8_DATA, OSMO_TRAU8_OAM and all AMR-8k frame types,
+ *   user-supplied fr->c_bits[] are always used.
+ *
+ * This unfortunate manipulation applies only to C1..C5 as listed above;
+ * for control bits C6 and higher (for frame types that have them),
+ * user-supplied fr->c_bits[] are always used.
  */
 int osmo_trau_frame_encode(ubit_t *bits, size_t n_bits, const struct osmo_trau_frame *fr)
 {
