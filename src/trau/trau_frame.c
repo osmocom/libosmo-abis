@@ -1231,10 +1231,10 @@ static int encode8_oam(ubit_t *trau_bits, const struct osmo_trau_frame *fr)
 
 
 /*! Encode a TRAU frame from its decoded representation to a sequence of unpacked bits.
- *  \param[out] bits caller-allocated buffer for unpacked outpud bits
+ *  \param[out] bits caller-allocated buffer for unpacked output bits
  *  \param[in] n_bits size of 'bits' output buffer in number of unpacked bits
  *  \param[in] fr decoded representation of TRAU frame to be encoded
- *  \return 0 number of unpacked output bits generated; negative in case of error
+ *  \returns number of unpacked output bits generated; negative in case of error
  *
  * This function exhibits a behavioral quirk which users need to be aware of:
  * for many frame types, the first 5 bits out of user-provided fr->c_bits[]
@@ -1326,10 +1326,10 @@ int osmo_trau_frame_encode(ubit_t *bits, size_t n_bits, const struct osmo_trau_f
 }
 
 /*! Encode a TFO frame from its decoded representation to a sequence of unpacked bits.
- *  \param[out] bits caller-allocated buffer for unpacked outpud bits
+ *  \param[out] bits caller-allocated buffer for unpacked output bits
  *  \param[in] n_bits size of 'bits' output buffer in number of unpacked bits
  *  \param[in] fr decoded representation of TRAU frame to be encoded
- *  \return 0 number of unpacked output bits generated; negative in case of error
+ *  \returns number of unpacked output bits generated; negative in case of error
  *
  * Compared to regular osmo_trau_frame_encode(), this TFO-specific TRAU frame
  * encoding function restricts the set of possible frame types to those that
