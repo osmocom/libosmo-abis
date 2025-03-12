@@ -134,6 +134,7 @@ static void make_fr_bfi_nonsid(uint8_t *fr_bytes)
  *  \param[out] out caller-provided output buffer
  *  \param[in] out_len length of out buffer in bytes
  *  \param[in] fr input TRAU frame in decoded form
+ *  \param[in] emit_twts001 Generate RTP in TW-TS-001 format
  *  \returns number of bytes generated in 'out'; negative on error. */
 static int trau2rtp_fr(uint8_t *out, size_t out_len, const struct osmo_trau_frame *tf, bool emit_twts001)
 {
@@ -245,8 +246,12 @@ static void twts002_hr16_set_extra_flags(uint8_t *out, const struct osmo_trau_fr
  *  \param[out] out caller-provided output buffer
  *  \param[in] out_len length of out buffer in bytes
  *  \param[in] tf input TRAU frame in decoded form
+ *  \param[in] emit_twts002 Generate RTP in TW-TS-002 format
+ *  \param[out] ufe If not NULL: must be initialized to false by the user,
+ *  set to true by the function if an Uplink Frame Error is detected
  *  \returns number of bytes generated in 'out'; negative on error. */
-static int trau2rtp_hr16(uint8_t *out, size_t out_len, const struct osmo_trau_frame *tf, bool emit_twts002)
+static int trau2rtp_hr16(uint8_t *out, size_t out_len, const struct osmo_trau_frame *tf,
+			 bool emit_twts002, bool *ufe)
 {
 	enum osmo_gsm631_sid_class sidc;
 	int rc;
@@ -274,7 +279,7 @@ static int trau2rtp_hr16(uint8_t *out, size_t out_len, const struct osmo_trau_fr
 	 * BFI or invalid SID packets. */
 	if (!emit_twts002 &&
 	    (tf->c_bits[11] || sidc == OSMO_GSM631_SID_CLASS_INVALID))
-		goto bad_frame;
+		return 0;
 
 	/* BFI turns valid SID into invalid */
 	if (tf->c_bits[11] && sidc == OSMO_GSM631_SID_CLASS_VALID)
@@ -306,6 +311,8 @@ static int trau2rtp_hr16(uint8_t *out, size_t out_len, const struct osmo_trau_fr
 	return GSM_HR_BYTES_RTP_RFC5993;
 
 bad_frame:
+	if (ufe)
+		*ufe = true;
 	if (emit_twts002) {
 		out[0] = FT_NO_DATA << 4;
 		twts002_hr16_set_extra_flags(out, tf);
@@ -340,10 +347,13 @@ static void twts002_hr8_set_extra_flags(uint8_t *out, const struct osmo_trau_fra
  *  \param[out] out caller-provided output buffer
  *  \param[in] out_len length of out buffer in bytes
  *  \param[in] tf input TRAU frame in decoded form
- *  \param[in] emit_twts002 self-explanatory
+ *  \param[in] emit_twts002 Generate RTP in TW-TS-002 format
+ *  \param[out] ufe If not NULL: must be initialized to false by the user,
+ *  set to true by the function if an Uplink Frame Error is detected
  *  \returns number of bytes generated in 'out'; negative on error. */
 static int trau2rtp_hr8(uint8_t *out, size_t out_len,
-			const struct osmo_trau_frame *tf, bool emit_twts002)
+			const struct osmo_trau_frame *tf, bool emit_twts002,
+			bool *ufe)
 {
 	unsigned xc1_4;
 
@@ -409,6 +419,8 @@ static int trau2rtp_hr8(uint8_t *out, size_t out_len,
 	default:
 bad_frame:
 		/* received garbage, emit BFI with no data */
+		if (ufe)
+			*ufe = true;
 		if (emit_twts002) {
 			out[0] = FT_NO_DATA << 4;
 			twts002_hr8_set_extra_flags(out, tf);
@@ -454,8 +466,12 @@ static void make_efr_bfi_nonsid(uint8_t *efr_bytes)
  *  \param[out] out caller-provided output buffer
  *  \param[in] out_len length of out buffer in bytes
  *  \param[in] fr input TRAU frame in decoded form
+ *  \param[in] emit_twts001 Generate RTP in TW-TS-001 format
+ *  \param[out] ufe If not NULL: must be initialized to false by the user,
+ *  set to true by the function if an Uplink Frame Error is detected
  *  \returns number of bytes generated in 'out'; negative on error. */
-static int trau2rtp_efr(uint8_t *out, size_t out_len, const struct osmo_trau_frame *tf, bool emit_twts001)
+static int trau2rtp_efr(uint8_t *out, size_t out_len, const struct osmo_trau_frame *tf,
+			bool emit_twts001, bool *ufe)
 {
 	size_t req_out_len = emit_twts001 ? GSM_EFR_BYTES+1 : GSM_EFR_BYTES;
 	int i, j, rc;
@@ -482,6 +498,33 @@ static int trau2rtp_efr(uint8_t *out, size_t out_len, const struct osmo_trau_fra
 			*twts001_hdr |= 0x01;
 	}
 
+	/* verify CRC before proceeding with conversion to RTP */
+	efr_parity_bits_1(check_bits, tf->d_bits);
+	rc = osmo_crc8gen_check_bits(&gsm0860_efr_crc3, check_bits, 26,
+			tf->d_bits + 39);
+	if (rc)
+		goto bad_frame;
+	efr_parity_bits_2(check_bits, tf->d_bits);
+	rc = osmo_crc8gen_check_bits(&gsm0860_efr_crc3, check_bits, 12,
+			tf->d_bits + 95);
+	if (rc)
+		goto bad_frame;
+	efr_parity_bits_3(check_bits, tf->d_bits);
+	rc = osmo_crc8gen_check_bits(&gsm0860_efr_crc3, check_bits, 8,
+			tf->d_bits + 148);
+	if (rc)
+		goto bad_frame;
+	efr_parity_bits_4(check_bits, tf->d_bits);
+	rc = osmo_crc8gen_check_bits(&gsm0860_efr_crc3, check_bits, 12,
+			tf->d_bits + 204);
+	if (rc)
+		goto bad_frame;
+	efr_parity_bits_5(check_bits, tf->d_bits);
+	rc = osmo_crc8gen_check_bits(&gsm0860_efr_crc3, check_bits, 8,
+			tf->d_bits + 257);
+	if (rc)
+		goto bad_frame;
+
 	if (tf->c_bits[11] && !emit_twts001) /* BFI without TW-TS-001 */
 		return 0;
 
@@ -490,39 +533,14 @@ static int trau2rtp_efr(uint8_t *out, size_t out_len, const struct osmo_trau_fra
 	/* reassemble d-bits */
 	for (i = 1, j = 4; i < 39; i++, j++)
 		out[j/8] |= (tf->d_bits[i] << (7-(j%8)));
-	efr_parity_bits_1(check_bits, tf->d_bits);
-	rc = osmo_crc8gen_check_bits(&gsm0860_efr_crc3, check_bits, 26,
-			tf->d_bits + 39);
-	if (rc)
-		goto bad_frame;
 	for (i = 42, j = 42; i < 95; i++, j++)
 		out[j/8] |= (tf->d_bits[i] << (7-(j%8)));
-	efr_parity_bits_2(check_bits, tf->d_bits);
-	rc = osmo_crc8gen_check_bits(&gsm0860_efr_crc3, check_bits, 12,
-			tf->d_bits + 95);
-	if (rc)
-		goto bad_frame;
 	for (i = 98, j = 95; i < 148; i++, j++)
 		out[j/8] |= (tf->d_bits[i] << (7-(j%8)));
-	efr_parity_bits_3(check_bits, tf->d_bits);
-	rc = osmo_crc8gen_check_bits(&gsm0860_efr_crc3, check_bits, 8,
-			tf->d_bits + 148);
-	if (rc)
-		goto bad_frame;
 	for (i = 151, j = 145; i < 204; i++, j++)
 		out[j/8] |= (tf->d_bits[i] << (7-(j%8)));
-	efr_parity_bits_4(check_bits, tf->d_bits);
-	rc = osmo_crc8gen_check_bits(&gsm0860_efr_crc3, check_bits, 12,
-			tf->d_bits + 204);
-	if (rc)
-		goto bad_frame;
 	for (i = 207, j = 198; i < 257; i++, j++)
 		out[j/8] |= (tf->d_bits[i] << (7-(j%8)));
-	efr_parity_bits_5(check_bits, tf->d_bits);
-	rc = osmo_crc8gen_check_bits(&gsm0860_efr_crc3, check_bits, 8,
-			tf->d_bits + 257);
-	if (rc)
-		goto bad_frame;
 
 	/*
 	 * Many BTS models will emit the previous content of their internal
@@ -557,6 +575,8 @@ static int trau2rtp_efr(uint8_t *out, size_t out_len, const struct osmo_trau_fra
 	return req_out_len;
 
 bad_frame:
+	if (ufe)
+		*ufe = true;
 	if (emit_twts001) {
 		*twts001_hdr |= 0x06;	/* BFI and No_Data flags */
 		return 1;
@@ -1656,13 +1676,47 @@ static inline bool check_twts002(struct osmo_trau2rtp_state *st)
 int osmo_trau2rtp(uint8_t *out, size_t out_len, const struct osmo_trau_frame *tf,
 		  struct osmo_trau2rtp_state *st)
 {
+	return osmo_trau2rtp_ufe(out, out_len, tf, st, NULL);
+}
+
+/*! convert received TRAU-UL frame to RTP payload, while also flagging
+ *  Uplink Frame Errors.
+ *  \param[out] out Buffer for the output RTP payload
+ *  \param[in] out_len Size of buffer pointed to by \ref out
+ *  \param[in] tf Osmo-decoded TRAU frame
+ *  \param[in] st State/config structure
+ *  \param[out] ufe If not NULL: must be initialized to false by the user,
+ *  set to true by the function if an Uplink Frame Error is detected
+ *  \returns length of converted RTP payload if successful; negative on error
+ *
+ * This function is just like plain osmo_trau2rtp(), but it also returns a
+ * secondary output: is the decoded TRAU-UL frame in error in terms of CRC
+ * or invalid control bits?  This UFE flag is intended for use by software
+ * implementations of standard TRAU functionality, where a TRAU is expected
+ * to indicate UFE in its DL output if the UL input is corrupted in a way
+ * that is independent of radio Rx errors.
+ *
+ * Caveats:
+ *
+ * - *ufe is only set to true by this function, and is not written to at all
+ *   if there is no error - thus the caller must initialize its bool variable
+ *   to false before calling this API.
+ *
+ * - UFE checks exist only for HRv1 and EFR speech frames; for all other frame
+ *   types, this function never writes to *ufe.  (AMR is another frame type
+ *   for which TRAU-UL decoding would include a UFE check, but we currently
+ *   don't support AMR at all.)
+ */
+int osmo_trau2rtp_ufe(uint8_t *out, size_t out_len, const struct osmo_trau_frame *tf,
+		      struct osmo_trau2rtp_state *st, bool *ufe)
+{
 	switch (tf->type) {
 	case OSMO_TRAU16_FT_FR:
 		return trau2rtp_fr(out, out_len, tf, check_twts001(st));
 	case OSMO_TRAU16_FT_EFR:
-		return trau2rtp_efr(out, out_len, tf, check_twts001(st));
+		return trau2rtp_efr(out, out_len, tf, check_twts001(st), ufe);
 	case OSMO_TRAU16_FT_HR:
-		return trau2rtp_hr16(out, out_len, tf, check_twts002(st));
+		return trau2rtp_hr16(out, out_len, tf, check_twts002(st), ufe);
 	case OSMO_TRAU16_FT_DATA:
 		return trau2rtp_data_fr(out, out_len, tf);
 	case OSMO_TRAU16_FT_DATA_HR:
@@ -1670,7 +1724,7 @@ int osmo_trau2rtp(uint8_t *out, size_t out_len, const struct osmo_trau_frame *tf
 	case OSMO_TRAU16_FT_EDATA:
 		return trau2rtp_edata(out, out_len, tf);
 	case OSMO_TRAU8_SPEECH:
-		return trau2rtp_hr8(out, out_len, tf, check_twts002(st));
+		return trau2rtp_hr8(out, out_len, tf, check_twts002(st), ufe);
 	case OSMO_TRAU8_DATA:
 		return trau2rtp_data_hr8(out, out_len, tf);
 	default:

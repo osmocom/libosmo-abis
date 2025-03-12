@@ -32,5 +32,8 @@ struct osmo_trau2rtp_state {
 int osmo_trau2rtp(uint8_t *out, size_t out_len, const struct osmo_trau_frame *tf,
 		  struct osmo_trau2rtp_state *st);
 
+int osmo_trau2rtp_ufe(uint8_t *out, size_t out_len, const struct osmo_trau_frame *tf,
+		      struct osmo_trau2rtp_state *st, bool *ufe);
+
 int osmo_rtp2trau(struct osmo_trau_frame *tf, const uint8_t *rtp, size_t rtp_len,
 		  struct osmo_trau2rtp_state *st);
