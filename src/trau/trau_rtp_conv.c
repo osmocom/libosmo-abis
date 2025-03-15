@@ -294,9 +294,10 @@ static int trau2rtp_hr16(uint8_t *out, size_t out_len, const struct osmo_trau_fr
 		if (tf->c_bits[11] && sidc == OSMO_GSM631_SID_CLASS_SPEECH)
 			out[0] = FT_BFI_WITH_DATA << 4;
 		twts002_hr16_set_extra_flags(out, tf);
-		/* invalid SID frames are truncated in TW-TS-002 */
+		/* Invalid SID handling updated in TW-TS-002 version 1.2.0:
+		 * see sections 5.4 and 6.2.3. */
 		if (sidc == OSMO_GSM631_SID_CLASS_INVALID)
-			return 1;
+			out[0] |= 0x04;	/* Invalid_SID_Verbose bit */
 	}
 
 	/* TS 101 318 Section 5.2: The order of occurrence of the codec parameters in the buffer is
@@ -398,12 +399,13 @@ static int trau2rtp_hr8(uint8_t *out, size_t out_len,
 		/* can be represented only in TW-TS-002, not in RFC 5993 */
 		if (!emit_twts002)
 			return 0;
-		out[0] = FT_INVALID_SID << 4;
+		out[0] = (FT_INVALID_SID << 4) | 0x04;	/* Invalid_SID_Verbose */
 		twts002_hr8_set_extra_flags(out, tf);
 		/* XC4 is TAF with this frame type */
 		if (tf->xc_bits[3])
 			out[0] |= 0x01;
-		return 1;	/* short format per TW-TS-002 */
+		osmo_ubit2pbit(out + 1, tf->d_bits, 112);
+		return GSM_HR_BYTES_RTP_RFC5993;
 	case 6:
 	case 7:
 		/* bad speech frame (BFI=1, SID=0) */
