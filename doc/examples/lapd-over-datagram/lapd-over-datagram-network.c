@@ -151,8 +151,8 @@ int main(int argc, char *argv[])
 	osmo_dgram_set_remote_port(conn, 10000);
 	osmo_dgram_set_read_cb(conn, read_cb);
 
-	lapd = lapd_instance_alloc(1, lapd_tx_cb, conn, lapd_rx_cb, conn,
-				   &lapd_profile_sat);
+	lapd = lapd_instance_alloc2(1, lapd_tx_cb, conn, lapd_rx_cb, conn,
+				   &lapd_profile_sat, "lapd_test");
 	if (lapd == NULL) {
 		LOGP(DLAPDTEST, LOGL_ERROR, "cannot allocate instance\n");
 		exit(EXIT_FAILURE);

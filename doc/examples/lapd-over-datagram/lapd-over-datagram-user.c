@@ -201,8 +201,8 @@ int main(int argc, char *argv[])
 	 * initialize LAPD stuff.
 	 */
 
-	lapd = lapd_instance_alloc(0, lapd_tx_cb, NULL, lapd_rx_cb, &num_msgs,
-				   &lapd_profile_sat);
+	lapd = lapd_instance_alloc2(0, lapd_tx_cb, NULL, lapd_rx_cb, &num_msgs,
+				   &lapd_profile_sat, "lapd_test");
 	if (lapd == NULL) {
 		LOGP(DLINP, LOGL_ERROR, "cannot allocate instance\n");
 		exit(EXIT_FAILURE);
