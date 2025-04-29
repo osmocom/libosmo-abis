@@ -1,3 +1,10 @@
+libosmo-abis (2.0.1) unstable; urgency=medium
+
+  [ Pau Espin Pedrol ]
+  * ipaccess: Reset pointer before calling stream_cli func triggering callback
+
+ -- Vadim Yanitskiy <vyanitskiy@sysmocom.de>  Tue, 29 Apr 2025 21:39:20 +0700
+
 libosmo-abis (2.0.0) unstable; urgency=medium
 
   [ Mychaela N. Falconia ]
