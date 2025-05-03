@@ -8,3 +8,7 @@
 # If any interfaces have been removed or changed since the last public release: c:r:0.
 #library	what			description / commit summary line
 libosmotrau	add osmo_amrt_fill_with_dhf()
+libosmoabis	ABI break		added field to struct e1inp_driver (field added at the end)
+libosmoabis	ABI break		added field to struct input_signal_data (field added at the end)
+libosmoabis	added			New API function: e1inp_ts_set_cas()
+libosmoabis	added			New API signal: S_L_INP_LINE_CAS

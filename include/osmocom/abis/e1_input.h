@@ -195,6 +195,10 @@ struct e1inp_driver {
 
 	/* Optional callback to perform driver specific initialization when the line is created. */
 	int (*line_create)(struct e1inp_line *line);
+
+	/* Set CAS bits to transmit in TS16, that are associated with given time slot */
+	int (*set_cas)(struct e1inp_ts *ts, uint8_t bits, bool query_rx);
+
 };
 
 struct e1inp_line_ops {
@@ -274,6 +278,7 @@ enum e1inp_signal_input {
 	S_L_INP_LINE_SA_BITS,
 	S_L_INP_LINE_LOF,
 	S_L_INP_LINE_NOLOF,
+	S_L_INP_LINE_CAS,
 };
 
 extern const struct value_string e1inp_signal_names[];
@@ -344,6 +349,12 @@ int e1inp_ts_config_none(struct e1inp_ts *ts, struct e1inp_line *line);
  */
 int e1inp_ts_set_sa_bits(struct e1inp_line *line, uint8_t sa_bits);
 
+/*
+ * configure CAS bits on TS16 that are associated to given TS, if supported by driver
+ * cas (MSB to LSB): 0000ABCD
+ */
+int e1inp_ts_set_cas(struct e1inp_ts *ts, uint8_t bits, bool query_rx);
+
 /* obtain a string identifier/name for the given timeslot */
 void e1inp_ts_name(char *out, size_t out_len, const struct e1inp_ts *ts);
 
@@ -403,6 +414,7 @@ struct input_signal_data {
 	uint8_t sa_bits;
 	struct gsm_bts_trx *trx;
 	struct e1inp_line *line;
+	uint8_t cas;
 };
 
 int abis_sendmsg(struct msgb *msg);

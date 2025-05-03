@@ -93,6 +93,7 @@ static void e1d_client_event_cb(enum osmo_e1dp_msg_type event, uint8_t intf, uin
 	struct e1inp_line *e1_line;
 	struct input_signal_data isd;
 	int signal;
+	struct osmo_e1dp_cas_bits *cas;
 
 	memset(&isd, 0, sizeof(isd));
 
@@ -133,6 +134,13 @@ static void e1d_client_event_cb(enum osmo_e1dp_msg_type event, uint8_t intf, uin
 		if (len < 1)
 			return;
 		isd.sa_bits = *data;
+	case E1DP_EVT_CAS:
+		signal = S_L_INP_LINE_CAS;
+		cas = (struct osmo_e1dp_cas_bits *)data;
+		if (len < sizeof(*cas))
+			return;
+		isd.cas = cas->bits;
+		isd.ts_nr = ts;
 		break;
 	default:
 		/* Ignore all other events. */
@@ -844,10 +852,22 @@ static int set_sa_bits(struct e1inp_line *line, uint8_t sa_bits)
 	return osmo_e1dp_client_set_sa_bits(g_e1d, e1d_intf, e1d_line, sa_bits);
 }
 
+static int set_cas(struct e1inp_ts *ts, uint8_t bits, bool query_rx)
+{
+	/* we use higher 4 bits for interface, lower 4 bits for line,
+	 * resulting in max. 16 interfaces with 16 lines each */
+	uint8_t e1d_intf = (ts->line->port_nr >> 4) & 0xF;
+	uint8_t e1d_line = ts->line->port_nr & 0xF;
+	struct osmo_e1dp_cas_bits cas = { bits, query_rx };
+
+	return osmo_e1dp_client_set_cas(g_e1d, e1d_intf, e1d_line, ts->num, &cas);
+}
+
 struct e1inp_driver e1d_driver = {
 	.name        = "e1d",
 	.want_write  = e1d_want_write,
 	.set_sa_bits = set_sa_bits,
+	.set_cas     = set_cas,
 	.line_update = e1d_line_update,
 	.line_create = e1d_line_create,
 };
