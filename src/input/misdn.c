@@ -866,6 +866,9 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 			/* open raw socket */
 			bfd->fd = socket(PF_ISDN, SOCK_DGRAM, ISDN_P_B_RAW);
 			break;
+		case E1INP_TS_TYPE_CAS:
+			LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "CAS not supported by mISDN\n");
+			return -ENOTSUP;
 		}
 
 		/* failed to open? */
@@ -901,6 +904,7 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 			/* TS 16 is D-channel, so we use channel 0 */
 			addr.channel = (ts == 16) ? 0 : ts;
 			break;
+		case E1INP_TS_TYPE_CAS:
 		default:
 			LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "unsupported E1 TS type: %u\n", e1i_ts->type);
 			break;

@@ -283,6 +283,7 @@ const struct value_string e1inp_ts_type_names[] = {
 	{ E1INP_TS_TYPE_RAW,	"RAW" },
 	{ E1INP_TS_TYPE_HDLC,	"HDLC" },
 	{ E1INP_TS_TYPE_I460,	"I460" },
+	{ E1INP_TS_TYPE_CAS,	"HDLC" },
 	{ 0, NULL }
 };
 
@@ -361,6 +362,23 @@ int e1inp_ts_send_hdlc(struct e1inp_ts *ts, struct msgb *msg)
 	return 0;
 }
 
+int e1inp_ts_send_cas(struct e1inp_ts *ts, struct msgb *msg)
+{
+	struct e1inp_driver *driver;
+
+	OSMO_ASSERT(ts->type == E1INP_TS_TYPE_CAS);
+
+	/* notify the driver we have something to write */
+	driver = ts->line->driver;
+	driver->want_write(ts);
+
+	/* update CAS message */
+	msgb_free(ts->cas.tx_msg);
+	ts->cas.tx_msg = msg;
+
+	return 0;
+}
+
 /* Depending on its typ a timeslot may hold resources which must be cleaned up
  * or reset before the type of the timeslot type may be changed. */
 static int cleanup_e1inp_ts(struct e1inp_ts *e1i_ts)
@@ -389,6 +407,9 @@ static int cleanup_e1inp_ts(struct e1inp_ts *e1i_ts)
 		return 0;
 	case E1INP_TS_TYPE_HDLC:
 		msgb_queue_free(&e1i_ts->hdlc.tx_queue);
+		return 0;
+	case E1INP_TS_TYPE_CAS:
+		msgb_free(e1i_ts->cas.tx_msg);
 		return 0;
 	case E1INP_TS_TYPE_I460:
 		/* The caller is responsible for removing all I.460 subchannels
@@ -500,6 +521,23 @@ int e1inp_ts_config_hdlc(struct e1inp_ts *ts, struct e1inp_line *line,
 	ts->line = line;
 	ts->hdlc.recv_cb = hdlc_recv_cb;
 	INIT_LLIST_HEAD(&ts->hdlc.tx_queue);
+
+	return 0;
+}
+
+int e1inp_ts_config_cas(struct e1inp_ts *ts, struct e1inp_line *line,
+			void (*cas_recv_cb)(struct e1inp_ts *ts,
+					    struct msgb *msg))
+{
+	if (ts->type == E1INP_TS_TYPE_CAS && ts->line && line)
+		return 0;
+
+	cleanup_e1inp_ts(ts);
+
+	ts->type = E1INP_TS_TYPE_CAS;
+	ts->line = line;
+	ts->cas.recv_cb = cas_recv_cb;
+	ts->cas.tx_msg = NULL;
 
 	return 0;
 }
@@ -879,6 +917,9 @@ int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
 	case E1INP_TS_TYPE_HDLC:
 		ts->hdlc.recv_cb(ts, msg);
 		break;
+	case E1INP_TS_TYPE_CAS:
+		ts->cas.recv_cb(ts, msg);
+		break;
 	case E1INP_TS_TYPE_I460:
 		osmo_i460_demux_in(&ts->i460.i460_ts, msg->l2h, msgb_l2len(msg));
 		msgb_free(msg);
@@ -1012,6 +1053,10 @@ struct msgb *e1inp_tx_ts(struct e1inp_ts *e1i_ts,
 	case E1INP_TS_TYPE_HDLC:
 		/* Get msgb from tx_queue */
 		msg = msgb_dequeue(&e1i_ts->hdlc.tx_queue);
+		break;
+	case E1INP_TS_TYPE_CAS:
+		/* Get msgb from tx_queue */
+		msg = e1i_ts->cas.tx_msg;
 		break;
 	case E1INP_TS_TYPE_I460:
 		msg = msgb_alloc(TSX_ALLOC_SIZE, "I460_TX");

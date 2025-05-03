@@ -542,6 +542,34 @@ static int handle_ts_hdlc_write(struct osmo_fd *bfd)
 	return ret;
 }
 
+/* write to a CAS channel TS */
+static int handle_ts_cas_write(struct osmo_fd *bfd)
+{
+	struct e1inp_line *line = bfd->data;
+	unsigned int ts_nr = bfd->priv_nr;
+	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
+	struct msgb *msg;
+	int ret;
+
+	/* disable write, as there can be only one CAS message */
+	osmo_fd_write_disable(bfd);
+
+	/* get the msg, but don't free it */
+	msg = e1inp_tx_ts(e1i_ts, NULL);
+	if (!msg)
+		return 0;
+
+	LOGPITS(e1i_ts, DLMIB, LOGL_DEBUG, "CAS CHAN TX: %s\n", osmo_hexdump(msg->data, msg->len));
+
+	ret = write(bfd->fd, msg->data, msg->len);
+	if (ret < msg->len) {
+		LOGPITS(e1i_ts, DLINP, LOGL_NOTICE, "send returns %d instead of %d\n", ret, msg->len);
+		osmo_fsm_inst_dispatch(g_e1d_fsm_inst, EV_CONN_LOST, line);
+	}
+
+	return ret;
+}
+
 #define TSX_ALLOC_SIZE 4096
 
 /* read from a hdlc channel TS */
@@ -568,6 +596,35 @@ static int handle_ts_hdlc_read(struct osmo_fd *bfd)
 
 	msg->l2h = msg->data;
 	LOGPITS(e1i_ts, DLMIB, LOGL_DEBUG, "HDLC CHAN RX: %s\n", msgb_hexdump_l2(msg));
+	ret = e1inp_rx_ts(e1i_ts, msg, 0, 0);
+
+	return ret;
+}
+
+/* read from a CAS channel TS */
+static int handle_ts_cas_read(struct osmo_fd *bfd)
+{
+	struct e1inp_line *line = bfd->data;
+	unsigned int ts_nr = bfd->priv_nr;
+	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
+	struct msgb *msg = msgb_alloc(TSX_ALLOC_SIZE, "E1D CAS TS");
+	int ret;
+
+	if (!msg)
+		return -ENOMEM;
+
+	ret = read(bfd->fd, msg->data, TSX_ALLOC_SIZE);
+	if (ret <= 0) {
+		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "%s read error: %d %s\n", __func__, ret, strerror(errno));
+		msgb_free(msg);
+		osmo_fsm_inst_dispatch(g_e1d_fsm_inst, EV_CONN_LOST, line);
+		return ret;
+	}
+
+	msgb_put(msg, ret);
+
+	msg->l2h = msg->data;
+	LOGPITS(e1i_ts, DLMIB, LOGL_DEBUG, "CAS CHAN RX: %s\n", msgb_hexdump_l2(msg));
 	ret = e1inp_rx_ts(e1i_ts, msg, 0, 0);
 
 	return ret;
@@ -630,6 +687,12 @@ static int e1d_fd_cb(struct osmo_fd *bfd, unsigned int what)
 			ret = handle_ts_hdlc_read(bfd);
 		if (what & OSMO_FD_WRITE)
 			ret = handle_ts_hdlc_write(bfd);
+		break;
+	case E1INP_TS_TYPE_CAS:
+		if (what & OSMO_FD_READ)
+			ret = handle_ts_cas_read(bfd);
+		if (what & OSMO_FD_WRITE)
+			ret = handle_ts_cas_write(bfd);
 		break;
 	default:
 		LOGPITS(e1i_ts, DLINP, LOGL_NOTICE, "unknown/unsupported E1 TS type %u\n", e1i_ts->type);
@@ -739,7 +802,8 @@ static int e1d_line_update(struct e1inp_line *line)
 								   E1DP_TSMODE_HDLCFCS, D_BCHAN_TX_GRAN);
 			}
 			if (bfd->fd < 0) {
-				LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Could not open timeslot %d\n", ts);
+				LOGPITS(e1i_ts, DLINP, LOGL_ERROR,
+					"Could not open timeslot %d in signaling (HDLC) mode\n", ts);
 				talloc_free(ts_info);
 				osmo_fsm_inst_dispatch(g_e1d_fsm_inst, EV_CONN_LOST, NULL);
 				return -EIO;
@@ -770,12 +834,36 @@ static int e1d_line_update(struct e1inp_line *line)
 								   E1DP_TSMODE_HDLCFCS, D_BCHAN_TX_GRAN);
 			}
 			if (bfd->fd < 0) {
-				LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Could not open timeslot %d\n", ts);
+				LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Could not open timeslot %d in HDLC\n", ts);
 				talloc_free(ts_info);
 				osmo_fsm_inst_dispatch(g_e1d_fsm_inst, EV_CONN_LOST, NULL);
 				return -EIO;
 			}
 			bfd->when = OSMO_FD_READ;
+			break;
+		case E1INP_TS_TYPE_CAS:
+			/* close/release LAPD instance, if any */
+			if (e1i_ts->lapd) {
+				lapd_instance_free(e1i_ts->lapd);
+				e1i_ts->lapd = NULL;
+			}
+			/* close, if old timeslot mode doesn't match new config */
+			if (bfd->fd >= 0 && ts_info[ts].cfg.mode != E1DP_TSMODE_CAS) {
+				close(bfd->fd);
+				bfd->fd = -1;
+			}
+			if (bfd->fd < 0) {
+				bfd->fd = osmo_e1dp_client_ts_open(g_e1d, e1d_intf, e1d_line, ts,
+								   E1DP_TSMODE_CAS, D_BCHAN_TX_GRAN);
+			}
+			if (bfd->fd < 0) {
+				LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Could not open timeslot %d in CAS mode\n", ts);
+				talloc_free(ts_info);
+				osmo_fsm_inst_dispatch(g_e1d_fsm_inst, EV_CONN_LOST, NULL);
+				return -EIO;
+			}
+			/* Also trigger one write, so latest CAS frame will be sent, if any. */
+			bfd->when = OSMO_FD_READ | OSMO_FD_WRITE;
 			break;
 		case E1INP_TS_TYPE_TRAU:
 		case E1INP_TS_TYPE_I460:
@@ -795,7 +883,7 @@ static int e1d_line_update(struct e1inp_line *line)
 								   E1DP_TSMODE_RAW, D_BCHAN_TX_GRAN);
 			}
 			if (bfd->fd < 0) {
-				LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Could not open timeslot %d\n", ts);
+				LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Could not open timeslot %d in raw mode\n", ts);
 				talloc_free(ts_info);
 				osmo_fsm_inst_dispatch(g_e1d_fsm_inst, EV_CONN_LOST, NULL);
 				return -EIO;

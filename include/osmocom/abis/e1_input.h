@@ -77,6 +77,7 @@ enum e1inp_ts_type {
 	E1INP_TS_TYPE_RAW,
 	E1INP_TS_TYPE_HDLC,
 	E1INP_TS_TYPE_I460,
+	E1INP_TS_TYPE_CAS,
 };
 const char *e1inp_tstype_name(enum e1inp_ts_type tp);
 extern const struct value_string e1inp_ts_type_names[];
@@ -119,6 +120,12 @@ struct e1inp_ts {
 			/* queue of pending to-be-transmitted msgbs */
 			struct llist_head tx_queue;
 		} hdlc;
+		struct {
+			/* call-back for every received frame */
+			void (*recv_cb)(struct e1inp_ts *ts, struct msgb *msg);
+			/* queue of pending to-be-transmitted msgbs */
+			struct msgb *tx_msg;
+		} cas;
 		struct {
 			struct osmo_i460_timeslot i460_ts;
 		} i460;
@@ -335,6 +342,11 @@ int e1inp_ts_config_hdlc(struct e1inp_ts *ts, struct e1inp_line *line,
 			 void (*hdlc_recv_cb)(struct e1inp_ts *ts,
 					      struct msgb *msg));
 
+/* configure and initialize one timeslot dedicated to CAS frames */
+int e1inp_ts_config_cas(struct e1inp_ts *ts, struct e1inp_line *line,
+			void (*cas_recv_cb)(struct e1inp_ts *ts,
+					    struct msgb *msg));
+
 /* configure and initialize one timeslot dedicated to nothing */
 int e1inp_ts_config_none(struct e1inp_ts *ts, struct e1inp_line *line);
 
@@ -410,5 +422,6 @@ int abis_rsl_sendmsg(struct msgb *msg);
 
 int e1inp_ts_send_raw(struct e1inp_ts *ts, struct msgb *msg);
 int e1inp_ts_send_hdlc(struct e1inp_ts *ts, struct msgb *msg);
+int e1inp_ts_send_cas(struct e1inp_ts *ts, struct msgb *msg);
 
 #endif /* _E1_INPUT_H */

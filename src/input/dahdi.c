@@ -718,6 +718,9 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 			 * write flow control */
 			bfd->when = OSMO_FD_READ | OSMO_FD_EXCEPT;// | OSMO_FD_WRITE;
 			break;
+		case E1INP_TS_TYPE_CAS:
+			LOGPITS(e1i_ts, DLMI, LOGL_ERROR, "CAS not supported by dahdi driver.\n");
+			return -ENOTSUP;
 		}
 
 		if (bfd->fd < 0)
