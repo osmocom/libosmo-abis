@@ -54,3 +54,4 @@ tests/trau_sync/trau_sync_test
 *.sw?
 
 contrib/libosmo-abis.spec
+include/osmocom/abis/version.h

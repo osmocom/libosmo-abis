@@ -1,5 +1,18 @@
 noinst_HEADERS=mISDNif.h internal.h
 
+osmocom/abis/version.h: osmocom/abis/version.h.tpl
+	$(AM_V_GEN)$(MKDIR_P) $(dir $@)
+	$(AM_V_GEN)sed \
+		-e "s/{{VERSION}}/$$(echo '@VERSION@' | cut -d. -f1-3)/g" \
+		-e "s/{{VERSION_MAJOR}}/$$(echo '@VERSION@' | cut -d. -f1)/g" \
+		-e "s/{{VERSION_MINOR}}/$$(echo '@VERSION@' | cut -d. -f2)/g" \
+		-e "s/{{VERSION_PATCH}}/$$(echo '@VERSION@' | cut -d. -f3)/g" \
+		$< > $@
+
+EXTRA_DIST = \
+	osmocom/abis/version.h.tpl \
+	$(NULL)
+
 nobase_include_HEADERS = \
 	osmocom/abis/abis.h \
 	osmocom/abis/e1_input.h \
@@ -10,6 +23,7 @@ nobase_include_HEADERS = \
 	osmocom/abis/subchan_demux.h \
 	osmocom/abis/trau_frame.h \
 	osmocom/abis/unixsocket_proto.h \
+	osmocom/abis/version.h \
 	osmocom/trau/csd_ra2.h \
 	osmocom/trau/csd_raa_prime.h \
 	osmocom/trau/trau_frame.h \
