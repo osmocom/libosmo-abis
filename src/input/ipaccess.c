@@ -619,51 +619,115 @@ static int ipaccess_bsc_conn_closed_cb(struct osmo_stream_srv *conn)
 	return 0;
 }
 
-static void update_fd_settings(struct e1inp_line *line, int fd)
+struct keepalive_pars {
+	int idle_val;
+	int interval_val;
+	int retry_count_val;
+	unsigned int user_timeout_val;
+};
+
+static void line_get_keepalive_pars(const struct e1inp_line *line, struct keepalive_pars *pars)
 {
-	int ret;
-	int val, idle_val, interval_val, retry_count_val, user_timeout_val;
+	pars->idle_val = line->keepalive_idle_timeout > 0 ?
+			line->keepalive_idle_timeout :
+			DEFAULT_TCP_KEEPALIVE_IDLE_TIMEOUT;
+	pars->interval_val = line->keepalive_probe_interval > -1 ?
+			line->keepalive_probe_interval :
+			DEFAULT_TCP_KEEPALIVE_INTERVAL;
+	pars->retry_count_val = line->keepalive_num_probes > 0 ?
+			line->keepalive_num_probes :
+			DEFAULT_TCP_KEEPALIVE_RETRY_COUNT;
+	pars->user_timeout_val = 1000 * pars->retry_count_val * (pars->interval_val + pars->idle_val);
+}
+
+static void cli_apply_tcp_pars(struct e1inp_line *line, struct osmo_stream_cli *cli)
+{
+	struct keepalive_pars pars;
+	int rc;
+	uint8_t on = 1;
 
 	if (line->keepalive_num_probes == 0)
 		return;
 
-	/* Enable TCP keepalive to find out if the connection is gone */
-	val = 1;
-	ret = setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &val, sizeof(val));
-	if (ret < 0)
-		LOGPIL(line, DLINP, LOGL_ERROR, "Failed to enable TCP keepalive: %s\n", strerror(errno));
-	else
-		LOGPIL(line, DLINP, LOGL_NOTICE, "TCP Keepalive is enabled\n");
+	line_get_keepalive_pars(line, &pars);
 
-	idle_val = line->keepalive_idle_timeout > 0 ?
-			line->keepalive_idle_timeout :
-			DEFAULT_TCP_KEEPALIVE_IDLE_TIMEOUT;
-	interval_val = line->keepalive_probe_interval > -1 ?
-			line->keepalive_probe_interval :
-			DEFAULT_TCP_KEEPALIVE_INTERVAL;
-	retry_count_val = line->keepalive_num_probes > 0 ?
-			line->keepalive_num_probes :
-			DEFAULT_TCP_KEEPALIVE_RETRY_COUNT;
-	user_timeout_val = 1000 * retry_count_val * (interval_val + idle_val);
-	LOGPIL(line, DLINP, LOGL_NOTICE, "TCP keepalive idle_timeout=%us, interval=%us, retry_count=%u "
-		"user_timeout=%ums\n", idle_val, interval_val, retry_count_val, user_timeout_val);
-	/* The following options are not portable! */
-	ret = setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &idle_val, sizeof(idle_val));
-	if (ret < 0) {
+	LOGPIL(line, DLINP, LOGL_INFO,
+	       "TCP keepalive idle_timeout=%us, interval=%us, retry_count=%u user_timeout=%ums\n",
+	       pars.idle_val, pars.interval_val, pars.retry_count_val, pars.user_timeout_val);
+
+	rc = osmo_stream_cli_set_param(cli, OSMO_STREAM_CLI_PAR_TCP_SOCKOPT_KEEPALIVE,
+				       &on, sizeof(on));
+	if (rc < 0)
+		LOGPIL(line, DLINP, LOGL_ERROR, "Failed to enable TCP keepalive: %s\n", strerror(-rc));
+
+	rc = osmo_stream_cli_set_param(cli, OSMO_STREAM_CLI_PAR_TCP_SOCKOPT_KEEPIDLE,
+				       &pars.idle_val, sizeof(pars.idle_val));
+	if (rc < 0)
 		LOGPIL(line, DLINP, LOGL_ERROR, "Failed to set TCP keepalive idle time: %s\n",
-		       strerror(errno));
-	}
-	ret = setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &interval_val, sizeof(interval_val));
-	if (ret < 0) {
+		       strerror(-rc));
+
+	rc = osmo_stream_cli_set_param(cli, OSMO_STREAM_CLI_PAR_TCP_SOCKOPT_KEEPINTVL,
+				       &pars.interval_val, sizeof(pars.interval_val));
+	if (rc < 0)
 		LOGPIL(line, DLINP, LOGL_ERROR, "Failed to set TCP keepalive interval: %s\n",
-		       strerror(errno));
-	}
-	ret = setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &retry_count_val, sizeof(retry_count_val));
-	if (ret < 0)
-		LOGPIL(line, DLINP, LOGL_ERROR, "Failed to set TCP keepalive count: %s\n", strerror(errno));
-	ret = setsockopt(fd, IPPROTO_TCP, TCP_USER_TIMEOUT, &user_timeout_val, sizeof(user_timeout_val));
-	if (ret < 0)
-		LOGPIL(line, DLINP, LOGL_ERROR, "Failed to set TCP user timeout: %s\n", strerror(errno));
+		       strerror(-rc));
+
+	rc = osmo_stream_cli_set_param(cli, OSMO_STREAM_CLI_PAR_TCP_SOCKOPT_KEEPCNT,
+				       &pars.retry_count_val, sizeof(pars.retry_count_val));
+	if (rc < 0)
+		LOGPIL(line, DLINP, LOGL_ERROR, "Failed to set TCP keepalive count: %s\n",
+		       strerror(-rc));
+
+	rc = osmo_stream_cli_set_param(cli, OSMO_STREAM_CLI_PAR_TCP_SOCKOPT_USER_TIMEOUT,
+					&pars.user_timeout_val, sizeof(pars.user_timeout_val));
+	if (rc < 0)
+		LOGPIL(line, DLINP, LOGL_ERROR, "Failed to set TCP user timeout: %s\n",
+		       strerror(-rc));
+}
+
+static void srv_apply_tcp_pars(struct e1inp_line *line, struct osmo_stream_srv *conn)
+{
+	struct keepalive_pars pars;
+	int rc;
+	uint8_t on = 1;
+
+	if (line->keepalive_num_probes == 0)
+		return;
+
+	line_get_keepalive_pars(line, &pars);
+
+	LOGPIL(line, DLINP, LOGL_INFO,
+	       "TCP keepalive idle_timeout=%us, interval=%us, retry_count=%u user_timeout=%ums\n",
+	       pars.idle_val, pars.interval_val, pars.retry_count_val, pars.user_timeout_val);
+
+	rc = osmo_stream_srv_set_param(conn, OSMO_STREAM_SRV_PAR_TCP_SOCKOPT_KEEPALIVE,
+				       &on, sizeof(on));
+	if (rc < 0)
+		LOGPIL(line, DLINP, LOGL_ERROR, "Failed to enable TCP keepalive: %s\n", strerror(-rc));
+
+	rc = osmo_stream_srv_set_param(conn, OSMO_STREAM_SRV_PAR_TCP_SOCKOPT_KEEPIDLE,
+				       &pars.idle_val, sizeof(pars.idle_val));
+	if (rc < 0)
+		LOGPIL(line, DLINP, LOGL_ERROR, "Failed to set TCP keepalive idle time: %s\n",
+		       strerror(-rc));
+
+	rc = osmo_stream_srv_set_param(conn, OSMO_STREAM_SRV_PAR_TCP_SOCKOPT_KEEPINTVL,
+				       &pars.interval_val, sizeof(pars.interval_val));
+	if (rc < 0)
+		LOGPIL(line, DLINP, LOGL_ERROR, "Failed to set TCP keepalive interval: %s\n",
+		       strerror(-rc));
+
+	rc = osmo_stream_srv_set_param(conn, OSMO_STREAM_SRV_PAR_TCP_SOCKOPT_KEEPCNT,
+				       &pars.retry_count_val, sizeof(pars.retry_count_val));
+	if (rc < 0)
+		LOGPIL(line, DLINP, LOGL_ERROR, "Failed to set TCP keepalive count: %s\n",
+		       strerror(-rc));
+
+	rc = osmo_stream_srv_set_param(conn, OSMO_STREAM_SRV_PAR_TCP_SOCKOPT_USER_TIMEOUT,
+					&pars.user_timeout_val, sizeof(pars.user_timeout_val));
+	if (rc < 0)
+		LOGPIL(line, DLINP, LOGL_ERROR, "Failed to set TCP user timeout: %s\n",
+		       strerror(-rc));
 }
 
 /* callback of the OML listening filedescriptor */
@@ -701,13 +765,12 @@ static int ipaccess_bsc_oml_accept_cb(struct osmo_stream_srv_link *link, int fd)
 	osmo_stream_srv_set_read_cb(conn, ipaccess_bsc_conn_read_cb);
 	osmo_stream_srv_set_closed_cb(conn, ipaccess_bsc_conn_closed_cb);
 	osmo_stream_srv_set_segmentation_cb(conn, osmo_ipa_segmentation_cb);
+	srv_apply_tcp_pars(line, conn);
 
 	/* We use bfd->fd in here for osmo_stats_tcp, and bfd->data to access osmo_stream_srv from e1i_ts. */
 	bfd = &e1i_ts->driver.ipaccess.fd;
 	osmo_fd_setup(bfd, fd, 0, NULL, conn, E1INP_SIGN_OML);
 	osmo_stats_tcp_osmo_fd_register(bfd, "ipa-oml");
-
-	update_fd_settings(line, fd);
 
 	/* Request ID. FIXME: request LOCATION, HW/SW VErsion, Unit Name, Serno */
 	ret = ipa_ccm_send_id_req(fd);
@@ -756,6 +819,7 @@ static int ipaccess_bsc_rsl_accept_cb(struct osmo_stream_srv_link *link, int fd)
 	osmo_stream_srv_set_read_cb(conn, ipaccess_bsc_conn_read_cb);
 	osmo_stream_srv_set_closed_cb(conn, ipaccess_bsc_conn_closed_cb);
 	osmo_stream_srv_set_segmentation_cb(conn, osmo_ipa_segmentation_cb);
+	srv_apply_tcp_pars(line, conn);
 
 	/* We use bfd->fd in here for osmo_stats_tcp, and bfd->data to access osmo_stream_srv from e1i_ts. */
 	bfd = &e1i_ts->driver.ipaccess.fd;
@@ -768,7 +832,6 @@ static int ipaccess_bsc_rsl_accept_cb(struct osmo_stream_srv_link *link, int fd)
 		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "could not send ID REQ. Reason: %s\n", strerror(errno));
 		goto err_socket;
 	}
-	update_fd_settings(line, fd);
 	return 0;
 
 err_socket:
@@ -928,7 +991,6 @@ static int ipaccess_bts_connect_cb(struct osmo_stream_cli *cli)
 	struct e1inp_line *line = e1i_ts->line;
 	struct osmo_ipa_ka_fsm_inst *ka_fsm = e1i_ts->driver.ipaccess.ka_fsm;
 
-	update_fd_settings(line, osmo_stream_cli_get_fd(cli));
 	if (ka_fsm && line->ipa_kap)
 		osmo_ipa_ka_fsm_start(ka_fsm);
 	return 0;
@@ -1048,6 +1110,8 @@ static int ipaccess_line_update(struct e1inp_line *line)
 		osmo_stream_cli_set_disconnect_cb(cli, ipaccess_bts_disconnect_cb);
 		osmo_stream_cli_set_read_cb2(cli, ipaccess_bts_read_cb);
 
+		cli_apply_tcp_pars(line, cli);
+
 		if (osmo_stream_cli_open(cli)) {
 			LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "cannot open OML BTS link: %s\n", strerror(errno));
 			osmo_stream_cli_destroy(cli);
@@ -1125,6 +1189,8 @@ int e1inp_ipa_bts_rsl_connect_n(struct e1inp_line *line,
 	osmo_stream_cli_set_connect_cb(cli, ipaccess_bts_connect_cb);
 	osmo_stream_cli_set_disconnect_cb(cli, ipaccess_bts_disconnect_cb);
 	osmo_stream_cli_set_read_cb2(cli, ipaccess_bts_read_cb);
+
+	cli_apply_tcp_pars(line, cli);
 
 	if (osmo_stream_cli_open(cli)) {
 		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "cannot open RSL BTS link: %s\n", strerror(errno));
