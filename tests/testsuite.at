@@ -180,3 +180,43 @@ AT_KEYWORDS([rtp2trau_hr_ul3])
 cat $abs_srcdir/trau_conv/rtp2trau_hr_ul3.ok > expout
 AT_CHECK([$abs_top_builddir/tests/trau_conv/rtp2trau_gen $abs_srcdir/trau_conv/hr_speech_invsid_bits.hex hr ul], [0], [expout], [ignore])
 AT_CLEANUP
+
+AT_SETUP([tfo_decode_fr])
+AT_KEYWORDS([tfo_decode_fr])
+cat $abs_srcdir/tfo/extract_test_fr.ok > expout
+AT_CHECK([$abs_top_builddir/tests/tfo/tfo_extr_test $abs_srcdir/tfo/nokia_tcsm2/tfo-fr.hex fr], [0], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([tfo_decode_efr])
+AT_KEYWORDS([tfo_decode_efr])
+cat $abs_srcdir/tfo/extract_test_efr.ok > expout
+AT_CHECK([$abs_top_builddir/tests/tfo/tfo_extr_test $abs_srcdir/tfo/nokia_tcsm2/tfo-efr.hex fr], [0], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([tfo_decode_hr])
+AT_KEYWORDS([tfo_decode_hr])
+cat $abs_srcdir/tfo/extract_test_hr.ok > expout
+AT_CHECK([$abs_top_builddir/tests/tfo/tfo_extr_test $abs_srcdir/tfo/nokia_tcsm2/tfo-hr.hex hr], [0], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([tfo_round_trip_fr])
+AT_KEYWORDS([tfo_round_trip_fr])
+grep '^E' $abs_srcdir/tfo/enc_test_fr.in > expout
+AT_CHECK([$abs_top_builddir/tests/tfo/rtp2tfo $abs_srcdir/tfo/enc_test_fr.in fr enc_test_fr.tfo], [0], [ignore], [ignore])
+AT_CHECK([$abs_top_builddir/tests/tfo/tfo_extr_test enc_test_fr.tfo fr], [0], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([tfo_round_trip_efr])
+AT_KEYWORDS([tfo_round_trip_efr])
+grep '^E' $abs_srcdir/tfo/enc_test_efr.in > expout
+AT_CHECK([$abs_top_builddir/tests/tfo/rtp2tfo $abs_srcdir/tfo/enc_test_efr.in efr enc_test_efr.tfo], [0], [ignore], [ignore])
+AT_CHECK([$abs_top_builddir/tests/tfo/tfo_extr_test enc_test_efr.tfo fr], [0], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([tfo_round_trip_hr])
+AT_KEYWORDS([tfo_round_trip_hr])
+# autotest eats up square brackets, so we have to escape them
+grep '^[[0-7]]' $abs_srcdir/tfo/enc_test_hr.in > expout
+AT_CHECK([$abs_top_builddir/tests/tfo/rtp2tfo $abs_srcdir/tfo/enc_test_hr.in hr enc_test_hr.tfo], [0], [ignore], [ignore])
+AT_CHECK([$abs_top_builddir/tests/tfo/tfo_extr_test enc_test_hr.tfo hr], [0], [expout], [ignore])
+AT_CLEANUP

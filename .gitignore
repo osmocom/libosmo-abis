@@ -42,6 +42,8 @@ tests/subchan_demux/subchan_demux_test
 tests/ipa_recv/ipa_recv_test
 tests/raa_prime/test_dec
 tests/raa_prime/test_enc
+tests/tfo/rtp2tfo
+tests/tfo/tfo_extr_test
 tests/trau_pcu_ericsson/trau_pcu_ericsson_test
 tests/trau_conv/rtp2trau_gen
 tests/trau_conv/trau16_to_rtp

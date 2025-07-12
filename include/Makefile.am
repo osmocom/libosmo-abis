@@ -26,6 +26,7 @@ nobase_include_HEADERS = \
 	osmocom/abis/version.h \
 	osmocom/trau/csd_ra2.h \
 	osmocom/trau/csd_raa_prime.h \
+	osmocom/trau/tfo_frame.h \
 	osmocom/trau/trau_frame.h \
 	osmocom/trau/trau_pcu_ericsson.h \
 	osmocom/trau/trau_rtp.h \

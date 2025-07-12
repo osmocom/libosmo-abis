@@ -8,6 +8,8 @@ check_PROGRAMS = e1inp_ipa_bsc_test	\
 		  ipa_recv/ipa_recv_test \
 		  raa_prime/test_dec \
 		  raa_prime/test_enc \
+		  tfo/rtp2tfo \
+		  tfo/tfo_extr_test \
 		  trau_conv/rtp2trau_gen \
 		  trau_conv/trau16_to_rtp \
 		  trau_conv/trau2rtp_gen \
@@ -53,6 +55,12 @@ raa_prime_test_enc_LDADD = $(TRAU_LA_LIBS)
 rtp_test_rtp_test_SOURCES = rtp_test/rtp_test.c
 rtp_test_rtp_test_LDADD = $(TRAU_LA_LIBS)
 
+tfo_rtp2tfo_SOURCES = tfo/rtp2tfo.c trau_conv/tw5reader.c
+tfo_rtp2tfo_LDADD = $(TRAU_LA_LIBS)
+
+tfo_tfo_extr_test_SOURCES = tfo/tfo_extr_test.c
+tfo_tfo_extr_test_LDADD = $(TRAU_LA_LIBS)
+
 trau_conv_rtp2trau_gen_SOURCES = trau_conv/rtp2trau_gen.c trau_conv/tw5reader.c
 trau_conv_rtp2trau_gen_LDADD = $(TRAU_LA_LIBS)
 
@@ -94,6 +102,10 @@ EXTRA_DIST = testsuite.at $(srcdir)/package.m4 $(TESTSUITE) \
 	ipa_recv/ipa_recv_test.ok \
 	raa_prime/d144-ul-input.asc raa_prime/nokia-tcsm2-atrau.hex \
 	rtp_test/rtp_test.ok \
+	tfo/enc_test_efr.in tfo/enc_test_fr.in tfo/enc_test_hr.in \
+	tfo/extract_test_efr.ok tfo/extract_test_fr.ok tfo/extract_test_hr.ok \
+	tfo/nokia_tcsm2/tfo-efr.hex tfo/nokia_tcsm2/tfo-fr.hex \
+	tfo/nokia_tcsm2/tfo-hr.hex \
 	trau_conv/efr_speech_basic.hex trau_conv/efr_speech_twts001_good.hex \
 	trau_conv/efr_speech_twts001_mix.hex \
 	trau_conv/fr_speech_basic.hex trau_conv/fr_speech_twts001_good.hex \

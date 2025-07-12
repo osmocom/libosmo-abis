@@ -1,0 +1,18 @@
+Each of the 3 tfo-*.hex files in this directory is an extract from an MSC-side
+E1 timeslot recording in a Nokia TCSM2 TFO session involving a cross-connect
+between two TRAU channels.  The extracts have been chosen to begin at the point
+where the TRAU starts emitting TFO frames, thereby beginning with a series of
+TFO frames that contain an embedded TFO_TRANS message.  In each experiment, one
+of the two cross-connected TRAU channels emitted two "plain" TFO frames (not
+containing embedded TFO messages) in between the initial embedded TFO_TRANS and
+the subsequent embedded TFO_REQ_L; this channel was chosen for the present
+extracts.  Each extract is thus 2560 PCM samples, containing 16 aligned TFO
+frames: 5 carrying TFO_TRANS, 2 plain, 9 carrying TFO_REQ_L.
+
+In each of the three TCSM2 sessions from which these TFO frame extracts were
+taken, the Ater UL input was fed with a stream of good DHFs (decoder homing
+frames) for the respective codec, hence the TFO frame content is nothing but
+these DHFs.  In the case of FR and EFR captures, one of the 16 consecutive
+frames also exhibits TAF=1.  OTOH, the same does not hold for HR: the TRAU-8k
+frame format used in TFO and in most Abis implementations carries TAF only for
+BFIs and invalid SID, but not for good speech or valid SID frames.
