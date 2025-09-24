@@ -33,6 +33,7 @@
 #include <osmocom/trau/clearmode.h>
 #include <osmocom/trau/csd_ra2.h>
 #include <osmocom/trau/csd_raa_prime.h>
+#include <osmocom/trau/csd_v110.h>
 
 /* this corresponds to the bit-lengths of the individual codec
  * parameters as indicated in Table 1.1 of TS 46.010 */
@@ -1260,42 +1261,6 @@ int trau2rtp_amr(uint8_t *out, const struct osmo_trau_frame *tf, enum osmo_amr_m
  * like the RA part of TRAU, using RTP clearmode representation.
  */
 
-static void trau2v110_bits(ubit_t *out, const ubit_t *in)
-{
-	int i;
-
-	/* the first 8 bits are sync zeros */
-	memset(out, 0, 8);
-	out += 8;
-	/* for the rest, we have to expand 63 bits into 72 */
-	for (i = 0; i < 9; i++) {
-		*out++ = 1;
-		memcpy(out, in, 7);
-		in += 7;
-		out += 7;
-	}
-}
-
-/* intermediate rate 8 kbit/s */
-static void trau2v110_ir8(uint8_t *out, const ubit_t *in)
-{
-	ubit_t ra_bits[80];
-
-	trau2v110_bits(ra_bits, in);
-	/* RA2: 1 bit per output byte */
-	osmo_csd_ra2_8k_pack(out, ra_bits, 80);
-}
-
-/* intermediate rate 16 kbit/s */
-static void trau2v110_ir16(uint8_t *out, const ubit_t *in)
-{
-	ubit_t ra_bits[80];
-
-	trau2v110_bits(ra_bits, in);
-	/* RA2: 2 bits per output byte */
-	osmo_csd_ra2_16k_pack(out, ra_bits, 40);
-}
-
 static int trau2rtp_data_fr(uint8_t *out, size_t out_len,
 			    const struct osmo_trau_frame *tf)
 {
@@ -1308,13 +1273,13 @@ static int trau2rtp_data_fr(uint8_t *out, size_t out_len,
 	/* Is it TCH/F9.6 with 16 kbit/s IR,
 	 * or TCH/F4.8 or TCH/F2.4 with 8 kbit/s IR? */
 	if (tf->c_bits[5]) {
-		trau2v110_ir16(out, tf->d_bits);
-		trau2v110_ir16(out + 40, tf->d_bits + 63);
-		trau2v110_ir16(out + 80, tf->d_bits + 63 * 2);
-		trau2v110_ir16(out + 120, tf->d_bits + 63 * 3);
+		osmo_csd_63bits_to_v110_ir16(out, tf->d_bits);
+		osmo_csd_63bits_to_v110_ir16(out + 40, tf->d_bits + 63);
+		osmo_csd_63bits_to_v110_ir16(out + 80, tf->d_bits + 63 * 2);
+		osmo_csd_63bits_to_v110_ir16(out + 120, tf->d_bits + 63 * 3);
 	} else {
-		trau2v110_ir8(out, tf->d_bits);
-		trau2v110_ir8(out + 80, tf->d_bits + 63 * 2);
+		osmo_csd_63bits_to_v110_ir8(out, tf->d_bits);
+		osmo_csd_63bits_to_v110_ir8(out + 80, tf->d_bits + 63 * 2);
 	}
 
 	return OSMO_CLEARMODE_20MS;
@@ -1333,8 +1298,8 @@ static int trau2rtp_data_hr16(uint8_t *out, size_t out_len,
 	 * puts the second reduced V.110 frame at d_bits position 63,
 	 * unlike 8 kbit/s IR in FR-data frame type where it resides
 	 * at d_bits position 63 * 2. */
-	trau2v110_ir8(out, tf->d_bits);
-	trau2v110_ir8(out + 80, tf->d_bits + 63);
+	osmo_csd_63bits_to_v110_ir8(out, tf->d_bits);
+	osmo_csd_63bits_to_v110_ir8(out + 80, tf->d_bits + 63);
 
 	return OSMO_CLEARMODE_20MS;
 }
@@ -1348,8 +1313,8 @@ static int trau2rtp_data_hr8(uint8_t *out, size_t out_len,
 	if (out_len < OSMO_CLEARMODE_20MS)
 		return -ENOSPC;
 
-	trau2v110_ir8(out, tf->d_bits);
-	trau2v110_ir8(out + 80, tf->d_bits + 63);
+	osmo_csd_63bits_to_v110_ir8(out, tf->d_bits);
+	osmo_csd_63bits_to_v110_ir8(out + 80, tf->d_bits + 63);
 
 	return OSMO_CLEARMODE_20MS;
 }
@@ -1400,34 +1365,6 @@ static int trau2rtp_edata(uint8_t *out, size_t out_len,
  * how traditional TRAUs do it.
  */
 
-static bool check_v110_align(const ubit_t *ra_bits)
-{
-	int i;
-
-	for (i = 0; i < 8; i++) {
-		if (ra_bits[i])
-			return false;
-	}
-	for (i = 1; i < 10; i++) {
-		if (!ra_bits[i * 8])
-			return false;
-	}
-	return true;
-}
-
-static void v110_to_63bits(ubit_t *out, const ubit_t *ra_bits)
-{
-	memcpy(out, ra_bits + 9, 7);
-	memcpy(out + 7, ra_bits + 17, 7);
-	memcpy(out + 14, ra_bits + 25, 7);
-	memcpy(out + 21, ra_bits + 33, 7);
-	memcpy(out + 28, ra_bits + 41, 7);
-	memcpy(out + 35, ra_bits + 49, 7);
-	memcpy(out + 42, ra_bits + 57, 7);
-	memcpy(out + 49, ra_bits + 65, 7);
-	memcpy(out + 56, ra_bits + 73, 7);
-}
-
 /* intermediate rate 8 kbit/s */
 static void rtp2trau_data_ir8(struct osmo_trau_frame *tf, const uint8_t *data,
 			      size_t data_len, unsigned second_offset)
@@ -1441,14 +1378,14 @@ static void rtp2trau_data_ir8(struct osmo_trau_frame *tf, const uint8_t *data,
 	osmo_csd_ra2_8k_unpack(ra_bits, data, OSMO_CLEARMODE_20MS);
 
 	/* enforce two properly aligned V.110 frames */
-	if (!check_v110_align(ra_bits))
+	if (!osmo_csd_check_v110_align(ra_bits))
 		goto idle_fill;
-	if (!check_v110_align(ra_bits + 80))
+	if (!osmo_csd_check_v110_align(ra_bits + 80))
 		goto idle_fill;
 
 	/* all checks passed - copy the payload */
-	v110_to_63bits(tf->d_bits, ra_bits);
-	v110_to_63bits(tf->d_bits + second_offset, ra_bits + 80);
+	osmo_csd_v110_to_63bits(tf->d_bits, ra_bits);
+	osmo_csd_v110_to_63bits(tf->d_bits + second_offset, ra_bits + 80);
 	return;
 
 idle_fill:
@@ -1469,20 +1406,20 @@ static void rtp2trau_data_ir16(struct osmo_trau_frame *tf, const uint8_t *data,
 	osmo_csd_ra2_16k_unpack(ra_bits, data, OSMO_CLEARMODE_20MS);
 
 	/* enforce 4 properly aligned V.110 frames */
-	if (!check_v110_align(ra_bits))
+	if (!osmo_csd_check_v110_align(ra_bits))
 		goto idle_fill;
-	if (!check_v110_align(ra_bits + 80))
+	if (!osmo_csd_check_v110_align(ra_bits + 80))
 		goto idle_fill;
-	if (!check_v110_align(ra_bits + 80 * 2))
+	if (!osmo_csd_check_v110_align(ra_bits + 80 * 2))
 		goto idle_fill;
-	if (!check_v110_align(ra_bits + 80 * 3))
+	if (!osmo_csd_check_v110_align(ra_bits + 80 * 3))
 		goto idle_fill;
 
 	/* all checks passed - copy the payload */
-	v110_to_63bits(tf->d_bits, ra_bits);
-	v110_to_63bits(tf->d_bits + 63, ra_bits + 80);
-	v110_to_63bits(tf->d_bits + 63 * 2, ra_bits + 80 * 2);
-	v110_to_63bits(tf->d_bits + 63 * 3, ra_bits + 80 * 3);
+	osmo_csd_v110_to_63bits(tf->d_bits, ra_bits);
+	osmo_csd_v110_to_63bits(tf->d_bits + 63, ra_bits + 80);
+	osmo_csd_v110_to_63bits(tf->d_bits + 63 * 2, ra_bits + 80 * 2);
+	osmo_csd_v110_to_63bits(tf->d_bits + 63 * 3, ra_bits + 80 * 3);
 	return;
 
 idle_fill:
