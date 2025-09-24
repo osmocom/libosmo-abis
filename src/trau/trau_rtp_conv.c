@@ -30,11 +30,9 @@
 
 #include <osmocom/trau/trau_frame.h>
 #include <osmocom/trau/trau_rtp.h>
+#include <osmocom/trau/clearmode.h>
 #include <osmocom/trau/csd_ra2.h>
 #include <osmocom/trau/csd_raa_prime.h>
-
-/* RFC4040 "clearmode" RTP payload length */
-#define RFC4040_RTP_PLEN 160
 
 /* this corresponds to the bit-lengths of the individual codec
  * parameters as indicated in Table 1.1 of TS 46.010 */
@@ -1304,7 +1302,7 @@ static int trau2rtp_data_fr(uint8_t *out, size_t out_len,
 	/* function interface preliminaries */
 	if (tf->type != OSMO_TRAU16_FT_DATA)
 		return -EINVAL;
-	if (out_len < RFC4040_RTP_PLEN)
+	if (out_len < OSMO_CLEARMODE_20MS)
 		return -ENOSPC;
 
 	/* Is it TCH/F9.6 with 16 kbit/s IR,
@@ -1319,7 +1317,7 @@ static int trau2rtp_data_fr(uint8_t *out, size_t out_len,
 		trau2v110_ir8(out + 80, tf->d_bits + 63 * 2);
 	}
 
-	return RFC4040_RTP_PLEN;
+	return OSMO_CLEARMODE_20MS;
 }
 
 static int trau2rtp_data_hr16(uint8_t *out, size_t out_len,
@@ -1328,7 +1326,7 @@ static int trau2rtp_data_hr16(uint8_t *out, size_t out_len,
 	/* function interface preliminaries */
 	if (tf->type != OSMO_TRAU16_FT_DATA_HR)
 		return -EINVAL;
-	if (out_len < RFC4040_RTP_PLEN)
+	if (out_len < OSMO_CLEARMODE_20MS)
 		return -ENOSPC;
 
 	/* Note that Osmocom trau_frame decoding and encoding API
@@ -1338,7 +1336,7 @@ static int trau2rtp_data_hr16(uint8_t *out, size_t out_len,
 	trau2v110_ir8(out, tf->d_bits);
 	trau2v110_ir8(out + 80, tf->d_bits + 63);
 
-	return RFC4040_RTP_PLEN;
+	return OSMO_CLEARMODE_20MS;
 }
 
 static int trau2rtp_data_hr8(uint8_t *out, size_t out_len,
@@ -1347,13 +1345,13 @@ static int trau2rtp_data_hr8(uint8_t *out, size_t out_len,
 	/* function interface preliminaries */
 	if (tf->type != OSMO_TRAU8_DATA)
 		return -EINVAL;
-	if (out_len < RFC4040_RTP_PLEN)
+	if (out_len < OSMO_CLEARMODE_20MS)
 		return -ENOSPC;
 
 	trau2v110_ir8(out, tf->d_bits);
 	trau2v110_ir8(out + 80, tf->d_bits + 63);
 
-	return RFC4040_RTP_PLEN;
+	return OSMO_CLEARMODE_20MS;
 }
 
 static int trau2rtp_edata(uint8_t *out, size_t out_len,
@@ -1362,7 +1360,7 @@ static int trau2rtp_edata(uint8_t *out, size_t out_len,
 	/* function interface preliminaries */
 	if (tf->type != OSMO_TRAU16_FT_EDATA)
 		return -EINVAL;
-	if (out_len < RFC4040_RTP_PLEN)
+	if (out_len < OSMO_CLEARMODE_20MS)
 		return -ENOSPC;
 
 	/* Per TS 48.020 section 11.1:
@@ -1370,7 +1368,7 @@ static int trau2rtp_edata(uint8_t *out, size_t out_len,
 	 * A-TRAU bit C5 comes from E-TRAU bit C6 */
 	osmo_csd144_to_atrau_ra2(out, tf->m_bits, tf->d_bits, 1, tf->c_bits[5]);
 
-	return RFC4040_RTP_PLEN;
+	return OSMO_CLEARMODE_20MS;
 }
 
 /*
@@ -1436,11 +1434,11 @@ static void rtp2trau_data_ir8(struct osmo_trau_frame *tf, const uint8_t *data,
 {
 	ubit_t ra_bits[80 * 2];
 
-	if (data_len != RFC4040_RTP_PLEN)
+	if (data_len != OSMO_CLEARMODE_20MS)
 		goto idle_fill;
 
 	/* reverse RA2 first */
-	osmo_csd_ra2_8k_unpack(ra_bits, data, RFC4040_RTP_PLEN);
+	osmo_csd_ra2_8k_unpack(ra_bits, data, OSMO_CLEARMODE_20MS);
 
 	/* enforce two properly aligned V.110 frames */
 	if (!check_v110_align(ra_bits))
@@ -1464,11 +1462,11 @@ static void rtp2trau_data_ir16(struct osmo_trau_frame *tf, const uint8_t *data,
 {
 	ubit_t ra_bits[80 * 4];
 
-	if (data_len != RFC4040_RTP_PLEN)
+	if (data_len != OSMO_CLEARMODE_20MS)
 		goto idle_fill;
 
 	/* reverse RA2 first */
-	osmo_csd_ra2_16k_unpack(ra_bits, data, RFC4040_RTP_PLEN);
+	osmo_csd_ra2_16k_unpack(ra_bits, data, OSMO_CLEARMODE_20MS);
 
 	/* enforce 4 properly aligned V.110 frames */
 	if (!check_v110_align(ra_bits))
@@ -1606,7 +1604,7 @@ static int rtp2trau_edata(struct osmo_trau_frame *tf, const uint8_t *data,
 	/* set C6=0: indicate good reception of TRAU-UL frames */
 	tf->c_bits[5] = 0;
 
-	if (data_len == RFC4040_RTP_PLEN &&
+	if (data_len == OSMO_CLEARMODE_20MS &&
 	    osmo_csd144_from_atrau_ra2(tf->m_bits, tf->d_bits, &atrau_c4, NULL,
 					data) >= 0) {
 		/* We got good A-TRAU input.  3GPP specs define the following
