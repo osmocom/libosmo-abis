@@ -34,6 +34,7 @@
 #include <osmocom/trau/csd_ra2.h>
 #include <osmocom/trau/csd_raa_prime.h>
 #include <osmocom/trau/csd_v110.h>
+#include <osmocom/trau/twts007.h>
 
 /* this corresponds to the bit-lengths of the individual codec
  * parameters as indicated in Table 1.1 of TS 46.010 */
@@ -1370,23 +1371,34 @@ static void rtp2trau_data_ir8(struct osmo_trau_frame *tf, const uint8_t *data,
 			      size_t data_len, unsigned second_offset)
 {
 	ubit_t ra_bits[80 * 2];
+	int rc;
 
-	if (data_len != OSMO_CLEARMODE_20MS)
+	switch (data_len) {
+	case OSMO_CLEARMODE_20MS:
+		/* reverse RA2 first */
+		osmo_csd_ra2_8k_unpack(ra_bits, data, OSMO_CLEARMODE_20MS);
+		/* enforce two properly aligned V.110 frames */
+		if (!osmo_csd_check_v110_align(ra_bits))
+			goto idle_fill;
+		if (!osmo_csd_check_v110_align(ra_bits + 80))
+			goto idle_fill;
+		/* all checks passed - copy the payload */
+		osmo_csd_v110_to_63bits(tf->d_bits, ra_bits);
+		osmo_csd_v110_to_63bits(tf->d_bits + second_offset,
+					ra_bits + 80);
+		return;
+	case OSMO_CCSD_PL_LEN_4k8:
+		rc = osmo_ccsd_unpack_v110_frame(tf->d_bits, data);
+		if (rc < 0)
+			goto idle_fill;
+		rc = osmo_ccsd_unpack_v110_frame(tf->d_bits + second_offset,
+						 data + 8);
+		if (rc < 0)
+			goto idle_fill;
+		return;
+	default:
 		goto idle_fill;
-
-	/* reverse RA2 first */
-	osmo_csd_ra2_8k_unpack(ra_bits, data, OSMO_CLEARMODE_20MS);
-
-	/* enforce two properly aligned V.110 frames */
-	if (!osmo_csd_check_v110_align(ra_bits))
-		goto idle_fill;
-	if (!osmo_csd_check_v110_align(ra_bits + 80))
-		goto idle_fill;
-
-	/* all checks passed - copy the payload */
-	osmo_csd_v110_to_63bits(tf->d_bits, ra_bits);
-	osmo_csd_v110_to_63bits(tf->d_bits + second_offset, ra_bits + 80);
-	return;
+	}
 
 idle_fill:
 	memset(tf->d_bits, 1, 63);
@@ -1398,29 +1410,46 @@ static void rtp2trau_data_ir16(struct osmo_trau_frame *tf, const uint8_t *data,
 			       size_t data_len)
 {
 	ubit_t ra_bits[80 * 4];
+	int rc;
 
-	if (data_len != OSMO_CLEARMODE_20MS)
+	switch (data_len) {
+	case OSMO_CLEARMODE_20MS:
+		/* reverse RA2 first */
+		osmo_csd_ra2_16k_unpack(ra_bits, data, OSMO_CLEARMODE_20MS);
+		/* enforce 4 properly aligned V.110 frames */
+		if (!osmo_csd_check_v110_align(ra_bits))
+			goto idle_fill;
+		if (!osmo_csd_check_v110_align(ra_bits + 80))
+			goto idle_fill;
+		if (!osmo_csd_check_v110_align(ra_bits + 80 * 2))
+			goto idle_fill;
+		if (!osmo_csd_check_v110_align(ra_bits + 80 * 3))
+			goto idle_fill;
+		/* all checks passed - copy the payload */
+		osmo_csd_v110_to_63bits(tf->d_bits, ra_bits);
+		osmo_csd_v110_to_63bits(tf->d_bits + 63, ra_bits + 80);
+		osmo_csd_v110_to_63bits(tf->d_bits + 63 * 2, ra_bits + 80 * 2);
+		osmo_csd_v110_to_63bits(tf->d_bits + 63 * 3, ra_bits + 80 * 3);
+		return;
+	case OSMO_CCSD_PL_LEN_9k6:
+		rc = osmo_ccsd_unpack_v110_frame(tf->d_bits, data);
+		if (rc < 0)
+			goto idle_fill;
+		rc = osmo_ccsd_unpack_v110_frame(tf->d_bits + 63, data + 8);
+		if (rc < 0)
+			goto idle_fill;
+		rc = osmo_ccsd_unpack_v110_frame(tf->d_bits + 63 * 2,
+						 data + 8 * 2);
+		if (rc < 0)
+			goto idle_fill;
+		rc = osmo_ccsd_unpack_v110_frame(tf->d_bits + 63 * 3,
+						 data + 8 * 3);
+		if (rc < 0)
+			goto idle_fill;
+		return;
+	default:
 		goto idle_fill;
-
-	/* reverse RA2 first */
-	osmo_csd_ra2_16k_unpack(ra_bits, data, OSMO_CLEARMODE_20MS);
-
-	/* enforce 4 properly aligned V.110 frames */
-	if (!osmo_csd_check_v110_align(ra_bits))
-		goto idle_fill;
-	if (!osmo_csd_check_v110_align(ra_bits + 80))
-		goto idle_fill;
-	if (!osmo_csd_check_v110_align(ra_bits + 80 * 2))
-		goto idle_fill;
-	if (!osmo_csd_check_v110_align(ra_bits + 80 * 3))
-		goto idle_fill;
-
-	/* all checks passed - copy the payload */
-	osmo_csd_v110_to_63bits(tf->d_bits, ra_bits);
-	osmo_csd_v110_to_63bits(tf->d_bits + 63, ra_bits + 80);
-	osmo_csd_v110_to_63bits(tf->d_bits + 63 * 2, ra_bits + 80 * 2);
-	osmo_csd_v110_to_63bits(tf->d_bits + 63 * 3, ra_bits + 80 * 3);
-	return;
+	}
 
 idle_fill:
 	memset(tf->d_bits, 1, 63 * 4);
@@ -1532,6 +1561,7 @@ static int rtp2trau_edata(struct osmo_trau_frame *tf, const uint8_t *data,
 			  size_t data_len)
 {
 	ubit_t atrau_c4;
+	int rc;
 
 	tf->type = OSMO_TRAU16_FT_EDATA;
 
@@ -1541,9 +1571,12 @@ static int rtp2trau_edata(struct osmo_trau_frame *tf, const uint8_t *data,
 	/* set C6=0: indicate good reception of TRAU-UL frames */
 	tf->c_bits[5] = 0;
 
-	if (data_len == OSMO_CLEARMODE_20MS &&
-	    osmo_csd144_from_atrau_ra2(tf->m_bits, tf->d_bits, &atrau_c4, NULL,
-					data) >= 0) {
+	switch (data_len) {
+	case OSMO_CLEARMODE_20MS:
+		rc = osmo_csd144_from_atrau_ra2(tf->m_bits, tf->d_bits,
+						&atrau_c4, NULL, data);
+		if (rc < 0)
+			goto idle_fill;
 		/* We got good A-TRAU input.  3GPP specs define the following
 		 * mapping for DL direction only:
 		 *
@@ -1551,14 +1584,26 @@ static int rtp2trau_edata(struct osmo_trau_frame *tf, const uint8_t *data,
 		 * Spec references: TS 48.020 section 11.1, TS 48.060
 		 * section 6.5.1. */
 		tf->c_bits[6] = !atrau_c4;
-	} else {
-		/* We did not get good A-TRAU input: generate idle fill. */
-		memset(tf->m_bits, 1, 2);
-		memset(tf->d_bits, 1, 288);
-		/* C7=1 means idle */
-		tf->c_bits[6] = 1;
+		return 0;
+	case OSMO_CCSD_PL_LEN_14k4:
+		rc = osmo_ccsd_unpack_atrau_frame(tf->m_bits, tf->d_bits,
+						  &atrau_c4, NULL, data);
+		if (rc < 0)
+			goto idle_fill;
+		/* Semantics remains strictly unchanged between CLEARMODE
+		 * and compressed CSD. */
+		tf->c_bits[6] = !atrau_c4;
+		return 0;
+	default:
+		goto idle_fill;
 	}
 
+idle_fill:
+	/* We did not get good A-TRAU input: generate idle fill. */
+	memset(tf->m_bits, 1, 2);
+	memset(tf->d_bits, 1, 288);
+	/* C7=1 means idle */
+	tf->c_bits[6] = 1;
 	return 0;
 }
 
