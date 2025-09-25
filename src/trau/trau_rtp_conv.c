@@ -1260,6 +1260,7 @@ int trau2rtp_amr(uint8_t *out, const struct osmo_trau_frame *tf, enum osmo_amr_m
 /*
  * CSD support: converting TRAU frames of type 'data' to 64 kbit/s
  * like the RA part of TRAU, using RTP clearmode representation.
+ * Alternatively, emit compressed-CSD RTP payload format of TW-TS-007.
  */
 
 static int trau2rtp_data_fr(uint8_t *out, size_t out_len,
@@ -1286,6 +1287,34 @@ static int trau2rtp_data_fr(uint8_t *out, size_t out_len,
 	return OSMO_CLEARMODE_20MS;
 }
 
+static int trau2rtp_data_fr_ccsd(uint8_t *out, size_t out_len,
+				 const struct osmo_trau_frame *tf)
+{
+	int len;
+
+	/* function interface preliminaries */
+	if (tf->type != OSMO_TRAU16_FT_DATA)
+		return -EINVAL;
+	if (out_len < OSMO_CCSD_PL_LEN_9k6)
+		return -ENOSPC;
+
+	/* Is it TCH/F9.6 with 16 kbit/s IR,
+	 * or TCH/F4.8 or TCH/F2.4 with 8 kbit/s IR? */
+	if (tf->c_bits[5]) {
+		osmo_ccsd_pack_v110_frame(out, tf->d_bits);
+		osmo_ccsd_pack_v110_frame(out + 8, tf->d_bits + 63);
+		osmo_ccsd_pack_v110_frame(out + 16, tf->d_bits + 63 * 2);
+		osmo_ccsd_pack_v110_frame(out + 24, tf->d_bits + 63 * 3);
+		len = OSMO_CCSD_PL_LEN_9k6;
+	} else {
+		osmo_ccsd_pack_v110_frame(out, tf->d_bits);
+		osmo_ccsd_pack_v110_frame(out + 8, tf->d_bits + 63 * 2);
+		len = OSMO_CCSD_PL_LEN_4k8;
+	}
+
+	return len;
+}
+
 static int trau2rtp_data_hr16(uint8_t *out, size_t out_len,
 			      const struct osmo_trau_frame *tf)
 {
@@ -1305,8 +1334,27 @@ static int trau2rtp_data_hr16(uint8_t *out, size_t out_len,
 	return OSMO_CLEARMODE_20MS;
 }
 
+static int trau2rtp_data_hr16_ccsd(uint8_t *out, size_t out_len,
+				   const struct osmo_trau_frame *tf)
+{
+	/* function interface preliminaries */
+	if (tf->type != OSMO_TRAU16_FT_DATA_HR)
+		return -EINVAL;
+	if (out_len < OSMO_CCSD_PL_LEN_4k8)
+		return -ENOSPC;
+
+	/* Note that Osmocom trau_frame decoding and encoding API
+	 * puts the second reduced V.110 frame at d_bits position 63,
+	 * unlike 8 kbit/s IR in FR-data frame type where it resides
+	 * at d_bits position 63 * 2. */
+	osmo_ccsd_pack_v110_frame(out, tf->d_bits);
+	osmo_ccsd_pack_v110_frame(out + 8, tf->d_bits + 63);
+
+	return OSMO_CCSD_PL_LEN_4k8;
+}
+
 static int trau2rtp_data_hr8(uint8_t *out, size_t out_len,
-			      const struct osmo_trau_frame *tf)
+			     const struct osmo_trau_frame *tf)
 {
 	/* function interface preliminaries */
 	if (tf->type != OSMO_TRAU8_DATA)
@@ -1318,6 +1366,21 @@ static int trau2rtp_data_hr8(uint8_t *out, size_t out_len,
 	osmo_csd_63bits_to_v110_ir8(out + 80, tf->d_bits + 63);
 
 	return OSMO_CLEARMODE_20MS;
+}
+
+static int trau2rtp_data_hr8_ccsd(uint8_t *out, size_t out_len,
+				  const struct osmo_trau_frame *tf)
+{
+	/* function interface preliminaries */
+	if (tf->type != OSMO_TRAU8_DATA)
+		return -EINVAL;
+	if (out_len < OSMO_CCSD_PL_LEN_4k8)
+		return -ENOSPC;
+
+	osmo_ccsd_pack_v110_frame(out, tf->d_bits);
+	osmo_ccsd_pack_v110_frame(out + 8, tf->d_bits + 63);
+
+	return OSMO_CCSD_PL_LEN_4k8;
 }
 
 static int trau2rtp_edata(uint8_t *out, size_t out_len,
@@ -1335,6 +1398,24 @@ static int trau2rtp_edata(uint8_t *out, size_t out_len,
 	osmo_csd144_to_atrau_ra2(out, tf->m_bits, tf->d_bits, 1, tf->c_bits[5]);
 
 	return OSMO_CLEARMODE_20MS;
+}
+
+static int trau2rtp_edata_ccsd(uint8_t *out, size_t out_len,
+				const struct osmo_trau_frame *tf)
+{
+	/* function interface preliminaries */
+	if (tf->type != OSMO_TRAU16_FT_EDATA)
+		return -EINVAL;
+	if (out_len < OSMO_CCSD_PL_LEN_14k4)
+		return -ENOSPC;
+
+	/* Per TS 48.020 section 11.1:
+	 * A-TRAU bit C4 is always 1 in BSS->IWF direction
+	 * A-TRAU bit C5 comes from E-TRAU bit C6 */
+	osmo_ccsd_pack_atrau_frame(out, tf->m_bits, tf->d_bits, 1,
+				   tf->c_bits[5]);
+
+	return OSMO_CCSD_PL_LEN_14k4;
 }
 
 /*
@@ -1700,14 +1781,22 @@ int osmo_trau2rtp_ufe(uint8_t *out, size_t out_len, const struct osmo_trau_frame
 	case OSMO_TRAU16_FT_HR:
 		return trau2rtp_hr16(out, out_len, tf, check_twts002(st), ufe);
 	case OSMO_TRAU16_FT_DATA:
+		if (st->rtp_extensions & OSMO_RTP_EXT_TWTS007)
+			return trau2rtp_data_fr_ccsd(out, out_len, tf);
 		return trau2rtp_data_fr(out, out_len, tf);
 	case OSMO_TRAU16_FT_DATA_HR:
+		if (st->rtp_extensions & OSMO_RTP_EXT_TWTS007)
+			return trau2rtp_data_hr16_ccsd(out, out_len, tf);
 		return trau2rtp_data_hr16(out, out_len, tf);
 	case OSMO_TRAU16_FT_EDATA:
+		if (st->rtp_extensions & OSMO_RTP_EXT_TWTS007)
+			return trau2rtp_edata_ccsd(out, out_len, tf);
 		return trau2rtp_edata(out, out_len, tf);
 	case OSMO_TRAU8_SPEECH:
 		return trau2rtp_hr8(out, out_len, tf, check_twts002(st), ufe);
 	case OSMO_TRAU8_DATA:
+		if (st->rtp_extensions & OSMO_RTP_EXT_TWTS007)
+			return trau2rtp_data_hr8_ccsd(out, out_len, tf);
 		return trau2rtp_data_hr8(out, out_len, tf);
 	default:
 		return -EINVAL;
