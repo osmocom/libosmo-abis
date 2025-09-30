@@ -60,7 +60,8 @@ libosmotrau_la_SOURCES = trau/csd_ra2.c \
 			 trau/trau_frame.c \
 			 trau/trau_pcu_ericsson.c \
 			 trau/trau_sync.c \
-			 trau/trau_rtp_conv.c
+			 trau/trau_rtp_conv.c \
+			 trau/twts007.c
 
 if ENABLE_ORTP
 libosmotrau_la_SOURCES += trau/osmo_ortp.c

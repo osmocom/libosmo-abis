@@ -33,6 +33,7 @@ nobase_include_HEADERS = \
 	osmocom/trau/trau_pcu_ericsson.h \
 	osmocom/trau/trau_rtp.h \
 	osmocom/trau/trau_sync.h \
+	osmocom/trau/twts007.h \
 	$(NULL)
 
 if ENABLE_ORTP
