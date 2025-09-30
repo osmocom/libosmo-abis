@@ -22,6 +22,10 @@
 #include <errno.h>
 
 #include <osmocom/core/bits.h>
+#include <osmocom/trau/clearmode.h>
+#include <osmocom/trau/csd_ra2.h>
+#include <osmocom/trau/csd_raa_prime.h>
+#include <osmocom/trau/csd_v110.h>
 #include <osmocom/trau/twts007.h>
 
 /*! Pack V.110 frame content (distilled 63-bit form) into compressed form
@@ -125,4 +129,178 @@ int osmo_ccsd_unpack_atrau_frame(ubit_t *m_bits, ubit_t *d_bits,
 	m_bits[1] = (ccsd_bytes[0] >> 0) & 1;
 	osmo_pbit2ubit(d_bits, ccsd_bytes + 1, 288);
 	return 0;
+}
+
+static void compress_v110_frame(uint8_t *out, const ubit_t *ra_bits)
+{
+	ubit_t bits_64[64];
+
+	/* Do an inline equivalent of osmo_ccsd_pack_v110_frame()
+	 * to save the memcpy of 63 ubit_t. */
+	bits_64[0] = 1;
+	osmo_csd_v110_to_63bits(bits_64 + 1, ra_bits);
+	osmo_ubit2pbit(out, bits_64, 64);
+}
+
+static int compress_v110_ir8(uint8_t *outbuf, size_t outbuf_size,
+			     const uint8_t *input_pl)
+{
+	ubit_t ra_bits[80 * 2];
+
+	if (outbuf_size < OSMO_CCSD_PL_LEN_4k8)
+		return -ENOSPC;
+
+	/* reverse RA2 first */
+	osmo_csd_ra2_8k_unpack(ra_bits, input_pl, OSMO_CLEARMODE_20MS);
+
+	/* enforce two properly aligned V.110 frames */
+	if (!osmo_csd_check_v110_align(ra_bits))
+		return -EINVAL;
+	if (!osmo_csd_check_v110_align(ra_bits + 80))
+		return -EINVAL;
+
+	/* all checks passed - perform the conversion */
+	compress_v110_frame(outbuf, ra_bits);
+	compress_v110_frame(outbuf + 8, ra_bits + 80);
+	return OSMO_CCSD_PL_LEN_4k8;
+}
+
+static int compress_v110_ir16(uint8_t *outbuf, size_t outbuf_size,
+			      const uint8_t *input_pl)
+{
+	ubit_t ra_bits[80 * 4];
+
+	if (outbuf_size < OSMO_CCSD_PL_LEN_9k6)
+		return -ENOSPC;
+
+	/* reverse RA2 first */
+	osmo_csd_ra2_16k_unpack(ra_bits, input_pl, OSMO_CLEARMODE_20MS);
+
+	/* enforce four properly aligned V.110 frames */
+	if (!osmo_csd_check_v110_align(ra_bits))
+		return -EINVAL;
+	if (!osmo_csd_check_v110_align(ra_bits + 80))
+		return -EINVAL;
+	if (!osmo_csd_check_v110_align(ra_bits + 80 * 2))
+		return -EINVAL;
+	if (!osmo_csd_check_v110_align(ra_bits + 80 * 3))
+		return -EINVAL;
+
+	/* all checks passed - perform the conversion */
+	compress_v110_frame(outbuf, ra_bits);
+	compress_v110_frame(outbuf + 8, ra_bits + 80);
+	compress_v110_frame(outbuf + 8 * 2, ra_bits + 80 * 2);
+	compress_v110_frame(outbuf + 8 * 3, ra_bits + 80 * 3);
+	return OSMO_CCSD_PL_LEN_9k6;
+}
+
+static int compress_atrau(uint8_t *outbuf, size_t outbuf_size,
+			  const uint8_t *input_pl)
+{
+	ubit_t d_bits[288], m_bits[2], atrau_c4, atrau_c5;
+	int rc;
+
+	if (outbuf_size < OSMO_CCSD_PL_LEN_14k4)
+		return -ENOSPC;
+	rc = osmo_csd144_from_atrau_ra2(m_bits, d_bits, &atrau_c4, &atrau_c5,
+					input_pl);
+	if (rc < 0)
+		return rc;
+	osmo_ccsd_pack_atrau_frame(outbuf, m_bits, d_bits, atrau_c4, atrau_c5);
+	return OSMO_CCSD_PL_LEN_14k4;
+}
+
+/*! Compression function of TW-TS-007 section 8.1: convert RTP payload
+ *  from standard-but-aligned CLEARMODE to compressed CSD.
+ *  \param[out] outbuf Caller-provided buffer for compressed CSD payload
+ *  \param[in] outbuf_size Space available in \ref outbuf
+ *  \param[in] input_pl Received CLEARMODE payload
+ *  \param[in] input_pl_len Length of received payload
+ *  \returns output payload length if successful, negative on errors
+ */
+int osmo_ccsd_compress(uint8_t *outbuf, size_t outbuf_size,
+			const uint8_t *input_pl, size_t input_pl_len)
+{
+	if (input_pl_len != OSMO_CLEARMODE_20MS)
+		return -EINVAL;
+	/* format autodetection per TW-TS-007 section 8.1.1 */
+	if (input_pl[0] & 0x40)
+		return compress_v110_ir8(outbuf, outbuf_size, input_pl);
+	if (input_pl[4] & 0x80)
+		return compress_v110_ir16(outbuf, outbuf_size, input_pl);
+	return compress_atrau(outbuf, outbuf_size, input_pl);
+}
+
+static int decompress_v110_ir8(uint8_t *outbuf, const uint8_t *input_pl)
+{
+	int i;
+	ubit_t bits_64[64];
+
+	for (i = 0; i < 2; i++) {
+		/* Do an inline equivalent of osmo_ccsd_unpack_v110_frame()
+		 * to save the memcpy of 63 ubit_t. */
+		osmo_pbit2ubit(bits_64, input_pl, 64);
+		if (!bits_64[0])
+			return -EINVAL;
+		osmo_csd_63bits_to_v110_ir8(outbuf, bits_64 + 1);
+		input_pl += 8;
+		outbuf += 80;
+	}
+	return OSMO_CLEARMODE_20MS;
+}
+
+static int decompress_v110_ir16(uint8_t *outbuf, const uint8_t *input_pl)
+{
+	int i;
+	ubit_t bits_64[64];
+
+	for (i = 0; i < 4; i++) {
+		/* Do an inline equivalent of osmo_ccsd_unpack_v110_frame()
+		 * to save the memcpy of 63 ubit_t. */
+		osmo_pbit2ubit(bits_64, input_pl, 64);
+		if (!bits_64[0])
+			return -EINVAL;
+		osmo_csd_63bits_to_v110_ir16(outbuf, bits_64 + 1);
+		input_pl += 8;
+		outbuf += 40;
+	}
+	return OSMO_CLEARMODE_20MS;
+}
+
+static int decompress_atrau(uint8_t *outbuf, const uint8_t *input_pl)
+{
+	ubit_t d_bits[288], m_bits[2], atrau_c4, atrau_c5;
+	int rc;
+
+	rc = osmo_ccsd_unpack_atrau_frame(m_bits, d_bits, &atrau_c4, &atrau_c5,
+					  input_pl);
+	if (rc < 0)
+		return rc;
+	osmo_csd144_to_atrau_ra2(outbuf, m_bits, d_bits, atrau_c4, atrau_c5);
+	return OSMO_CLEARMODE_20MS;
+}
+
+/*! Decompression function of TW-TS-007 section 8.2: convert RTP payload
+ *  from compressed CSD to standard CLEARMODE.
+ *  \param[out] outbuf Caller-provided buffer for CLEARMODE payload
+ *  \param[in] outbuf_size Space available in \ref outbuf
+ *  \param[in] input_pl Received compressed CSD payload
+ *  \param[in] input_pl_len Length of received payload
+ *  \returns output payload length if successful, negative on errors
+ */
+int osmo_ccsd_decompress(uint8_t *outbuf, size_t outbuf_size,
+			 const uint8_t *input_pl, size_t input_pl_len)
+{
+	if (outbuf_size < OSMO_CLEARMODE_20MS)
+		return -ENOSPC;
+	switch (input_pl_len) {
+	case OSMO_CCSD_PL_LEN_4k8:
+		return decompress_v110_ir8(outbuf, input_pl);
+	case OSMO_CCSD_PL_LEN_9k6:
+		return decompress_v110_ir16(outbuf, input_pl);
+	case OSMO_CCSD_PL_LEN_14k4:
+		return decompress_atrau(outbuf, input_pl);
+	default:
+		return -EINVAL;
+	}
 }

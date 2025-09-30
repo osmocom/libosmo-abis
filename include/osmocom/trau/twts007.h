@@ -40,3 +40,11 @@ int osmo_ccsd_unpack_v110_frame(ubit_t *bits_63, const uint8_t *ccsd_bytes);
 int osmo_ccsd_unpack_atrau_frame(ubit_t *m_bits, ubit_t *d_bits,
 				 ubit_t *atrau_c4, ubit_t *atrau_c5,
 				 const uint8_t *ccsd_bytes);
+
+/* compression and decompression functions: conversion between CLEARMODE
+ * and TW-TS-007 formats */
+
+int osmo_ccsd_compress(uint8_t *outbuf, size_t outbuf_size,
+			const uint8_t *input_pl, size_t input_pl_len);
+int osmo_ccsd_decompress(uint8_t *outbuf, size_t outbuf_size,
+			 const uint8_t *input_pl, size_t input_pl_len);
