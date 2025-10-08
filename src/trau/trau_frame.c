@@ -61,12 +61,14 @@ const struct value_string osmo_trau_frame_type_names[] = {
 	{ OSMO_TRAU16_FT_D145_SYNC,	"D145_SYNC" },
 	{ OSMO_TRAU16_FT_DATA_HR,	"DATA_HR" },
 	{ OSMO_TRAU16_FT_IDLE,		"IDLE" },
+	{ OSMO_TRAU16_FT_CONFIG,	"CONFIG" },
 	{ OSMO_TRAU8_SPEECH,		"8SPEECH" },
 	{ OSMO_TRAU8_DATA,		"8DATA" },
 	{ OSMO_TRAU8_OAM,		"8OAM" },
 	{ OSMO_TRAU8_AMR_LOW,		"8AMR_LOW" },
 	{ OSMO_TRAU8_AMR_6k7,		"8AMR_6k7" },
 	{ OSMO_TRAU8_AMR_7k4,		"8AMR_7k4" },
+	{ OSMO_TRAU8_CONFIG,		"8CONFIG" },
 	{ 0, NULL }
 };
 
@@ -763,6 +765,57 @@ static int encode16_data_hr(ubit_t *trau_bits, const struct osmo_trau_frame *fr)
 	return 40 * 8;
 }
 
+/* TS 48.060 sections 5.1.5 and 5.5.1.5: generic configuration frames */
+
+static int decode16_gcf(struct osmo_trau_frame *fr, const ubit_t *trau_bits,
+			enum osmo_trau_frame_direction dir)
+{
+	int i, d_idx;
+
+	/* C1 .. C5 */
+	memcpy(fr->c_bits, trau_bits + 17, 5);
+
+	/* D1 .. D10 */
+	memcpy(fr->d_bits, trau_bits + 22, 10);
+	d_idx = 10;
+	/* D11 .. D265 */
+	for (i = 32; i < 304; i += 16) {
+		memcpy(fr->d_bits + d_idx, trau_bits + i + 1, 15);
+		d_idx += 15;
+	}
+	/* D266 .. D276 */
+	memcpy(fr->d_bits + d_idx, trau_bits + 305, 11);
+
+	/* T1 .. T4 */
+	memcpy(fr->t_bits, trau_bits + 316, 4);
+
+	return 0;
+}
+
+static int encode16_gcf(ubit_t *trau_bits, const struct osmo_trau_frame *fr)
+{
+	int i, d_idx;
+
+	encode_sync16(trau_bits);
+
+	/* C1 .. C5 */
+	memcpy(trau_bits + 17, fr->c_bits, 5);
+	/* D1 .. D10 */
+	memcpy(trau_bits + 22, fr->d_bits, 10);
+
+	/* D11 .. D276 */
+	for (i = 32, d_idx = 10; i <= 315; i += 16, d_idx += 15) {
+		trau_bits[i] = 1;
+		memcpy(trau_bits + i + 1, fr->d_bits + d_idx, 15);
+	}
+
+	/* T1 .. T4 */
+	memcpy(trau_bits + 316, fr->t_bits, 4);
+
+	/* handle timing adjustment */
+	return encode16_handle_ta(trau_bits, fr);
+}
+
 /* TS 08.61 Section 5.2.1.1 */
 static int decode8_hr(struct osmo_trau_frame *fr, const ubit_t *trau_bits,
 		      enum osmo_trau_frame_direction dir)
@@ -1229,6 +1282,70 @@ static int encode8_oam(ubit_t *trau_bits, const struct osmo_trau_frame *fr)
 	return 20 * 8;
 }
 
+/* TS 48.061 section 5.2.1.3: generic configuration frames */
+
+static int decode8_gcf(struct osmo_trau_frame *fr, const ubit_t *trau_bits,
+		       enum osmo_trau_frame_direction dir)
+{
+	int i, d_idx = 0;
+
+	/* C1 .. C5 */
+	memcpy(fr->c_bits, trau_bits + 1 * 8 + 1, 5);
+	/* D1 .. D2 */
+	memcpy(fr->d_bits + d_idx, trau_bits + 1 * 8 + 6, 2);
+	d_idx += 2;
+	/* D3 .. D8 */
+	memcpy(fr->d_bits + d_idx, trau_bits + 2 * 8 + 2, 6);
+	d_idx += 6;
+	/* D9 .. D120 */
+	for (i = 3; i < 19; i++) {
+		memcpy(fr->d_bits + d_idx, trau_bits + i * 8 + 1, 7);
+		d_idx += 7;
+	}
+	/* D121 .. D125 */
+	memcpy(fr->d_bits + d_idx, trau_bits + 19 * 8 + 1, 5);
+
+	/* T1 .. T2 */
+	memcpy(fr->t_bits, trau_bits + 19 * 8 + 6, 2);
+
+	return 0;
+}
+
+static int encode8_gcf(ubit_t *trau_bits, const struct osmo_trau_frame *fr)
+{
+	int i, d_idx = 0;
+
+	/* sync pattern */
+	memset(trau_bits, 0, 8);
+	trau_bits[1 * 8 + 0] = 1;
+	trau_bits[2 * 8 + 0] = 0;
+	trau_bits[2 * 8 + 1] = 1;
+	for (i = 3; i < 20; i++)
+		trau_bits[i * 8] = 1;
+
+	/* C1 .. C5 */
+	memcpy(trau_bits + 1 * 8 + 1, fr->c_bits, 5);
+	/* D1 .. D2 */
+	memcpy(trau_bits + 1 * 8 + 6, fr->d_bits + d_idx, 2);
+	d_idx += 2;
+	/* D3 .. D8 */
+	memcpy(trau_bits + 2 * 8 + 2, fr->d_bits + d_idx, 6);
+	d_idx += 6;
+	/* D9 .. D120 */
+	for (i = 3; i < 19; i++) {
+		memcpy(trau_bits + i * 8 + 1, fr->d_bits + d_idx, 7);
+		d_idx += 7;
+	}
+	/* D121 .. D125 */
+	memcpy(trau_bits + 19 * 8 + 1, fr->d_bits + d_idx, 5);
+
+	/* T1 .. T2 */
+	memcpy(trau_bits + 19 * 8 + 6, fr->t_bits, 2);
+
+	/* handle timing adjustment */
+	return encode8_handle_ta(trau_bits, fr);
+}
+
 
 /*! Encode a TRAU frame from its decoded representation to a sequence of unpacked bits.
  *  \param[out] bits caller-allocated buffer for unpacked output bits
@@ -1250,17 +1367,18 @@ static int encode8_oam(ubit_t *trau_bits, const struct osmo_trau_frame *fr)
  * The following list summarizes the behavior of the present function with
  * regard to C1..C5 bits for different frame types:
  *
- * - For all TRAU-16k frame types in both UL and DL directions, and for
- *   OSMO_TRAU8_SPEECH (TRAU-8k for HRv1 speech) in UL direction, the first 5
- *   bits of fr->c_bits[] are ignored and replaced with internally supplied
- *   constant values.
+ * - For all TRAU-16k frame types in both UL and DL directions, with the
+ *   exception of newly added OSMO_TRAU16_FT_CONFIG, and for OSMO_TRAU8_SPEECH
+ *   (TRAU-8k for HRv1 speech) in UL direction, the first 5 bits of fr->c_bits[]
+ *   are ignored and replaced with internally supplied constant values.
  *
  * - For OSMO_TRAU8_SPEECH in DL direction, only fr->c_bits[3] is used to set
  *   C4; constant values for C1..C3 and odd parity value for C5 are fixed
  *   by the function.
  *
- * - For OSMO_TRAU8_DATA, OSMO_TRAU8_OAM and all AMR-8k frame types,
- *   user-supplied fr->c_bits[] are always used.
+ * - For OSMO_TRAU8_DATA, OSMO_TRAU8_OAM and all AMR-8k frame types, as well as
+ *   newly added OSMO_TRAU16_FT_CONFIG and OSMO_TRAU8_CONFIG, user-supplied
+ *   fr->c_bits[] are always used.
  *
  * This unfortunate manipulation applies only to C1..C5 as listed above;
  * for control bits C6 and higher (for frame types that have them),
@@ -1277,6 +1395,7 @@ int osmo_trau_frame_encode(ubit_t *bits, size_t n_bits, const struct osmo_trau_f
 	case OSMO_TRAU16_FT_HR:
 	case OSMO_TRAU16_FT_AMR:
 	case OSMO_TRAU16_FT_IDLE:
+	case OSMO_TRAU16_FT_CONFIG:
 		/* timing alignment may happen: increased space requirement */
 		if (fr->dir == OSMO_TRAU_DIR_DL && fr->dl_ta_usec > 0)
 			space_req = 2 * 40 * 8 - 1;
@@ -1294,6 +1413,7 @@ int osmo_trau_frame_encode(ubit_t *bits, size_t n_bits, const struct osmo_trau_f
 	case OSMO_TRAU8_AMR_LOW:
 	case OSMO_TRAU8_AMR_6k7:
 	case OSMO_TRAU8_AMR_7k4:
+	case OSMO_TRAU8_CONFIG:
 		/* timing alignment may happen: increased space requirement */
 		if (fr->dir == OSMO_TRAU_DIR_DL && fr->dl_ta_usec > 0)
 			space_req = 2 * 20 * 8 - 1;
@@ -1330,6 +1450,8 @@ int osmo_trau_frame_encode(ubit_t *bits, size_t n_bits, const struct osmo_trau_f
 		return encode16_d145_sync(bits, fr);
 	case OSMO_TRAU16_FT_EDATA:
 		return encode16_edata(bits, fr);
+	case OSMO_TRAU16_FT_CONFIG:
+		return encode16_gcf(bits, fr);
 	case OSMO_TRAU8_SPEECH:
 		return encode8_hr(bits, fr, false);
 	case OSMO_TRAU8_DATA:
@@ -1342,6 +1464,8 @@ int osmo_trau_frame_encode(ubit_t *bits, size_t n_bits, const struct osmo_trau_f
 		return encode8_amr_67(bits, fr);
 	case OSMO_TRAU8_AMR_7k4:
 		return encode8_amr_74(bits, fr);
+	case OSMO_TRAU8_CONFIG:
+		return encode8_gcf(bits, fr);
 	default:
 		return -EINVAL;
 	}
@@ -1371,6 +1495,7 @@ int osmo_trau_frame_encode_tfo(ubit_t *bits, size_t n_bits, const struct osmo_tr
 	case OSMO_TRAU16_FT_FR:
 	case OSMO_TRAU16_FT_EFR:
 	case OSMO_TRAU16_FT_AMR:
+	case OSMO_TRAU16_FT_CONFIG:
 		if (n_bits < 1 * 40 * 8)
 			return -ENOSPC;
 		break;
@@ -1378,6 +1503,7 @@ int osmo_trau_frame_encode_tfo(ubit_t *bits, size_t n_bits, const struct osmo_tr
 	case OSMO_TRAU8_AMR_LOW:
 	case OSMO_TRAU8_AMR_6k7:
 	case OSMO_TRAU8_AMR_7k4:
+	case OSMO_TRAU8_CONFIG:
 		if (n_bits < 1 * 20 * 8)
 			return -ENOSPC;
 		break;
@@ -1391,6 +1517,8 @@ int osmo_trau_frame_encode_tfo(ubit_t *bits, size_t n_bits, const struct osmo_tr
 		return encode16_fr(bits, fr, true);
 	case OSMO_TRAU16_FT_AMR:
 		return encode16_amr(bits, fr, true);
+	case OSMO_TRAU16_FT_CONFIG:
+		return encode16_gcf(bits, fr);
 	case OSMO_TRAU8_SPEECH:
 		return encode8_hr(bits, fr, true);
 	case OSMO_TRAU8_AMR_LOW:
@@ -1399,6 +1527,8 @@ int osmo_trau_frame_encode_tfo(ubit_t *bits, size_t n_bits, const struct osmo_tr
 		return encode8_amr_67(bits, fr);
 	case OSMO_TRAU8_AMR_7k4:
 		return encode8_amr_74(bits, fr);
+	case OSMO_TRAU8_CONFIG:
+		return encode8_gcf(bits, fr);
 	default:
 		return -EINVAL;
 	}
@@ -1455,6 +1585,9 @@ int osmo_trau_frame_decode_16k(struct osmo_trau_frame *fr, const ubit_t *bits,
 	case TRAU_FT_D145_SYNC:
 		fr->type = OSMO_TRAU16_FT_D145_SYNC;
 		return decode16_data(fr, bits, dir);
+	case TRAU_FT_CONFIG_EXCH:
+		fr->type = OSMO_TRAU16_FT_CONFIG;
+		return decode16_gcf(fr, bits, dir);
 
 	default:
 		return -EINVAL;
@@ -1499,6 +1632,9 @@ int osmo_trau_frame_decode_tfo_16k(struct osmo_trau_frame *fr, const ubit_t *bit
 	case 0xB:	/* OHR_AMR */
 		fr->type = OSMO_TRAU16_FT_AMR;
 		return decode16_amr(fr, bits, fr->dir);
+	case TRAU_FT_CONFIG_EXCH >> 1:
+		fr->type = OSMO_TRAU16_FT_CONFIG;
+		return decode16_gcf(fr, bits, fr->dir);
 	default:
 		return -EINVAL;
 	}
@@ -1617,6 +1753,9 @@ int osmo_trau_frame_decode_8k(struct osmo_trau_frame *fr, const ubit_t *bits,
 			case 0x0B:
 				fr->type = OSMO_TRAU8_OAM;
 				return decode8_oam(fr, bits, dir);
+			case 0x1F:
+				fr->type = OSMO_TRAU8_CONFIG;
+				return decode8_gcf(fr, bits, dir);
 			}
 		} else {
 			/* Downlink */
@@ -1630,6 +1769,9 @@ int osmo_trau_frame_decode_8k(struct osmo_trau_frame *fr, const ubit_t *bits,
 			case 2:
 				fr->type = OSMO_TRAU8_OAM;
 				return decode8_oam(fr, bits, dir);
+			case 7:
+				fr->type = OSMO_TRAU8_CONFIG;
+				return decode8_gcf(fr, bits, dir);
 			}
 		}
 	} else if (is_amr_low(bits)) {
@@ -1665,18 +1807,31 @@ int osmo_trau_frame_decode_8k(struct osmo_trau_frame *fr, const ubit_t *bits,
  * no need to distinguish between HRv1 and AMR-8k frames by their respective
  * sync patterns: per TS 28.062, these two TFO frame types never occur
  * in the same bit position in TFO-superimposed PCM speech octets.
- * Because HRv1 is the only TFO frame type that can occur in the configuration
- * of TS 28.062 section 5.3 (only the one lsb in each PCM speech octet is
- * overwritten), this function skips all attempts at frame type classification:
- * the TFO application is responsible for detecting the presence of valid
- * TFO frames for the negotiated codec type.
+ *
+ * Frame type bits C1..C4 are checked only to distinguish between regular
+ * HRv1 speech frames and Generic Configuration Frames of TS 28.062 Annex H:
+ * Rel5+ versions of TFO spec allow these GCFs to be used with all codecs
+ * if both ends of TFO connection implement Rel5+ version of TFO.
  */
 int osmo_trau_frame_decode_tfo_hr1(struct osmo_trau_frame *fr, const ubit_t *bits)
 {
-	fr->type = OSMO_TRAU8_SPEECH;
+	uint8_t cbits4 = get_bits(bits, 9, 4);
+	/* We don't look at bit C5 because it is EMBED bit in TFO frames */
+
+	fr->type = OSMO_TRAU_FT_NONE;
 	fr->dir = OSMO_TRAU_DIR_UL;	/* TFO frames are modified TRAU-UL */
 	fr->dl_ta_usec = 0;
-	return decode8_hr(fr, bits, fr->dir);
+
+	switch (cbits4) {
+	case 0x01:
+		fr->type = OSMO_TRAU8_SPEECH;
+		return decode8_hr(fr, bits, fr->dir);
+	case 0x0F:
+		fr->type = OSMO_TRAU8_CONFIG;
+		return decode8_gcf(fr, bits, fr->dir);
+	default:
+		return -EINVAL;
+	}
 }
 
 /*! Decode/parse an AMR_TFO_8+8k frame from unpacked bits to decoded format.
@@ -1690,7 +1845,8 @@ int osmo_trau_frame_decode_tfo_hr1(struct osmo_trau_frame *fr, const ubit_t *bit
  * The second lsb extracted from PCM samples is the entity being decoded here.
  * Compared to osmo_trau_frame_decode_8k(), the present function requires
  * the direction to be TRAU-UL (as always the case in TFO) and accepts
- * only AMR-8k frame types.
+ * only AMR-8k frame types, or Generic Configuration Frames of TS 28.062
+ * Annex H that are used in Rel5+ version of TFO.
  */
 int osmo_trau_frame_decode_tfo_amr_8k(struct osmo_trau_frame *fr, const ubit_t *bits)
 {
@@ -1707,6 +1863,9 @@ int osmo_trau_frame_decode_tfo_amr_8k(struct osmo_trau_frame *fr, const ubit_t *
 	} else if (is_amr_74(bits)) {
 		fr->type = OSMO_TRAU8_AMR_7k4;
 		return decode8_amr_74(fr, bits, fr->dir);
+	} else if (is_hr(bits) && get_bits(bits, 9, 4) == 0x0F) {
+		fr->type = OSMO_TRAU8_CONFIG;
+		return decode8_gcf(fr, bits, fr->dir);
 	}
 
 	return -EINVAL;

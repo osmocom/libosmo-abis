@@ -62,6 +62,7 @@
 #define TRAU_FT_EDATA		0x1f	/* 1 1 1 1 1 - 3.5.4 */
 #define TRAU_FT_IDLE_UP		0x10	/* 1 0 0 0 0 - 3.5.5 */
 #define TRAU_FT_IDLE_DOWN	0x0e	/* 0 1 1 1 0 - 3.5.5 */
+#define TRAU_FT_CONFIG_EXCH	0x1e	/* 1 1 1 1 0 - TS 48.060 5.5.1.5 */
 
 /* 8k sub-slot types: Bits C1..C5*/
 #define TRAU8_FT_SPEECH_UP	0x02	/* 0 0 0 1 P - TS 08.61 5.2.4.1.1 */
@@ -94,6 +95,10 @@ enum osmo_trau_frame_type {
 	OSMO_TRAU8_AMR_LOW,
 	OSMO_TRAU8_AMR_6k7,
 	OSMO_TRAU8_AMR_7k4,
+
+	/* new types at the end, for ABI compatibility */
+	OSMO_TRAU16_FT_CONFIG,
+	OSMO_TRAU8_CONFIG,
 };
 
 extern const struct value_string osmo_trau_frame_type_names[];
