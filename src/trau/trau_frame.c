@@ -397,7 +397,7 @@ static int encode16_oam(ubit_t *trau_bits, const struct osmo_trau_frame *fr)
 	/* C1 .. C5 */
 	memcpy(trau_bits + 17, cbits5, 5);
 	/* C6 .. C15 */
-	memcpy(trau_bits + 17 + 5, fr->c_bits, 15 - 5);
+	memcpy(trau_bits + 17 + 5, fr->c_bits + 5, 15 - 5);
 
 	/* D1 .. D255 */
 	for (i = 32, d_idx = 0; i < 304; i += 16, d_idx += 15) {
