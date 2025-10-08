@@ -1268,6 +1268,8 @@ static int encode8_oam(ubit_t *trau_bits, const struct osmo_trau_frame *fr)
  */
 int osmo_trau_frame_encode(ubit_t *bits, size_t n_bits, const struct osmo_trau_frame *fr)
 {
+	size_t space_req;
+
 	/* check for sufficient space provided by caller in output buffer */
 	switch (fr->type) {
 	case OSMO_TRAU16_FT_FR:
@@ -1276,35 +1278,37 @@ int osmo_trau_frame_encode(ubit_t *bits, size_t n_bits, const struct osmo_trau_f
 	case OSMO_TRAU16_FT_AMR:
 	case OSMO_TRAU16_FT_IDLE:
 		/* timing alignment may happen: increased space requirement */
-		if (n_bits < 2 * 40 * 8 - 1)
-			return -ENOSPC;
+		if (fr->dir == OSMO_TRAU_DIR_DL && fr->dl_ta_usec > 0)
+			space_req = 2 * 40 * 8 - 1;
+		else
+			space_req = 1 * 40 * 8;
 		break;
 	case OSMO_TRAU16_FT_OAM:
 	case OSMO_TRAU16_FT_DATA_HR:
 	case OSMO_TRAU16_FT_DATA:
 	case OSMO_TRAU16_FT_D145_SYNC:
 	case OSMO_TRAU16_FT_EDATA:
-		if (n_bits < 1 * 40 * 8)
-			return -ENOSPC;
+		space_req = 1 * 40 * 8;
 		break;
 	case OSMO_TRAU8_SPEECH:
 	case OSMO_TRAU8_AMR_LOW:
 	case OSMO_TRAU8_AMR_6k7:
 	case OSMO_TRAU8_AMR_7k4:
 		/* timing alignment may happen: increased space requirement */
-		if (n_bits < 2 * 20 * 8 - 1)
-			return -ENOSPC;
+		if (fr->dir == OSMO_TRAU_DIR_DL && fr->dl_ta_usec > 0)
+			space_req = 2 * 20 * 8 - 1;
+		else
+			space_req = 1 * 20 * 8;
 		break;
 	case OSMO_TRAU8_DATA:
 	case OSMO_TRAU8_OAM:
-		if (n_bits < 1 * 20 * 8)
-			return -ENOSPC;
-		break;
-	case OSMO_TRAU_FT_NONE:
+		space_req = 1 * 20 * 8;
 		break;
 	default:
 		return -EINVAL;
 	}
+	if (n_bits < space_req)
+		return -ENOSPC;
 
 	switch (fr->type) {
 	case OSMO_TRAU16_FT_FR:
@@ -1338,7 +1342,6 @@ int osmo_trau_frame_encode(ubit_t *bits, size_t n_bits, const struct osmo_trau_f
 		return encode8_amr_67(bits, fr);
 	case OSMO_TRAU8_AMR_7k4:
 		return encode8_amr_74(bits, fr);
-	case OSMO_TRAU_FT_NONE:
 	default:
 		return -EINVAL;
 	}
