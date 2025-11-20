@@ -1045,15 +1045,15 @@ static int decode8_amr_67(struct osmo_trau_frame *fr, const ubit_t *trau_bits,
 	/* D8 .. D11 */
 	memcpy(fr->d_bits + d_idx, trau_bits + 2 * 8 + 4, 4);
 	d_idx += 4;
-	/* D12 .. D39 */
-	for (i = 3; i < 7; i++) {
+	/* D12 .. D32 */
+	for (i = 3; i < 6; i++) {
 		int offset = i * 8;
-		memcpy(fr->d_bits + d_idx, trau_bits + offset + 2, 7);
+		memcpy(fr->d_bits + d_idx, trau_bits + offset + 1, 7);
 		d_idx += 7;
 	}
 
-	/* D40 .. D137 */
-	for (i = 7; i < 20; i+= 2) {
+	/* D33 .. D137 */
+	for (i = 6; i < 20; i += 2) {
 		int offset = i * 8;
 		memcpy(fr->d_bits + d_idx, trau_bits + offset + 1, 15);
 		d_idx += 15;
@@ -1074,7 +1074,7 @@ static int encode8_amr_67(ubit_t *trau_bits, const struct osmo_trau_frame *fr)
 	trau_bits[3 * 8] = 1;
 	trau_bits[4 * 8] = 1;
 	trau_bits[5 * 8] = 0;
-	for (i = 5; i < 20; i += 2)
+	for (i = 6; i < 20; i += 2)
 		trau_bits[i * 8] = 1;
 
 	/* D1 .. D7 */
@@ -1085,15 +1085,15 @@ static int encode8_amr_67(ubit_t *trau_bits, const struct osmo_trau_frame *fr)
 	/* D8 .. D11 */
 	memcpy(trau_bits + 2 * 8 + 4, fr->d_bits + d_idx, 4);
 	d_idx += 4;
-	/* D12 .. D39 */
-	for (i = 3; i < 7; i++) {
+	/* D12 .. D32 */
+	for (i = 3; i < 6; i++) {
 		int offset = i * 8;
-		memcpy(trau_bits + offset + 2, fr->d_bits + d_idx, 7);
+		memcpy(trau_bits + offset + 1, fr->d_bits + d_idx, 7);
 		d_idx += 7;
 	}
 
-	/* D40 .. D137 */
-	for (i = 7; i < 20; i+= 2) {
+	/* D33 .. D137 */
+	for (i = 6; i < 20; i += 2) {
 		int offset = i * 8;
 		memcpy(trau_bits + offset + 1, fr->d_bits + d_idx, 15);
 		d_idx += 15;
