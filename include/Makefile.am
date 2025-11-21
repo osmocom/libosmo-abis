@@ -24,6 +24,7 @@ nobase_include_HEADERS = \
 	osmocom/abis/trau_frame.h \
 	osmocom/abis/unixsocket_proto.h \
 	osmocom/abis/version.h \
+	osmocom/trau/amr_trau.h \
 	osmocom/trau/clearmode.h \
 	osmocom/trau/csd_ra2.h \
 	osmocom/trau/csd_raa_prime.h \

@@ -40,6 +40,8 @@ tests/testsuite.log
 tests/subchan_demux/.dirstamp
 tests/subchan_demux/subchan_demux_test
 tests/ipa_recv/ipa_recv_test
+tests/amr/trau2rtp_amr
+tests/amr/rtp2trau_amr
 tests/raa_prime/test_dec
 tests/raa_prime/test_enc
 tests/tfo/rtp2tfo

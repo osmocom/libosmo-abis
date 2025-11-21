@@ -1,0 +1,97 @@
+# This unit test data file is a collection of TRAU-AMR-8k frames, to be
+# presented to osmo_amrt_decode_trau_frame() in sequence by way of trau2rtp_amr
+# test program.
+
+# The following frames have been emitted by Nokia TCSM2 TRAU under these
+# conditions:
+#
+# - PCM circuit type F;
+# - TRAU channel activated in AMR-8k mode with DTXd enabled;
+# - CMR set to 0 (MR475) in the UL frame stream fed to the TRAU;
+# - G.711 PCMA input was constant 0x54 (idle).
+#
+# Since the input was a form of silence (but not EHF) and DTXd was enabled,
+# the TRAU emitted 7 speech frames (encoding the silence) followed by AMR DTX
+# pattern of one Sid_Update every 8 frames.
+#
+# Please note that unlike FR/EFR, AMR TRAU frame format and semantics are
+# exactly the same in UL and DL directions.  Therefore, frames emitted
+# by a historical hardware TRAU are just as good for unit test purposes
+# as those emitted by an E1 BTS - but much easier to produce in Themyscira lab.
+
+RESET
+00fd8e53bb94908390889e8097c0f0c1f886dfff
+00f6bc72e39e958f80889e81d7c0b192f886dfff
+00f38d7ed1ee948380989e81d7c0b0b5f886dfff
+00f3bd63e39e948380b89e81d7c0b0b5f886dfff
+00ff8f71c1ee948380a09e81d7c0b0b5f886dfff
+00f3bd63e39e948380b89e81d7c0b0b5f886dfff
+00ff8f71c1ee948380a09e81d7c0b0b5f886dfff
+0081d360bffffffffff883ffffffffffffffffff
+0081c040bffffffffff883ffffffffffffffffff
+0081d040bffffffffff883ffffffffffffffffff
+0081c26089d8f89ba09883ffffffffffffffffff
+0081d040bffffffffff883ffffffffffffffffff
+
+# The following frames have been emitted by the same Nokia TCSM2 TRAU
+# under these slightly different conditions:
+#
+# - G.711 PCMA input was constant 0xD5 (silence);
+# - CMR in the UL frame stream fed to the TRAU (itt-ater-16 test program)
+#   was manually stepped through modes 0 through 4, the 5 possible modes
+#   for TRAU-AMR-8k.
+#
+# G.711 A-law (but not mu-law) has this quirk whereby the silence code (0xD5)
+# decodes into 0x0008 in 16-bit linear PCM, rather than solid 0 - and all GSM
+# speech encoders, including AMR, interpret a frame of all 0x0008 samples as
+# an encoder homing frame (EHF).  TCSM2 AMR speech encoder also behaves in this
+# manner, hence the DL output from the TRAU channel was nothing but endless
+# DHFs.  This stream of DHFs exhibits mode switches on RIF=0 output frames
+# whenever CMR input to the TRAU was changed.
+#
+# The following extract exhibits just two frames of each mode, a pair of
+# RIF=0 and RIF=1 output.
+
+RESET
+00ff8e49e9e3988394b09ef0d7d8e0c1fab6dfff
+00ffbe49e9e3988394809ef0d7d8e0c1fab6dfff
+00ff9f62bab8e680fbe89e81c5dfb7fbd7d1f7ff
+00ffcf62bab8e680fbf89e81c5dfb7fbd7d1f7ff
+00fcac78e2fdf480fbd09e80f3ec87e7eff083ef
+00fcdc78e2fdf480fbe09e80f3ec87e7eff083ef
+00fc93c6976fa00bc06f898fc2c1b8bc83d8e380
+00fce3c6976fa00bc01f898fc2c1b8bc83d8e380
+3f079145f7a006f0076208fc4c1ba6f01b003780
+3f07f145f7a006f0136208fc4c1ba6f01b003780
+
+# Note this quirk of Nokia TCSM2, visible in all of the DL outputs showcased
+# above: for both speech and DTXd No_Speech frames in 8k mode, it sets CMR in
+# its DL output to the same mode as its speech output mode (DL CMI, controlled
+# by UL CMR).  See the corresponding comment in trau-amr-16k.in for further
+# explanation.
+#
+# When this quirk of TCSM2 is combined with CMR/CMI alternation in sequences
+# of speech frames and the stream of TRAU frames is converted to RTP, the
+# change in CMR will lag the change in FT by one frame.
+
+# Test decoder behaviour when a RIF=1 frame occurs first out of reset,
+# followed by RIF=0.  Mode 2 DHFs were taken from TCSM2 output above,
+# but reordered for this test.
+
+RESET
+00fcdc78e2fdf480fbe09e80f3ec87e7eff083ef
+00fcac78e2fdf480fbd09e80f3ec87e7eff083ef
+00fcdc78e2fdf480fbe09e80f3ec87e7eff083ef
+00fcac78e2fdf480fbd09e80f3ec87e7eff083ef
+
+# Test decoding of No_Data frames beginning with RIF=1, including shifts in
+# RIF order (repeated RIF=0 or RIF=1) and UFE/DFE indication.
+
+RESET
+0081d040bffffffffff883ffffffffffffffffff
+0081c040bffffffffff883ffffffffffffffffff
+0080d040bffffffffff883ffffffffffffffffff
+0081c040bffffffffff883ffffffffffffffffff
+0081c040bffffffffff883ffffffffffffffffff
+0081d040bffffffffff883ffffffffffffffffff
+0081d040bffffffffff883ffffffffffffffffff

@@ -6,6 +6,8 @@ check_PROGRAMS = e1inp_ipa_bsc_test	\
 		  e1inp_ipa_bts_test	\
 		  subchan_demux/subchan_demux_test \
 		  ipa_recv/ipa_recv_test \
+		  amr/rtp2trau_amr \
+		  amr/trau2rtp_amr \
 		  raa_prime/test_dec \
 		  raa_prime/test_enc \
 		  tfo/rtp2tfo \
@@ -45,6 +47,12 @@ subchan_demux_subchan_demux_test_LDADD = $(ABIS_LA_LIBS)
 
 ipa_recv_ipa_recv_test_SOURCES = ipa_recv/ipa_recv_test.c
 ipa_recv_ipa_recv_test_LDADD = $(ABIS_LA_LIBS)
+
+amr_rtp2trau_amr_SOURCES = amr/rtp2trau_amr.c trau_conv/tw5reader.c
+amr_rtp2trau_amr_LDADD = $(TRAU_LA_LIBS)
+
+amr_trau2rtp_amr_SOURCES = amr/trau2rtp_amr.c
+amr_trau2rtp_amr_LDADD = $(TRAU_LA_LIBS)
 
 raa_prime_test_dec_SOURCES = raa_prime/test_dec.c
 raa_prime_test_dec_LDADD = $(TRAU_LA_LIBS)
@@ -100,6 +108,14 @@ $(srcdir)/package.m4: $(top_srcdir)/configure.ac
 EXTRA_DIST = testsuite.at $(srcdir)/package.m4 $(TESTSUITE) \
 	subchan_demux/subchan_demux_test.ok \
 	ipa_recv/ipa_recv_test.ok \
+	amr/rtp-in-bwe.hex amr/rtp-in-oa.hex \
+	amr/rtp2trau-bwe2fr.ok amr/rtp2trau-bwe2hr.ok \
+	amr/rtp2trau-oa2fr.ok amr/rtp2trau-oa2hr.ok \
+	amr/rtp2trau-oax2fr.ok amr/rtp2trau-oax2hr.ok \
+	amr/trau-amr-16k-bwe.ok amr/trau-amr-16k-oa.ok amr/trau-amr-16k-oax.ok \
+	amr/trau-amr-16k.in \
+	amr/trau-amr-8k-bwe.ok amr/trau-amr-8k-oa.ok amr/trau-amr-8k-oax.ok \
+	amr/trau-amr-8k.in \
 	raa_prime/d144-ul-input.asc raa_prime/nokia-tcsm2-atrau.hex \
 	rtp_test/rtp_test.ok \
 	tfo/enc_test_efr.in tfo/enc_test_fr.in tfo/enc_test_hr.in \

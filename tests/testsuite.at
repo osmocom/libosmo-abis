@@ -91,6 +91,42 @@ cat $abs_srcdir/trau_conv/trau2rtp_hr_twts002.ok > expout
 AT_CHECK([$abs_top_builddir/tests/trau_conv/trau2rtp_gen -8 -x $abs_srcdir/trau_conv/trau2rtp_hr.in], [0], [expout], [ignore])
 AT_CLEANUP
 
+AT_SETUP([trau2rtp_amr16k_bwe])
+AT_KEYWORDS([trau2rtp_amr16k_bwe])
+cat $abs_srcdir/amr/trau-amr-16k-bwe.ok > expout
+AT_CHECK([$abs_top_builddir/tests/amr/trau2rtp_amr -b $abs_srcdir/amr/trau-amr-16k.in], [0], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([trau2rtp_amr16k_oa])
+AT_KEYWORDS([trau2rtp_amr16k_oa])
+cat $abs_srcdir/amr/trau-amr-16k-oa.ok > expout
+AT_CHECK([$abs_top_builddir/tests/amr/trau2rtp_amr $abs_srcdir/amr/trau-amr-16k.in], [0], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([trau2rtp_amr16k_oax])
+AT_KEYWORDS([trau2rtp_amr16k_oax])
+cat $abs_srcdir/amr/trau-amr-16k-oax.ok > expout
+AT_CHECK([$abs_top_builddir/tests/amr/trau2rtp_amr -x $abs_srcdir/amr/trau-amr-16k.in], [0], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([trau2rtp_amr8k_bwe])
+AT_KEYWORDS([trau2rtp_amr8k_bwe])
+cat $abs_srcdir/amr/trau-amr-8k-bwe.ok > expout
+AT_CHECK([$abs_top_builddir/tests/amr/trau2rtp_amr -8 -b $abs_srcdir/amr/trau-amr-8k.in], [0], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([trau2rtp_amr8k_oa])
+AT_KEYWORDS([trau2rtp_amr8k_oa])
+cat $abs_srcdir/amr/trau-amr-8k-oa.ok > expout
+AT_CHECK([$abs_top_builddir/tests/amr/trau2rtp_amr -8 $abs_srcdir/amr/trau-amr-8k.in], [0], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([trau2rtp_amr8k_oax])
+AT_KEYWORDS([trau2rtp_amr8k_oax])
+cat $abs_srcdir/amr/trau-amr-8k-oax.ok > expout
+AT_CHECK([$abs_top_builddir/tests/amr/trau2rtp_amr -8 -x $abs_srcdir/amr/trau-amr-8k.in], [0], [expout], [ignore])
+AT_CLEANUP
+
 AT_SETUP([rtp2trau_fr_dl1])
 AT_KEYWORDS([rtp2trau_fr_dl1])
 cat $abs_srcdir/trau_conv/rtp2trau_fr_dl1.ok > expout
@@ -179,6 +215,42 @@ AT_SETUP([rtp2trau_hr_ul3])
 AT_KEYWORDS([rtp2trau_hr_ul3])
 cat $abs_srcdir/trau_conv/rtp2trau_hr_ul3.ok > expout
 AT_CHECK([$abs_top_builddir/tests/trau_conv/rtp2trau_gen $abs_srcdir/trau_conv/hr_speech_invsid_bits.hex hr ul], [0], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([rtp2trau_amr16k_bwe])
+AT_KEYWORDS([rtp2trau_amr16k_bwe])
+cat $abs_srcdir/amr/rtp2trau-bwe2fr.ok > expout
+AT_CHECK([$abs_top_builddir/tests/amr/rtp2trau_amr -b $abs_srcdir/amr/rtp-in-bwe.hex], [0], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([rtp2trau_amr16k_oa])
+AT_KEYWORDS([rtp2trau_amr16k_oa])
+cat $abs_srcdir/amr/rtp2trau-oa2fr.ok > expout
+AT_CHECK([$abs_top_builddir/tests/amr/rtp2trau_amr $abs_srcdir/amr/rtp-in-oa.hex], [0], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([rtp2trau_amr16k_oax])
+AT_KEYWORDS([rtp2trau_amr16k_oax])
+cat $abs_srcdir/amr/rtp2trau-oax2fr.ok > expout
+AT_CHECK([$abs_top_builddir/tests/amr/rtp2trau_amr -x $abs_srcdir/amr/rtp-in-oa.hex], [0], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([rtp2trau_amr8k_bwe])
+AT_KEYWORDS([rtp2trau_amr8k_bwe])
+cat $abs_srcdir/amr/rtp2trau-bwe2hr.ok > expout
+AT_CHECK([$abs_top_builddir/tests/amr/rtp2trau_amr -8 -b $abs_srcdir/amr/rtp-in-bwe.hex], [0], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([rtp2trau_amr8k_oa])
+AT_KEYWORDS([rtp2trau_amr8k_oa])
+cat $abs_srcdir/amr/rtp2trau-oa2hr.ok > expout
+AT_CHECK([$abs_top_builddir/tests/amr/rtp2trau_amr -8 $abs_srcdir/amr/rtp-in-oa.hex], [0], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([rtp2trau_amr8k_oax])
+AT_KEYWORDS([rtp2trau_amr8k_oax])
+cat $abs_srcdir/amr/rtp2trau-oax2hr.ok > expout
+AT_CHECK([$abs_top_builddir/tests/amr/rtp2trau_amr -8 -x $abs_srcdir/amr/rtp-in-oa.hex], [0], [expout], [ignore])
 AT_CLEANUP
 
 AT_SETUP([tfo_decode_fr])

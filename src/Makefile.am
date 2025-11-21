@@ -52,7 +52,9 @@ libosmotrau_la_LDFLAGS = $(AM_LDFLAGS) \
 			 -no-undefined \
 			 $(NULL)
 libosmotrau_la_LIBADD = $(COMMONLIBS) $(LIBOSMOCODEC_LIBS) $(ORTP_LIBS)
-libosmotrau_la_SOURCES = trau/csd_ra2.c \
+libosmotrau_la_SOURCES = trau/amr_rtp.c \
+			 trau/amr_trau.c \
+			 trau/csd_ra2.c \
 			 trau/csd_v110.c \
 			 trau/raa_prime_decode.c \
 			 trau/raa_prime_encode.c \
