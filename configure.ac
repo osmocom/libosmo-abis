@@ -66,12 +66,12 @@ AC_SUBST(SYMBOL_VISIBILITY)
 dnl Generate the output
 AM_CONFIG_HEADER(config.h)
 
-PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 1.11.0)
-PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 1.11.0)
-PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 1.11.0)
-PKG_CHECK_MODULES(LIBOSMOCODEC, libosmocodec >= 1.11.0)
+PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 1.12.0)
+PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 1.12.0)
+PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 1.12.0)
+PKG_CHECK_MODULES(LIBOSMOCODEC, libosmocodec >= 1.12.0)
 
-PKG_CHECK_MODULES(LIBOSMONETIF, libosmo-netif >= 1.6.0)
+PKG_CHECK_MODULES(LIBOSMONETIF, libosmo-netif >= 1.7.0)
 
 AC_ARG_ENABLE([ortp], [AS_HELP_STRING([--disable-ortp], [Build without ortp support])],
     [
@@ -110,7 +110,7 @@ AC_ARG_ENABLE([e1d],
 		ENABLE_E1D="no"
 	])
 AS_IF([test "x$ENABLE_E1D" = "xyes"], [
-	PKG_CHECK_MODULES(LIBOSMOE1D, libosmo-e1d >= 0.5.0)
+	PKG_CHECK_MODULES(LIBOSMOE1D, libosmo-e1d >= 0.7.0)
 ])
 AM_CONDITIONAL(ENABLE_E1D, test "x$ENABLE_E1D" = "xyes")
 AC_SUBST(ENABLE_E1D)

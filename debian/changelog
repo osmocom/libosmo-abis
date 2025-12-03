@@ -1,3 +1,47 @@
+libosmo-abis (2.1.0) unstable; urgency=medium
+
+  [ Mychaela N. Falconia ]
+  * tests: add trau2rtp_gen program
+  * tests: add unit test for HRv1 TRAU->RTP
+  * cosmetic: add .gitignore to doc/examples
+  * trau_rtp_conv: document API functions
+  * tests: add unit tests for osmo_rtp2trau()
+  * rtp2trau HR: add support for TRAU-8k-UL frame output
+  * rtp2trau HR: bring TRAU-16k support into alignment with TRAU-8k
+  * TRAU encode: fix handling of OSMO_TRAU16_FT_IDLE
+  * rtp2trau: remove broken acceptance of 0-length payloads
+  * rtp2trau FR & EFR: disallow BFI in DL
+  * rtp2trau HR to DL: validate ToC octet of RFC 5993
+  * trau_frame cosmetic: fix doxygen comments
+  * trau_frame cosmetic: document exact behavior for C1..C5
+  * trau: new function osmo_trau2rtp_ufe()
+  * trau2rtp HR: update to TW-TS-002 version 1.2.0
+  * trau: add TFO frame insert/extract functions
+  * trau/clearmode.h: add OSMO_CLEARMODE_20MS definition
+  * trau: factor out V.110 frame conversion functions
+  * trau_rtp_conv: use factored-out V.110 functions
+  * trau: add TW-TS-007 packing and unpacking functions
+  * trau: add TW-TS-007 compression and decompression functions
+  * rtp2trau CSD: accept both CLEARMODE and TW-TS-007 payloads
+  * trau2rtp CSD: add option to emit TW-TS-007 payloads
+  * osmo_trau_frame_encode(): fix encoding of 16k O&M frames
+  * osmo_trau_frame_encode(): reduce space requirement in common case
+  * trau_frame: add support for config frames of 3GPP Rel5+
+  * trau_frame: fix de/encoding of TRAU-AMR-8k-6k7 format
+  * trau: add AMR TRAU frame interworking facility
+
+  [ Pau Espin Pedrol ]
+  * ipaccess: Reset pointer before calling stream_cli func triggering callback
+  * examples/lapd-over-datagram: Use newer non-deprecated API lapd_instance_alloc2()
+  * ipaccess: No need to apply TCP_NODELAY manually
+  * ipaccess: Use osmo_stream APIs to set TCP keepalive pars
+
+  [ Oliver Smith ]
+  * include/Makefile: format nobase_include_HEADERS
+  * Generate a version.h file
+
+ -- Pau Espin Pedrol <pespin@sysmocom.de>  Wed, 03 Dec 2025 18:08:14 +0100
+
 libosmo-abis (2.0.0) unstable; urgency=medium
 
   [ Mychaela N. Falconia ]

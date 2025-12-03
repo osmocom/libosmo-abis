@@ -13,8 +13,8 @@ Build-Depends: debhelper (>= 10),
                dh-autoreconf,
                libdpkg-perl,
                git,
-               libosmocore-dev (>= 1.11.0),
-               libosmo-netif-dev (>= 1.6.0),
+               libosmocore-dev (>= 1.12.0),
+               libosmo-netif-dev (>= 1.7.0),
                pkg-config,
                libortp-dev
 Standards-Version: 3.9.7
@@ -64,8 +64,8 @@ Section: libdevel
 Depends: ${misc:Depends},
          libosmotrau11 (= ${binary:Version}),
          libosmoabis15 (= ${binary:Version}),
-         libosmo-netif-dev (>= 1.6.0),
-         libosmocore-dev,
+         libosmo-netif-dev (>= 1.7.0),
+         libosmocore-dev (>= 1.12.0),
 Description: Development headers for A-bis interface
  The libosmo-abis library contains common/shared code regarding the A-bis
  interface between GSM BTS and BSC. This package in particular contains the
