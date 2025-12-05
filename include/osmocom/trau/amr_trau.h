@@ -344,4 +344,6 @@ int osmo_amrt_encode_rtp(uint8_t *pl_buf, unsigned pl_buf_size,
 			 const struct osmo_amrt_if *fr,
 			 enum osmo_amrt_rtp_format fmt);
 
+int osmo_amrt_fill_with_dhf(struct osmo_amrt_if *fr, enum osmo_amr_type mode);
+
 /*! @} */
