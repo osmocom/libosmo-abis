@@ -97,9 +97,6 @@ static inline void efr_parity_bits_5(ubit_t *check_bits, const ubit_t *d_bits)
 	memcpy(check_bits + 6 , d_bits + 252, 2);
 }
 
-//static const uint8_t c_bits_check_fr[] = { 0, 0, 0, 1, 0 };
-//static const uint8_t c_bits_check_efr[] = { 1, 1, 0, 1, 0 };
-
 /*
  * This little helper function modifies a marked-bad (BFI=1) GSM-FR payload
  * so it would no longer classify as SID by the bit counting rules
