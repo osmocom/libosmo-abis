@@ -1719,9 +1719,10 @@ static inline bool check_twts002(struct osmo_trau2rtp_state *st)
  *
  * In the case of FR/EFR speech, the output format is either RFC 3551 or
  * TW-TS-001; in the case of HRv1 speech, the output format is either RFC 5993
- * or TW-TS-002.  st->rtp_extensions field selects the use or non-use of
- * Themyscira RTP extensions; the structure passed in \ref st currently
- * has no other uses in the TRAU->RTP direction.
+ * or TW-TS-002.  In the case of CSD, the output format is either 160-octet
+ * CLEARMODE or compressed TW-TS-007.  st->rtp_extensions field selects the use
+ * or non-use of Themyscira RTP extensions; the structure passed in \ref st
+ * currently has no other uses in the TRAU->RTP direction.
  *
  * The following TRAU frame types are _not_ supported:
  *
@@ -1734,7 +1735,9 @@ static inline bool check_twts002(struct osmo_trau2rtp_state *st)
  * - D144 sync frames: these special frames are not convertible to RTP;
  *   their synchronization function needs to be handled by the application.
  *
- * - AMR speech frames: not currently implemented.
+ * - AMR speech frames are not supported by this API; AMR TRAU frame
+ *   interworking facility of <osmocom/trau/amr_trau.h> needs to be used
+ *   instead.
  */
 int osmo_trau2rtp(uint8_t *out, size_t out_len, const struct osmo_trau_frame *tf,
 		  struct osmo_trau2rtp_state *st)
@@ -1767,8 +1770,9 @@ int osmo_trau2rtp(uint8_t *out, size_t out_len, const struct osmo_trau_frame *tf
  *
  * - UFE checks exist only for HRv1 and EFR speech frames; for all other frame
  *   types, this function never writes to *ufe.  (AMR is another frame type
- *   for which TRAU-UL decoding would include a UFE check, but we currently
- *   don't support AMR at all.)
+ *   for which high-level decoding can produce UFE and DFE results, but those
+ *   frames need to be decoded with osmo_amrt_decode_trau_frame() and not the
+ *   present API.)
  */
 int osmo_trau2rtp_ufe(uint8_t *out, size_t out_len, const struct osmo_trau_frame *tf,
 		      struct osmo_trau2rtp_state *st, bool *ufe)
