@@ -45,6 +45,7 @@
 #include <osmocom/core/logging.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/socket.h>
+#include <osmocom/core/utils.h>
 #include <osmocom/core/backtrace.h>
 #include <osmocom/core/stats_tcp.h>
 #include <osmocom/core/fsm.h>
@@ -207,6 +208,20 @@ static inline struct osmo_stream_srv *ipaccess_bts_e1i_ts_stream_srv(const struc
 	return conn;
 }
 
+static void ipaccess_bsc_srv_conn_set_name(struct osmo_stream_srv *conn,
+					   struct e1inp_ts *e1i_ts,
+					   const struct ipaccess_unit *unit_data)
+{
+	char buf[256];
+	struct osmo_strbuf sb = { .buf = buf, .len = sizeof(buf) };
+
+	OSMO_STRBUF_PRINTF(sb, "ts-%u-%u-%s", e1i_ts->line->num, e1i_ts->num,
+			   e1inp_signtype_name(ipaccess_e1i_ts_sign_type(e1i_ts)));
+	if (unit_data)
+		OSMO_STRBUF_PRINTF(sb, ",ipa-unit-%u/%u/%u", unit_data->site_id, unit_data->bts_id, unit_data->trx_id);
+	osmo_stream_srv_set_name(conn, buf);
+}
+
 static int ipaccess_bsc_write_cb(struct e1inp_ts *e1i_ts);
 
 /* Returns -1 on error, and 0 or 1 on success. If -1 or 1 is returned, line has
@@ -275,6 +290,7 @@ static int ipaccess_bsc_rcvmsg(struct osmo_stream_srv *conn, struct msgb *msg)
 			LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Failed to parse unit ID '%s'\n", unitid);
 			goto err;
 		}
+		ipaccess_bsc_srv_conn_set_name(conn, e1i_ts, &unit_data);
 
 		if (!line->ops->sign_link_up) {
 			LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "Unable to set signal link, closing socket.\n");
@@ -753,7 +769,7 @@ static int ipaccess_bsc_oml_accept_cb(struct osmo_stream_srv_link *link, int fd)
 	snprintf(conn_name, sizeof(conn_name), "ts-%u-%u-oml", line->num, e1i_ts->num);
 	conn = osmo_stream_srv_create2(link, link, fd, e1i_ts);
 	OSMO_ASSERT(conn);
-	osmo_stream_srv_set_name(conn, conn_name);
+	ipaccess_bsc_srv_conn_set_name(conn, e1i_ts, NULL);
 	osmo_stream_srv_set_read_cb(conn, ipaccess_bsc_conn_read_cb);
 	osmo_stream_srv_set_closed_cb(conn, ipaccess_bsc_conn_closed_cb);
 	osmo_stream_srv_set_segmentation_cb(conn, osmo_ipa_segmentation_cb);
@@ -807,7 +823,7 @@ static int ipaccess_bsc_rsl_accept_cb(struct osmo_stream_srv_link *link, int fd)
 	snprintf(conn_name, sizeof(conn_name), "ts-%u-%u-rsl", line->num, e1i_ts->num);
 	conn = osmo_stream_srv_create2(link, link, fd, e1i_ts);
 	OSMO_ASSERT(conn);
-	osmo_stream_srv_set_name(conn, conn_name);
+	ipaccess_bsc_srv_conn_set_name(conn, e1i_ts, NULL);
 	osmo_stream_srv_set_read_cb(conn, ipaccess_bsc_conn_read_cb);
 	osmo_stream_srv_set_closed_cb(conn, ipaccess_bsc_conn_closed_cb);
 	osmo_stream_srv_set_segmentation_cb(conn, osmo_ipa_segmentation_cb);
