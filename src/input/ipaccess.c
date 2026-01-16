@@ -1,6 +1,6 @@
 /* OpenBSC Abis input driver for ip.access */
 
-/* (C) 2024 by sysmocom - s.f.m.c. GmbH <info@sysmocom.de>
+/* (C) 2024-2026 by sysmocom - s.f.m.c. GmbH <info@sysmocom.de>
  * (C) 2009-2021 by Harald Welte <laforge@gnumonks.org>
  * (C) 2010 by Holger Hans Peter Freyther
  * (C) 2010 by On-Waves
@@ -1010,12 +1010,128 @@ static int ipaccess_bts_disconnect_cb(struct osmo_stream_cli *cli)
 	return 0;
 }
 
-static int ipaccess_line_update(struct e1inp_line *line)
+static int ipaccess_bsc_line_update(struct e1inp_line *line)
 {
-	int ret = -ENOENT;
-	struct ipaccess_line *il;
+	struct ipaccess_line *il = line->driver_data;
+
+	/* We only initialize this line once. */
+	if (il->line_already_initialized)
+		return 0;
+
+	struct osmo_stream_srv_link *oml_link, *rsl_link;
+	const char *ipa = e1inp_ipa_get_bind_addr();
 	char conn_name[128];
 
+	LOGPIL(line, DLINP, LOGL_NOTICE, "enabling ipaccess BSC mode on %s "
+		"with OML %u and RSL %u TCP ports\n", ipa, IPA_TCP_PORT_OML, IPA_TCP_PORT_RSL);
+
+	oml_link = osmo_stream_srv_link_create(tall_ipa_ctx);
+	OSMO_ASSERT(oml_link);
+	snprintf(conn_name, sizeof(conn_name), "ts-%u-oml", line->num);
+	osmo_stream_srv_link_set_name(oml_link, conn_name);
+	osmo_stream_srv_link_set_proto(oml_link, IPPROTO_TCP);
+	osmo_stream_srv_link_set_addr(oml_link, ipa);
+	osmo_stream_srv_link_set_port(oml_link, IPA_TCP_PORT_OML);
+	osmo_stream_srv_link_set_data(oml_link, line);
+	osmo_stream_srv_link_set_nodelay(oml_link, true);
+	osmo_stream_srv_link_set_priority(oml_link, g_e1inp_ipaccess_pars.oml.dscp);
+	osmo_stream_srv_link_set_ip_dscp(oml_link, g_e1inp_ipaccess_pars.oml.priority);
+	osmo_stream_srv_link_set_accept_cb(oml_link, ipaccess_bsc_oml_accept_cb);
+
+	if (osmo_stream_srv_link_open(oml_link)) {
+		LOGPIL(line, DLINP, LOGL_ERROR, "cannot open OML BTS link %s:%u (%s)\n",
+			ipa, IPA_TCP_PORT_OML, strerror(errno));
+		osmo_stream_srv_link_destroy(oml_link);
+		return -EIO;
+	}
+
+	rsl_link = osmo_stream_srv_link_create(tall_ipa_ctx);
+	OSMO_ASSERT(rsl_link);
+	snprintf(conn_name, sizeof(conn_name), "ts-%u-rsl", line->num);
+	osmo_stream_srv_link_set_name(rsl_link, conn_name);
+	osmo_stream_srv_link_set_proto(rsl_link, IPPROTO_TCP);
+	osmo_stream_srv_link_set_addr(rsl_link, ipa);
+	osmo_stream_srv_link_set_port(rsl_link, IPA_TCP_PORT_RSL);
+	osmo_stream_srv_link_set_data(rsl_link, line);
+	osmo_stream_srv_link_set_nodelay(rsl_link, true);
+	osmo_stream_srv_link_set_priority(rsl_link, g_e1inp_ipaccess_pars.rsl.dscp);
+	osmo_stream_srv_link_set_ip_dscp(rsl_link, g_e1inp_ipaccess_pars.rsl.priority);
+	osmo_stream_srv_link_set_accept_cb(rsl_link, ipaccess_bsc_rsl_accept_cb);
+
+	if (osmo_stream_srv_link_open(rsl_link)) {
+		LOGPIL(line, DLINP, LOGL_ERROR, "cannot open RSL BTS link %s:%u (%s)\n",
+			ipa, IPA_TCP_PORT_RSL, strerror(errno));
+		osmo_stream_srv_link_destroy(rsl_link);
+		return -EIO;
+	}
+
+	il->line_already_initialized = true;
+	return 0;
+}
+
+static int ipaccess_bts_line_update(struct e1inp_line *line)
+{
+	struct ipaccess_line *il = line->driver_data;
+	struct osmo_stream_cli *cli;
+	struct e1inp_ts *e1i_ts = e1inp_line_ipa_oml_ts(line);
+	char cli_name[128];
+
+	LOGPITS(e1i_ts, DLINP, LOGL_NOTICE, "enabling ipaccess BTS mode, "
+		"OML connecting to %s:%u\n", line->ops->cfg.ipa.addr, IPA_TCP_PORT_OML);
+
+	/* Drop previous line */
+	if (il->ipa_cli[0]) {
+		osmo_stream_cli_close(il->ipa_cli[0]);
+		ipaccess_keepalive_fsm_cleanup(e1i_ts);
+		e1i_ts->driver.ipaccess.fd.fd = -1;
+		osmo_stream_cli_destroy(il->ipa_cli[0]);
+		il->ipa_cli[0] = NULL;
+	}
+
+	e1inp_ts_config_sign(e1i_ts, line);
+
+	cli = osmo_stream_cli_create(tall_ipa_ctx);
+	OSMO_ASSERT(cli);
+
+	snprintf(cli_name, sizeof(cli_name), "ts-%u-%u-oml", line->num, e1i_ts->num);
+	osmo_stream_cli_set_name(cli, cli_name);
+	osmo_stream_cli_set_data(cli, e1i_ts);
+	osmo_stream_cli_set_addr(cli, line->ops->cfg.ipa.addr);
+	osmo_stream_cli_set_port(cli, IPA_TCP_PORT_OML);
+	osmo_stream_cli_set_proto(cli, IPPROTO_TCP);
+	osmo_stream_cli_set_nodelay(cli, true);
+	osmo_stream_cli_set_priority(cli, g_e1inp_ipaccess_pars.oml.dscp);
+	osmo_stream_cli_set_ip_dscp(cli, g_e1inp_ipaccess_pars.oml.priority);
+
+	/* Reconnect is handled by upper layers: */
+	osmo_stream_cli_set_reconnect_timeout(cli, -1);
+
+	osmo_stream_cli_set_segmentation_cb(cli, osmo_ipa_segmentation_cb);
+	osmo_stream_cli_set_connect_cb(cli, ipaccess_bts_connect_cb);
+	osmo_stream_cli_set_disconnect_cb(cli, ipaccess_bts_disconnect_cb);
+	osmo_stream_cli_set_read_cb2(cli, ipaccess_bts_read_cb);
+
+	cli_apply_tcp_pars(line, cli);
+
+	if (osmo_stream_cli_open(cli)) {
+		LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "cannot open OML BTS link: %s\n", strerror(errno));
+		osmo_stream_cli_destroy(cli);
+		return -EIO;
+	}
+
+	/* Compatibility with older ofd based implementation. osmo-bts accesses
+	 * this fd directly in get_signlink_remote_ip() and get_rsl_local_ip() */
+	e1i_ts->driver.ipaccess.fd.fd = osmo_stream_cli_get_fd(cli);
+
+	ipaccess_bts_keepalive_fsm_alloc(e1i_ts, cli, "oml_bts_to_bsc");
+	il->ipa_cli[0] = cli;
+
+	il->line_already_initialized = true;
+	return 0;
+}
+
+static int ipaccess_line_update(struct e1inp_line *line)
+{
 	if (!line->driver_data)
 		line->driver_data = talloc_zero(line, struct ipaccess_line);
 
@@ -1023,124 +1139,15 @@ static int ipaccess_line_update(struct e1inp_line *line)
 		LOGPIL(line, DLINP, LOGL_ERROR, "ipaccess: OOM in line update\n");
 		return -ENOMEM;
 	}
-	il = line->driver_data;
 
-	switch(line->ops->cfg.ipa.role) {
-	case E1INP_LINE_R_BSC: {
-		/* We only initialize this line once. */
-		if (il->line_already_initialized)
-			return 0;
-		struct osmo_stream_srv_link *oml_link, *rsl_link;
-		const char *ipa = e1inp_ipa_get_bind_addr();
-
-		LOGPIL(line, DLINP, LOGL_NOTICE, "enabling ipaccess BSC mode on %s "
-		       "with OML %u and RSL %u TCP ports\n", ipa, IPA_TCP_PORT_OML, IPA_TCP_PORT_RSL);
-
-		oml_link = osmo_stream_srv_link_create(tall_ipa_ctx);
-		OSMO_ASSERT(oml_link);
-		snprintf(conn_name, sizeof(conn_name), "ts-%u-oml", line->num);
-		osmo_stream_srv_link_set_name(oml_link, conn_name);
-		osmo_stream_srv_link_set_proto(oml_link, IPPROTO_TCP);
-		osmo_stream_srv_link_set_addr(oml_link, ipa);
-		osmo_stream_srv_link_set_port(oml_link, IPA_TCP_PORT_OML);
-		osmo_stream_srv_link_set_data(oml_link, line);
-		osmo_stream_srv_link_set_nodelay(oml_link, true);
-		osmo_stream_srv_link_set_priority(oml_link, g_e1inp_ipaccess_pars.oml.dscp);
-		osmo_stream_srv_link_set_ip_dscp(oml_link, g_e1inp_ipaccess_pars.oml.priority);
-		osmo_stream_srv_link_set_accept_cb(oml_link, ipaccess_bsc_oml_accept_cb);
-
-		if (osmo_stream_srv_link_open(oml_link)) {
-			LOGPIL(line, DLINP, LOGL_ERROR, "cannot open OML BTS link %s:%u (%s)\n",
-			       ipa, IPA_TCP_PORT_OML, strerror(errno));
-			osmo_stream_srv_link_destroy(oml_link);
-			return -EIO;
-		}
-
-		rsl_link = osmo_stream_srv_link_create(tall_ipa_ctx);
-		OSMO_ASSERT(rsl_link);
-		snprintf(conn_name, sizeof(conn_name), "ts-%u-rsl", line->num);
-		osmo_stream_srv_link_set_name(rsl_link, conn_name);
-		osmo_stream_srv_link_set_proto(rsl_link, IPPROTO_TCP);
-		osmo_stream_srv_link_set_addr(rsl_link, ipa);
-		osmo_stream_srv_link_set_port(rsl_link, IPA_TCP_PORT_RSL);
-		osmo_stream_srv_link_set_data(rsl_link, line);
-		osmo_stream_srv_link_set_nodelay(rsl_link, true);
-		osmo_stream_srv_link_set_priority(rsl_link, g_e1inp_ipaccess_pars.rsl.dscp);
-		osmo_stream_srv_link_set_ip_dscp(rsl_link, g_e1inp_ipaccess_pars.rsl.priority);
-		osmo_stream_srv_link_set_accept_cb(rsl_link, ipaccess_bsc_rsl_accept_cb);
-
-		if (osmo_stream_srv_link_open(rsl_link)) {
-			LOGPIL(line, DLINP, LOGL_ERROR, "cannot open RSL BTS link %s:%u (%s)\n",
-			       ipa, IPA_TCP_PORT_RSL, strerror(errno));
-			osmo_stream_srv_link_destroy(rsl_link);
-			return -EIO;
-		}
-		ret = 0;
-		break;
-	}
-	case E1INP_LINE_R_BTS: {
-		struct osmo_stream_cli *cli;
-		struct e1inp_ts *e1i_ts = e1inp_line_ipa_oml_ts(line);
-		char cli_name[128];
-
-		LOGPITS(e1i_ts, DLINP, LOGL_NOTICE, "enabling ipaccess BTS mode, "
-			"OML connecting to %s:%u\n", line->ops->cfg.ipa.addr, IPA_TCP_PORT_OML);
-
-		/* Drop previous line */
-		if (il->ipa_cli[0]) {
-			osmo_stream_cli_close(il->ipa_cli[0]);
-			ipaccess_keepalive_fsm_cleanup(e1i_ts);
-			e1i_ts->driver.ipaccess.fd.fd = -1;
-			osmo_stream_cli_destroy(il->ipa_cli[0]);
-			il->ipa_cli[0] = NULL;
-		}
-
-		e1inp_ts_config_sign(e1i_ts, line);
-
-		cli = osmo_stream_cli_create(tall_ipa_ctx);
-		OSMO_ASSERT(cli);
-
-		snprintf(cli_name, sizeof(cli_name), "ts-%u-%u-oml", line->num, e1i_ts->num);
-		osmo_stream_cli_set_name(cli, cli_name);
-		osmo_stream_cli_set_data(cli, e1i_ts);
-		osmo_stream_cli_set_addr(cli, line->ops->cfg.ipa.addr);
-		osmo_stream_cli_set_port(cli, IPA_TCP_PORT_OML);
-		osmo_stream_cli_set_proto(cli, IPPROTO_TCP);
-		osmo_stream_cli_set_nodelay(cli, true);
-		osmo_stream_cli_set_priority(cli, g_e1inp_ipaccess_pars.oml.dscp);
-		osmo_stream_cli_set_ip_dscp(cli, g_e1inp_ipaccess_pars.oml.priority);
-
-		/* Reconnect is handled by upper layers: */
-		osmo_stream_cli_set_reconnect_timeout(cli, -1);
-
-		osmo_stream_cli_set_segmentation_cb(cli, osmo_ipa_segmentation_cb);
-		osmo_stream_cli_set_connect_cb(cli, ipaccess_bts_connect_cb);
-		osmo_stream_cli_set_disconnect_cb(cli, ipaccess_bts_disconnect_cb);
-		osmo_stream_cli_set_read_cb2(cli, ipaccess_bts_read_cb);
-
-		cli_apply_tcp_pars(line, cli);
-
-		if (osmo_stream_cli_open(cli)) {
-			LOGPITS(e1i_ts, DLINP, LOGL_ERROR, "cannot open OML BTS link: %s\n", strerror(errno));
-			osmo_stream_cli_destroy(cli);
-			return -EIO;
-		}
-
-		/* Compatibility with older ofd based implementation. osmo-bts accesses
-		 * this fd directly in get_signlink_remote_ip() and get_rsl_local_ip() */
-		e1i_ts->driver.ipaccess.fd.fd = osmo_stream_cli_get_fd(cli);
-
-		ipaccess_bts_keepalive_fsm_alloc(e1i_ts, cli, "oml_bts_to_bsc");
-		il->ipa_cli[0] = cli;
-		ret = 0;
-		break;
-	}
+	switch (line->ops->cfg.ipa.role) {
+	case E1INP_LINE_R_BSC:
+		return ipaccess_bsc_line_update(line);
+	case E1INP_LINE_R_BTS:
+		return ipaccess_bts_line_update(line);
 	default:
-		break;
+		return -ENOENT;
 	}
-
-	il->line_already_initialized = true;
-	return ret;
 }
 
 /* backwards compatibility */
