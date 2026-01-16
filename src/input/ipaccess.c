@@ -69,14 +69,6 @@ struct ipaccess_line {
 	struct osmo_stream_cli *ipa_cli[NUM_E1_TS]; /* 0=OML, 1+N=TRX_N */
 };
 
-static inline struct e1inp_ts *ipaccess_line_ts(struct osmo_fd *bfd, struct e1inp_line *line)
-{
-	if (bfd->priv_nr == E1INP_SIGN_OML)
-		return e1inp_line_ipa_oml_ts(line);
-	else
-		return e1inp_line_ipa_rsl_ts(line, bfd->priv_nr - E1INP_SIGN_RSL);
-}
-
 static inline void ipaccess_keepalive_fsm_cleanup(struct e1inp_ts *e1i_ts)
 {
 	struct osmo_ipa_ka_fsm_inst *ka_fsm;
