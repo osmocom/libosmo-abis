@@ -5,6 +5,7 @@
 #include <signal.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <inttypes.h>
 
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/talloc.h>
@@ -163,8 +164,8 @@ void lapd_rx_cb(struct osmo_dlsap_prim *dp, uint8_t tei, uint8_t sapi,
 				timersub(&tv, &found->tv, &diff);
 
 				LOGP(DLINP, LOGL_NOTICE, "message %d replied "
-					"in %lu.%.6lu\n",
-					num, diff.tv_sec, diff.tv_usec);
+					"in %" PRIdMAX ".%.6" PRIdMAX "\n",
+					num, (intmax_t)diff.tv_sec, (intmax_t)diff.tv_usec);
 				talloc_free(found);
 			} else {
 				LOGP(DLINP, LOGL_ERROR,
