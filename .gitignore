@@ -6,6 +6,7 @@ Makefile.in
 *.lo
 *.la
 *.pc
+*.wasm
 aclocal.m4
 m4/*.m4
 autom4te.cache
