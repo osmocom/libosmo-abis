@@ -550,6 +550,13 @@ int lapd_sap_stop(struct lapd_instance *li, uint8_t tei, uint8_t sapi)
 	msg->l3h = msg->data;
 	osmo_prim_init(&dp.oph, 0, PRIM_DL_REL, PRIM_OP_REQUEST, msg);
 
+	/* DL-RELEASE can be done in two ways: by sending DISC and waiting
+	 * for UA, or a purely local clearing of state.  The only current
+	 * users of this lapd_sap_stop() API are vendor-specific E1 BTS
+	 * handlers for Ericsson and Nokia in OsmoBSC, and both of them
+	 * need local release handling. */
+	dp.u.rel_req.mode = 1;
+
 	/* send to L2 */
 	return lapd_recv_dlsap(&dp, &sap->dl.lctx);
 }
