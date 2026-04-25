@@ -521,10 +521,10 @@ int lapd_sap_start(struct lapd_instance *li, uint8_t tei, uint8_t sapi)
 	/* prepare prim */
 	msg = msgb_alloc_headroom(DLSAP_MSGB_SIZE, DLSAP_MSGB_HEADROOM, "DL EST");
 	msg->l3h = msg->data;
-        osmo_prim_init(&dp.oph, 0, PRIM_DL_EST, PRIM_OP_REQUEST, msg);
+	osmo_prim_init(&dp.oph, 0, PRIM_DL_EST, PRIM_OP_REQUEST, msg);
 
-        /* send to L2 */
-        return lapd_recv_dlsap(&dp, &sap->dl.lctx);
+	/* send to L2 */
+	return lapd_recv_dlsap(&dp, &sap->dl.lctx);
 }
 
 /* Stop a (user-side) SAP for the specified TEI/SAPI on the LAPD instance */
@@ -548,10 +548,10 @@ int lapd_sap_stop(struct lapd_instance *li, uint8_t tei, uint8_t sapi)
 	/* prepare prim */
 	msg = msgb_alloc_headroom(DLSAP_MSGB_SIZE, DLSAP_MSGB_HEADROOM, "DL REL");
 	msg->l3h = msg->data;
-        osmo_prim_init(&dp.oph, 0, PRIM_DL_REL, PRIM_OP_REQUEST, msg);
+	osmo_prim_init(&dp.oph, 0, PRIM_DL_REL, PRIM_OP_REQUEST, msg);
 
-        /* send to L2 */
-        return lapd_recv_dlsap(&dp, &sap->dl.lctx);
+	/* send to L2 */
+	return lapd_recv_dlsap(&dp, &sap->dl.lctx);
 }
 
 /* Transmit Data (DL-DATA request) on the given LAPD Instance / TEI / SAPI */
