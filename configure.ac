@@ -66,12 +66,12 @@ AC_SUBST(SYMBOL_VISIBILITY)
 dnl Generate the output
 AM_CONFIG_HEADER(config.h)
 
-PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 1.12.0)
-PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 1.12.0)
-PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 1.12.0)
-PKG_CHECK_MODULES(LIBOSMOCODEC, libosmocodec >= 1.12.0)
+PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 1.14.2)
+PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 1.14.2)
+PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 1.14.2)
+PKG_CHECK_MODULES(LIBOSMOCODEC, libosmocodec >= 1.14.2)
 
-PKG_CHECK_MODULES(LIBOSMONETIF, libosmo-netif >= 1.7.0)
+PKG_CHECK_MODULES(LIBOSMONETIF, libosmo-netif >= 1.8.0)
 
 AC_ARG_ENABLE([ortp], [AS_HELP_STRING([--disable-ortp], [Build without ortp support])],
     [

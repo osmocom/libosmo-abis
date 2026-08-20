@@ -1,3 +1,28 @@
+libosmo-abis (2.2.0) unstable; urgency=medium
+
+  [ Mychaela N. Falconia ]
+  * amr_trau: add osmo_amrt_fill_with_dhf() function
+  * trau cosmetic: update osmo_trau2rtp API comments
+  * trau2rtp: rm defunct AMR WIP code
+  * trau_rtp cosmetic: rm dead const lines
+  * trau_frame cosmetic: rm dead/invalid definitions
+  * cosmetic: fix white space in lapd_sap_{start,stop}()
+  * lapd_sap_stop(): fix use of uninitialized stack memory
+
+  [ Pau Espin Pedrol ]
+  * ipaccess: Remove unused function
+  * ipaccess: Add ipa_unit_data to logging context of bsc ipaccess srv stream
+  * ipaccess: Move bts/bsc specific line_update code to helper functions
+
+  [ Timur Davydov ]
+  * lapd-over-datagram-user: fix printf format for timeval fields
+  * gitignore: ignore generated .wasm files
+
+  [ Andreas Eversberg ]
+  * Add CAS channel support
+
+ -- Pau Espin Pedrol <pespin@sysmocom.de>  Thu, 20 Aug 2026 11:27:00 +0200
+
 libosmo-abis (2.1.0) unstable; urgency=medium
 
   [ Mychaela N. Falconia ]
