@@ -180,7 +180,7 @@ int main(int argc, char **argv)
 
 	trau_8k_mode = false;
 	direction = OSMO_TRAU_DIR_UL;
-	trau2rtp_st.rtp_extensions = 0;
+	trau2rtp_st.rtp_extensions = OSMO_RTP_EXT_TWTS007;
 	while ((opt = getopt(argc, argv, "8dx")) != EOF) {
 		switch (opt) {
 		case '8':
@@ -190,7 +190,7 @@ int main(int argc, char **argv)
 			direction = OSMO_TRAU_DIR_DL;
 			break;
 		case 'x':
-			trau2rtp_st.rtp_extensions =
+			trau2rtp_st.rtp_extensions |=
 				OSMO_RTP_EXT_TWTS001 | OSMO_RTP_EXT_TWTS002;
 			break;
 		default:

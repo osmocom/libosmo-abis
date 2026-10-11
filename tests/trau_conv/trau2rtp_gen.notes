@@ -45,6 +45,10 @@ EFR	TRAU-16k	TS 48.060 sections 5.1.1 and 5.5.1.1
 HRv1	TRAU-16k	TS 48.061 sections 5.1.1.1 and 5.1.4.1.1
 HRv1	TRAU-8k		TS 48.061 sections 5.2.1.1 and 5.2.4.1
 
+CSD modes are also supported, in both TRAU-16k and TRAU-8k formats, with RTP
+output in the compressed format of TW-TS-007.  The resulting hex output follows
+TW-TS-005 Annex D.
+
 Input format and examples
 =========================
 
@@ -110,8 +114,8 @@ frames requires use of the interworking facility of <osmocom/trau/amr_trau.h>.
 At the level of command line utilities, a separate program exists that exercises
 the AMR-specific TRAU to RTP conversion APIs - see tests/amr/trau2rtp_amr.
 
-No CSD support yet
-==================
+CSD in TW-TS-007 format
+=======================
 
 When the input is a TRAU frame in one of CSD modes, the output from
 osmo_trau2rtp() can be either a 160-byte CLEARMODE payload or a much more
@@ -121,9 +125,12 @@ by TW-TS-005 section 4.1), but the alternative TW-TS-007 compressed CSD format
 _can_ be represented in TW-TS-005 hex - and the current version of TW-TS-005
 spec linked above includes Annex D that specifies such usage.
 
-trau2rtp_gen utility can be extended to enable TW-TS-007 output and thereby add
-support for at least one representation of GSM CSD in RTP - but no such
-modification has been made yet.
+trau2rtp_gen utility always produces output in TW-TS-007 format if the TRAU
+frame input is in any of CSD modes.  In the case of FR, HR and EFR speech the
+presence or absence of -x option selects whether or not the output will include
+RTP payload format extensions of TW-TS-001 or TW-TS-002 - but in the case of
+CSD, TW-TS-007 output format is used unconditionally because the more standard
+alternative of CLEARMODE cannot be supported in this environment.
 
 A need may also arise at some point to represent the bloated-but-standard
 CLEARMODE formats in hex as well.  TW-TS-005 cannot be used for that purpose,
