@@ -57,7 +57,7 @@ of 160 bits.  Such hex-represented TRAU frames can be hand-crafted for testing,
 but there are also tools that extract TRAU frames from E1 timeslot octet stream
 recordings and emit those extracted frames in the present hex format:
 
-https://www.freecalypso.org/hg/gsm-net-reveng/file/tip/trau-decode
+https://hg.themyscira.org/gsm-net-reveng/file/tip/trau-decode
 
 Example input for FRv1:
 
@@ -84,7 +84,7 @@ TW-TS-005 is a hex file format for sequences of RTP payloads for GSM speech
 codecs; trau2rtp_gen emits its generated RTP payloads in this hex format.
 Spec document:
 
-https://www.freecalypso.org/specs/tw-ts-005-v010003.txt
+https://www.themyscira.org/specs/tw-ts-005-v010100.txt
 
 What can one do with a TW-TS-005 hex file?  Some possibilities:
 
@@ -101,29 +101,34 @@ What can one do with a TW-TS-005 hex file?  Some possibilities:
   can be captured Abis-UL output from an E1 BTS, converted with trau2rtp_gen)
   into playable audio.
 
-No AMR or CSD
-=============
+Separate utility for AMR
+========================
 
-One limitation of the present trau2rtp_gen utility that should be noted is the
-lack of support for AMR or CSD.  The reasons for this limitation are:
+The principal library API exercised by this trau2rtp_gen program, namely
+osmo_trau2rtp(), does not support AMR - instead high-level decoding of AMR TRAU
+frames requires use of the interworking facility of <osmocom/trau/amr_trau.h>.
+At the level of command line utilities, a separate program exists that exercises
+the AMR-specific TRAU to RTP conversion APIs - see tests/amr/trau2rtp_amr.
 
-* AMR is currently not supported by osmo_trau2rtp() or osmo_rtp2trau()
-  functions, and it is not entirely clear if this API would be a good match for
-  the much more complex processing that will be needed in a software TRAU or
-  TRAU-emulating MGW for AMR.
+No CSD support yet
+==================
 
-* CSD is supported by the chain of libosmotrau functions exercised by
-  trau2rtp_gen, but the resulting bloated RTP payloads cannot be represented in
-  TW-TS-005: spec section 4.1 limits each hex line to 80 characters, effectively
-  limiting the domain of application for this hex file format to RTP payloads
-  that are no larger than 40 bytes.
+When the input is a TRAU frame in one of CSD modes, the output from
+osmo_trau2rtp() can be either a 160-byte CLEARMODE payload or a much more
+compact TW-TS-007 (compressed CSD) payload.  The bloated CLEARMODE format cannot
+be represented in TW-TS-005 hex files (it exceeds the line length limit imposed
+by TW-TS-005 section 4.1), but the alternative TW-TS-007 compressed CSD format
+_can_ be represented in TW-TS-005 hex - and the current version of TW-TS-005
+spec linked above includes Annex D that specifies such usage.
 
-When and if a need arises to represent CSD frame streams in hex, there does not
-seem to be one single solution that would be best for all use cases - instead
-the problem might need to be approached on a case-by-case basis.  For the
-specific use case of unit tests, verifying correct operation of osmo_trau2rtp()
-and osmo_rtp2trau() functions in data modes, one possible approach would be to
+trau2rtp_gen utility can be extended to enable TW-TS-007 output and thereby add
+support for at least one representation of GSM CSD in RTP - but no such
+modification has been made yet.
+
+A need may also arise at some point to represent the bloated-but-standard
+CLEARMODE formats in hex as well.  TW-TS-005 cannot be used for that purpose,
+but some other ad hoc hex format can be implemented quite easily - for example,
 copy what is currently done in raa_prime unit tests: break each 160-byte CSD RTP
 payload into 4 hex lines of 80 digits each.  In any case, whichever hex format
-is to be chosen for CSD, it will be its own separate test program, independent
-of trau2rtp_gen.
+is to be chosen for non-compressed CSD in CLEARMODE representation, it would
+need to be its own separate test program, independent of trau2rtp_gen.
